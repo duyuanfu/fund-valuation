@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: fund-valuation
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:fund_valuation}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types:
+      - text/html
+      - text/xml
+      - text/plain
+      - text/css
+      - text/javascript
+      - application/javascript
+      - application/json
+
+fund:
+  schedule:
+    nav-cron: "0 30 20 * * *"
+    holding-cron: "0 0 21 * * *"
+    intraday-interval-ms: 120000
+  quote:
+    fresh-seconds: 300
+  history:
+    retain-days: 30
+  bond:
+    index-secid: "103.TY00Y"
+    reference-duration: 10.0
+    default-duration: 2.0
+  jwt:
+    secret: ${JWT_SECRET:fund-valuation-dev-secret-change-me-0123456789}
+    expire-days: 7

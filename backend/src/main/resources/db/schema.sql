@@ -1,0 +1,87 @@
+CREATE DATABASE IF NOT EXISTS fund_valuation DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE fund_valuation;
+
+CREATE TABLE IF NOT EXISTS fund (
+    code         VARCHAR(10)  NOT NULL COMMENT '基金代码',
+    name         VARCHAR(64)  NOT NULL COMMENT '基金名称',
+    type         VARCHAR(20)  NOT NULL COMMENT '类型: index/enhanced/active/mixed/bond/other',
+    type_raw     VARCHAR(32)  NULL     COMMENT '官方类型原文(如 债券型-长债)',
+    track_index  VARCHAR(20)  NULL     COMMENT '跟踪指数代码',
+    prev_nav     DECIMAL(10,4) NULL    COMMENT '昨日净值',
+    nav_date     DATE         NULL     COMMENT '净值日期',
+    fresh_flag   VARCHAR(64)  NULL     COMMENT '新鲜度/降级标记',
+    updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='基金主数据';
+
+CREATE TABLE IF NOT EXISTS fund_holding (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    fund_code   VARCHAR(10)  NOT NULL COMMENT '基金代码',
+    stock_code  VARCHAR(10)  NOT NULL COMMENT '股票代码',
+    stock_name  VARCHAR(32)  NULL     COMMENT '股票名称',
+    weight      DECIMAL(8,4) NOT NULL COMMENT '占净值比例(%)',
+    report_qt   VARCHAR(32)  NOT NULL COMMENT '报告期(如 2026-06-30)',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_fund_stock_qt (fund_code, stock_code, report_qt),
+    KEY idx_fund (fund_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='前十大重仓股';
+
+CREATE TABLE IF NOT EXISTS fund_asset_alloc (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    fund_code   VARCHAR(10)  NOT NULL COMMENT '基金代码',
+    report_date DATE         NOT NULL COMMENT '报告期',
+    stock_pct   DECIMAL(8,4) NOT NULL COMMENT '股票占净值(%)',
+    bond_pct    DECIMAL(8,4) NOT NULL DEFAULT 0 COMMENT '债券占净值(%)',
+    cash_pct    DECIMAL(8,4) NOT NULL DEFAULT 0 COMMENT '现金占净值(%)',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_fund_date (fund_code, report_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资产配置';
+
+CREATE TABLE IF NOT EXISTS estimate_history (
+    id       BIGINT        NOT NULL AUTO_INCREMENT,
+    fund_code VARCHAR(10)  NOT NULL COMMENT '基金代码',
+    est_time DATETIME      NOT NULL COMMENT '估算时间',
+    est_nav  DECIMAL(10,4) NOT NULL COMMENT '估算净值',
+    est_pct  DECIMAL(8,4)  NOT NULL COMMENT '估算涨跌幅(%)',
+    PRIMARY KEY (id),
+    KEY idx_fund_time (fund_code, est_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='估值历史';
+
+CREATE TABLE IF NOT EXISTS user_fund (
+    id        BIGINT      NOT NULL AUTO_INCREMENT,
+    user_id   VARCHAR(64) NOT NULL COMMENT '用户ID',
+    fund_code VARCHAR(10) NOT NULL COMMENT '基金代码',
+    sort_no   INT         NOT NULL DEFAULT 0 COMMENT '排序',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_fund (user_id, fund_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户自选基金';
+
+CREATE TABLE IF NOT EXISTS quote_cache (
+    id       BIGINT        NOT NULL AUTO_INCREMENT,
+    secid    VARCHAR(20)   NOT NULL COMMENT '行情secid',
+    name     VARCHAR(32)   NULL     COMMENT '名称',
+    price    DECIMAL(12,3) NOT NULL COMMENT '最新价',
+    pct_chg  DECIMAL(8,4)  NOT NULL COMMENT '涨跌幅(%)',
+    quote_ts DATETIME      NOT NULL COMMENT '行情时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_secid (secid)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='行情缓存';
+
+CREATE TABLE IF NOT EXISTS bond_duration (
+    id        BIGINT       NOT NULL AUTO_INCREMENT,
+    fund_code VARCHAR(10)  NOT NULL COMMENT '基金代码',
+    report_qt VARCHAR(32)  NOT NULL COMMENT '报告期',
+    duration  DECIMAL(6,2) NOT NULL COMMENT '组合久期(年)',
+    source    VARCHAR(16)  NOT NULL DEFAULT 'default' COMMENT '来源: report/default',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_fund_qt (fund_code, report_qt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='债券基金组合久期';
+
+CREATE TABLE IF NOT EXISTS `user` (
+    id            BIGINT      NOT NULL AUTO_INCREMENT,
+    username      VARCHAR(32) NOT NULL COMMENT '用户名',
+    password_hash VARCHAR(100) NOT NULL COMMENT 'BCrypt 密码哈希',
+    created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户账号';

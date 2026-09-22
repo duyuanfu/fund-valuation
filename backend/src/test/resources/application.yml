@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+fund:
+  schedule:
+    nav-cron: "0 30 20 * * *"
+    holding-cron: "0 0 21 * * *"
+    intraday-interval-ms: 120000
+  quote:
+    fresh-seconds: 300
+  history:
+    retain-days: 30
