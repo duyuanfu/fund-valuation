@@ -14,6 +14,13 @@ public class AppProperties {
     private final History history = new History();
     private final Bond bond = new Bond();
     private final Jwt jwt = new Jwt();
+    private final Calendar calendar = new Calendar();
+
+    @Data
+    public static class Calendar {
+        /** 自定义/动态节假日列表(格式 yyyy-MM-dd) */
+        private java.util.List<String> holidays = new java.util.ArrayList<>();
+    }
 
     @Data
     public static class Jwt {

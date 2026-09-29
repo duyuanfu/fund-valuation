@@ -77,23 +77,30 @@ public class FundCatalogService {
             return true;
         }
         java.time.LocalDate today = java.time.LocalDate.now();
-        // 寻找最近一个已经结束的法定交易日
-        java.time.LocalDate expected = today.minusDays(1);
-        while (!com.fund.valuation.common.TradingCalendar.isTradingDay(expected)) {
-            expected = expected.minusDays(1);
-        }
-        return navDate.isBefore(expected);
+        // 只要已有净值日期早于今天，均允许自检，以天天基金远端官方实际公布日期为准，避免受节假日硬编码误判阻断
+        return navDate.isBefore(today);
     }
 
     public void refreshSingleFund(Fund fund) {
         try {
             FundBasicInfo info = fundClient.fetchBasicInfo(fund.getCode());
-            if (info != null && info.prevNav() != null) {
-                fund.setName(info.name());
-                fund.setPrevNav(info.prevNav());
-                fund.setNavDate(info.navDate());
-                fund.setUpdatedAt(LocalDateTime.now());
-                fundMapper.updateById(fund);
+            if (info != null && info.prevNav() != null && info.navDate() != null) {
+                // 当远端实际公布的净值日期晚于数据库现有日期时，执行更新覆盖
+                if (fund.getNavDate() == null || info.navDate().isAfter(fund.getNavDate())) {
+                    fund.setName(info.name());
+                    fund.setPrevNav(info.prevNav());
+                    fund.setNavDate(info.navDate());
+                    FundType type = classifier.classify(info.typeRaw(), info.name());
+                    if (type == FundType.INDEX || type == FundType.ENHANCED) {
+                        String newIndex = indexResolver.resolve(fund.getCode(), info.name());
+                        if (newIndex != null) {
+                            fund.setTrackIndex(newIndex);
+                        }
+                    }
+                    fund.setUpdatedAt(LocalDateTime.now());
+                    fundMapper.updateById(fund);
+                    log.info("fund {} navDate updated: {} -> {}", fund.getCode(), fund.getNavDate(), info.navDate());
+                }
             }
         } catch (Exception e) {
             log.debug("refresh single fund {} nav failed: {}", fund.getCode(), e.getMessage());
