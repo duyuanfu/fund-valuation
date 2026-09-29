@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @Slf4j
 @Service
-@DependsOn("databaseInitializer")
 public class SystemNoticeService {
 
     private final AppProperties properties;

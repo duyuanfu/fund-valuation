@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Form, Input, Tabs, Typography, message } from 'antd'
+import { Button, Card, Form, Input, Tabs, Typography, message, Modal } from 'antd'
 import { LineChartOutlined, LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -16,16 +16,32 @@ export default function AuthPage() {
   const submit = async (values: { username: string; password: string }) => {
     setSubmitting(true)
     try {
-      const res =
-        mode === 'login'
-          ? await api.login(values.username, values.password)
-          : await api.register(values.username, values.password)
-      login(res.token, res.username, res.role, res.isVip)
-      message.success(mode === 'login' ? '欢迎回来' : '账号注册成功，已自动登录')
-      if (res.role === 'ADMIN') {
-        navigate('/admin', { replace: true })
+      if (mode === 'login') {
+        const res = await api.login(values.username, values.password)
+        login(res.token, res.username, res.role, res.isVip)
+        message.success('欢迎回来')
+        if (res.role === 'ADMIN') {
+          navigate('/admin', { replace: true })
+        } else {
+          navigate('/', { replace: true })
+        }
       } else {
-        navigate('/', { replace: true })
+        const regRes = await api.register(values.username, values.password)
+        Modal.success({
+          title: '注册申请已提交',
+          content: (
+            <div style={{ marginTop: 8 }}>
+              <p style={{ margin: '0 0 8px 0', color: '#334155', fontSize: 14 }}>
+                账号 <b>{regRes.username}</b> 注册申请已成功发送！
+              </p>
+              <p style={{ margin: 0, color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+                为了系统安全与合规，新注册用户需等待管理员审核授权后方可登录使用。请联系管理员完成授权审核。
+              </p>
+            </div>
+          ),
+          okText: '我知道了，去登录',
+          onOk: () => setMode('login'),
+        })
       }
     } catch (e) {
       message.error((e as Error).message)
@@ -129,21 +145,39 @@ export default function AuthPage() {
             ]}
           />
 
-          <div
-            style={{
-              marginTop: 12,
-              marginBottom: 20,
-              backgroundColor: '#f8fafc',
-              border: '1px solid #f1f5f9',
-              borderRadius: 10,
-              padding: '8px 12px',
-              fontSize: 12,
-              color: '#64748b',
-              lineHeight: 1.5,
-            }}
-          >
-            老用户注册请保持用户名与原 <Text code style={{ color: '#2563eb' }}>userId</Text> 一致，即可自动归集原有自选。
-          </div>
+          {mode === 'register' ? (
+            <div
+              style={{
+                marginTop: 12,
+                marginBottom: 18,
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: 10,
+                padding: '10px 12px',
+                fontSize: 12,
+                color: '#1e40af',
+                lineHeight: 1.5,
+              }}
+            >
+              <b>💡 注册说明：</b>新账号提交注册后需等待管理员审批授权，管理员通过后即可正常登录系统。
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: 12,
+                marginBottom: 18,
+                backgroundColor: '#f8fafc',
+                border: '1px solid #f1f5f9',
+                borderRadius: 10,
+                padding: '8px 12px',
+                fontSize: 12,
+                color: '#64748b',
+                lineHeight: 1.5,
+              }}
+            >
+              老用户注册请保持用户名与原 <Text code style={{ color: '#2563eb' }}>userId</Text> 一致，即可自动归集原有自选。
+            </div>
+          )}
 
           <Form onFinish={submit} layout="vertical" size="large">
             <Form.Item
@@ -202,7 +236,7 @@ export default function AuthPage() {
                 boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
               }}
             >
-              {mode === 'login' ? '立即登录' : '立即注册并体验'}
+              {mode === 'login' ? '立即登录' : '提交注册申请'}
             </Button>
           </Form>
         </Card>

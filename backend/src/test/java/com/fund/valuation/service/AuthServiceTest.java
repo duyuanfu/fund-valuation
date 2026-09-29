@@ -31,15 +31,25 @@ class AuthServiceTest {
     @Test
     void registerAndLogin() {
         authService.register("alice", "password123");
+        // 新用户默认 PENDING 待授权审核状态，未审核时无法登录
+        IllegalArgumentException pendingEx = assertThrows(IllegalArgumentException.class,
+                () -> authService.login("alice", "password123"));
+        assertTrue(pendingEx.getMessage().contains("等待管理员审核"));
+
+        // 管理员审核通过该用户
+        User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, "alice"));
+        assertNotNull(u);
+        assertEquals(User.STATUS_PENDING, u.getStatus());
+        u.setStatus(User.STATUS_NORMAL);
+        userMapper.updateById(u);
+
+        // 审核通过后可正常登录
         AuthService.LoginResult res = authService.login("alice", "password123");
         assertNotNull(res.token());
         assertEquals("alice", res.username());
         assertEquals(User.ROLE_USER, res.role());
         assertEquals(false, res.isVip());
         assertEquals("alice", authService.resolveUsername(res.token()));
-
-        User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, "alice"));
-        assertNotNull(u);
         assertTrue(new BCryptPasswordEncoder().matches("password123", u.getPasswordHash()));
     }
 

@@ -63,7 +63,7 @@ export const api = {
     }),
 
   register: (username: string, password: string) =>
-    request<{ token: string; username: string; role: string; isVip: boolean }>('/api/auth/register', {
+    request<{ status: string; username: string; message: string }>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     }),

@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Button, Layout, Typography, Spin, Tag } from 'antd'
-import { LogoutOutlined, LineChartOutlined } from '@ant-design/icons'
+import { LogoutOutlined, LineChartOutlined, UserOutlined } from '@ant-design/icons'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 
@@ -103,30 +103,26 @@ function LayoutShell() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1 }}>
           <div
             style={{
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#f1f5f9',
-              padding: '3px 10px',
-              borderRadius: 16,
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              padding: '4px 10px',
+              borderRadius: 20,
               fontSize: 12,
-              color: '#334155',
+              color: '#1e293b',
               fontWeight: 500,
+              lineHeight: 1,
+              height: 28,
+              boxSizing: 'border-box',
             }}
           >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: '#10b981',
-                display: 'inline-block',
-              }}
-            />
-            {username}
+            <UserOutlined style={{ color: '#64748b', fontSize: 12 }} />
+            <span>{username}</span>
             {isVip && !isAdmin && (
               <span
                 style={{
@@ -136,7 +132,9 @@ function LayoutShell() {
                   fontWeight: 700,
                   padding: '1px 5px',
                   borderRadius: 8,
-                  marginLeft: 2,
+                  lineHeight: '12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
               >
                 👑 VIP
@@ -149,9 +147,10 @@ function LayoutShell() {
             icon={<LogoutOutlined />}
             style={{
               color: '#64748b',
-              fontSize: 13,
+              fontSize: 12,
               display: 'flex',
               alignItems: 'center',
+              height: 28,
             }}
             onClick={() => {
               logout()

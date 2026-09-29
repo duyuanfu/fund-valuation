@@ -18,6 +18,7 @@ public class User {
 
     public static final String STATUS_NORMAL = "NORMAL";
     public static final String STATUS_DISABLED = "DISABLED";
+    public static final String STATUS_PENDING = "PENDING";
 
     @TableId(type = IdType.AUTO)
     private Long id;

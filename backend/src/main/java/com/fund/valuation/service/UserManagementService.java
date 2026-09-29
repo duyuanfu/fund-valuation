@@ -7,7 +7,6 @@ import com.fund.valuation.mapper.UserFundMapper;
 import com.fund.valuation.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,7 +16,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@DependsOn("databaseInitializer")
 @RequiredArgsConstructor
 public class UserManagementService {
 
@@ -59,8 +57,10 @@ public class UserManagementService {
     }
 
     public void updateStatus(String username, String status) {
-        if (!User.STATUS_NORMAL.equalsIgnoreCase(status) && !User.STATUS_DISABLED.equalsIgnoreCase(status)) {
-            throw new IllegalArgumentException("状态仅支持 NORMAL 或 DISABLED");
+        if (!User.STATUS_NORMAL.equalsIgnoreCase(status)
+                && !User.STATUS_DISABLED.equalsIgnoreCase(status)
+                && !User.STATUS_PENDING.equalsIgnoreCase(status)) {
+            throw new IllegalArgumentException("状态仅支持 NORMAL, DISABLED 或 PENDING");
         }
         User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
         if (u == null) {

@@ -39,6 +39,7 @@ import {
   FireOutlined,
   FundOutlined,
   SearchOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons'
 import { api } from '../api'
 import type {
@@ -60,6 +61,7 @@ export default function AdminPage() {
   /* ---------------- 1. 用户管理状态 ---------------- */
   const [users, setUsers] = useState<UserView[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const pendingCount = users.filter((u) => u.status === 'PENDING').length
   const [selectedUser, setSelectedUser] = useState<UserView | null>(null)
   const [userWatchlist, setUserWatchlist] = useState<EstimateResult[]>([])
   const [loadingWatchlist, setLoadingWatchlist] = useState(false)
@@ -322,7 +324,7 @@ export default function AdminPage() {
   }, [])
 
   return (
-    <div style={{ maxWidth: 1160, margin: '0 auto', padding: '24px 16px 60px' }}>
+    <div style={{ width: '100%', maxWidth: 1600, margin: '0 auto', padding: '16px 24px 60px' }}>
       {/* 顶部标题栏 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <Space align="center" size={10}>
@@ -373,7 +375,7 @@ export default function AdminPage() {
             key: 'users',
             label: (
               <span>
-                <UserOutlined /> 用户治理与自选 ({users.length})
+                <UserOutlined /> 用户治理与自选 ({users.length}人{pendingCount > 0 ? ` · ${pendingCount}待审` : ''})
               </span>
             ),
             children: (
@@ -384,12 +386,21 @@ export default function AdminPage() {
                   boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)',
                 }}
               >
+                {pendingCount > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    icon={<ClockCircleOutlined />}
+                    message={`新用户审批提醒：当前有 ${pendingCount} 位新用户提交了注册申请正在等待授权，请在操作列点击【通过授权】即可允许其登录。`}
+                    style={{ marginBottom: 14, borderRadius: 10 }}
+                  />
+                )}
                 <Table
                   dataSource={users}
                   rowKey="username"
                   loading={loadingUsers}
                   pagination={{ pageSize: 10 }}
-                  scroll={{ x: 1180 }}
+                  scroll={{ x: 'max-content' }}
                   columns={[
                     {
                       title: '用户名',
@@ -413,16 +424,25 @@ export default function AdminPage() {
                       title: '账号状态',
                       dataIndex: 'status',
                       key: 'status',
-                      width: 105,
-                      render: (status: string) => (
-                        <Tag
-                          color={status === 'NORMAL' ? 'success' : 'error'}
-                          icon={status === 'NORMAL' ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-                          style={{ borderRadius: 6 }}
-                        >
-                          {status === 'NORMAL' ? '正常授权' : '已停用'}
-                        </Tag>
-                      ),
+                      width: 115,
+                      render: (status: string) => {
+                        if (status === 'PENDING') {
+                          return (
+                            <Tag color="orange" icon={<ClockCircleOutlined />} style={{ borderRadius: 6, fontWeight: 500 }}>
+                              待授权审核
+                            </Tag>
+                          )
+                        }
+                        return (
+                          <Tag
+                            color={status === 'NORMAL' ? 'success' : 'error'}
+                            icon={status === 'NORMAL' ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                            style={{ borderRadius: 6 }}
+                          >
+                            {status === 'NORMAL' ? '正常授权' : '已停用'}
+                          </Tag>
+                        )
+                      },
                     },
                     {
                       title: '会员级别',
@@ -504,47 +524,73 @@ export default function AdminPage() {
                       width: 290,
                       render: (_: unknown, record: UserView) => (
                         <Space size={4} wrap={false}>
-                          {record.role !== 'ADMIN' && (
-                            <Button
-                              type="link"
-                              size="small"
-                              icon={<EyeOutlined />}
-                              onClick={() => handleViewWatchlist(record)}
-                              style={{ padding: '0 4px', whiteSpace: 'nowrap' }}
+                          {record.status === 'PENDING' ? (
+                            <Popconfirm
+                              title={`确定通过用户【${record.username}】的账号申请并授权登录吗？`}
+                              onConfirm={() => handleToggleStatus(record.username, 'PENDING')}
+                              okText="通过授权"
+                              cancelText="取消"
                             >
-                              调阅自选
-                            </Button>
+                              <Button
+                                type="primary"
+                                size="small"
+                                icon={<CheckCircleOutlined />}
+                                style={{
+                                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                                  borderColor: '#15803d',
+                                  padding: '0 8px',
+                                  fontSize: 12,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                通过授权
+                              </Button>
+                            </Popconfirm>
+                          ) : (
+                            <>
+                              {record.role !== 'ADMIN' && (
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  icon={<EyeOutlined />}
+                                  onClick={() => handleViewWatchlist(record)}
+                                  style={{ padding: '0 4px', whiteSpace: 'nowrap' }}
+                                >
+                                  调阅自选
+                                </Button>
+                              )}
+                              <Button
+                                type="link"
+                                size="small"
+                                icon={<CrownOutlined />}
+                                style={{ color: '#d97706', padding: '0 4px', whiteSpace: 'nowrap' }}
+                                onClick={() => openVipModal(record)}
+                              >
+                                VIP 设置
+                              </Button>
+                              <Popconfirm
+                                title={`确定要将用户设为 ${record.role === 'ADMIN' ? 'USER' : 'ADMIN'} 吗？`}
+                                onConfirm={() => handleToggleRole(record.username, record.role)}
+                              >
+                                <Button type="link" size="small" style={{ padding: '0 4px', whiteSpace: 'nowrap' }}>
+                                  {record.role === 'ADMIN' ? '降为用户' : '设为管理员'}
+                                </Button>
+                              </Popconfirm>
+                              <Popconfirm
+                                title={`确定要${record.status === 'NORMAL' ? '停用禁用' : '恢复授权'}该用户吗？`}
+                                onConfirm={() => handleToggleStatus(record.username, record.status)}
+                              >
+                                <Button
+                                  type="link"
+                                  size="small"
+                                  danger={record.status === 'NORMAL'}
+                                  style={{ padding: '0 4px', whiteSpace: 'nowrap' }}
+                                >
+                                  {record.status === 'NORMAL' ? '停用账号' : '恢复授权'}
+                                </Button>
+                              </Popconfirm>
+                            </>
                           )}
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={<CrownOutlined />}
-                            style={{ color: '#d97706', padding: '0 4px', whiteSpace: 'nowrap' }}
-                            onClick={() => openVipModal(record)}
-                          >
-                            VIP 设置
-                          </Button>
-                          <Popconfirm
-                            title={`确定要将用户设为 ${record.role === 'ADMIN' ? 'USER' : 'ADMIN'} 吗？`}
-                            onConfirm={() => handleToggleRole(record.username, record.role)}
-                          >
-                            <Button type="link" size="small" style={{ padding: '0 4px', whiteSpace: 'nowrap' }}>
-                              {record.role === 'ADMIN' ? '降为用户' : '设为管理员'}
-                            </Button>
-                          </Popconfirm>
-                          <Popconfirm
-                            title={`确定要${record.status === 'NORMAL' ? '停用禁用' : '恢复授权'}该用户吗？`}
-                            onConfirm={() => handleToggleStatus(record.username, record.status)}
-                          >
-                            <Button
-                              type="link"
-                              size="small"
-                              danger={record.status === 'NORMAL'}
-                              style={{ padding: '0 4px', whiteSpace: 'nowrap' }}
-                            >
-                              {record.status === 'NORMAL' ? '停用账号' : '恢复授权'}
-                            </Button>
-                          </Popconfirm>
                           {record.role !== 'ADMIN' && (
                             <Popconfirm
                               title={`确定要彻底删除用户【${record.username}】吗？`}

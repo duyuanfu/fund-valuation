@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fund.valuation.domain.User;
 import com.fund.valuation.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +13,6 @@ import java.time.LocalDateTime;
  * 用户注册与登录。
  */
 @Service
-@DependsOn("databaseInitializer")
 @RequiredArgsConstructor
 public class AuthService {
 
@@ -36,23 +34,28 @@ public class AuthService {
         User u = new User();
         u.setUsername(username);
         u.setPasswordHash(encoder.encode(password));
-        u.setRole("admin".equalsIgnoreCase(username) ? User.ROLE_ADMIN : User.ROLE_USER);
-        u.setStatus(User.STATUS_NORMAL);
+        boolean isAdmin = "admin".equalsIgnoreCase(username);
+        u.setRole(isAdmin ? User.ROLE_ADMIN : User.ROLE_USER);
+        // 新用户注册后默认状态为 PENDING (待管理员审核授权)，初始 admin 直接生效
+        u.setStatus(isAdmin ? User.STATUS_NORMAL : User.STATUS_PENDING);
         u.setIsVip(false);
-        u.setLastLoginAt(LocalDateTime.now());
-        u.setLoginCount(1);
+        u.setLastLoginAt(null);
+        u.setLoginCount(0);
         u.setCreatedAt(LocalDateTime.now());
         userMapper.insert(u);
     }
 
     /**
-     * 登录,成功返回 LoginResult;失败抛 IllegalArgumentException 或 IllegalStateException。
+     * 登录,成功返回 LoginResult;失败抛 IllegalArgumentException。
      */
     public LoginResult login(String username, String password) {
         User u = userMapper.selectOne(new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, username));
         if (u == null || !encoder.matches(password, u.getPasswordHash())) {
             throw new IllegalArgumentException("用户名或密码错误");
+        }
+        if (User.STATUS_PENDING.equalsIgnoreCase(u.getStatus())) {
+            throw new IllegalArgumentException("您的账号正在等待管理员审核授权，暂无法登录。请联系管理员开通权限。");
         }
         if (User.STATUS_DISABLED.equalsIgnoreCase(u.getStatus())) {
             throw new IllegalArgumentException("账号已被管理员停用，请联系管理员");
