@@ -19,26 +19,37 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...authHeader() },
     ...options,
   })
-  if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem('fund-valuation-username')
-    localStorage.removeItem('fund-valuation-role')
-    localStorage.removeItem('fund-valuation-is-vip')
-    if (!window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login'
-    }
-    throw new Error('未登录或登录已过期')
-  }
+
+  let errorMsg = `请求失败 (${res.status})`
   if (!res.ok) {
-    let msg = `请求失败 (${res.status})`
     try {
       const body = await res.json()
-      if (body && body.error) msg = body.error
+      if (body && body.error) errorMsg = body.error
     } catch {
       /* ignore */
     }
-    throw new Error(msg)
+
+    // 针对登录/注册接口，直接抛出后端错误信息（如“账号已被管理员停用，请联系管理员”）供登录页拦截展示
+    if (url.startsWith('/api/auth/')) {
+      throw new Error(errorMsg)
+    }
+
+    // 针对业务接口（如 /api/watchlist），若收到 401（未登录）或 403（账号被封禁停用）
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem('fund-valuation-username')
+      localStorage.removeItem('fund-valuation-role')
+      localStorage.removeItem('fund-valuation-is-vip')
+      localStorage.removeItem('fund-valuation-cached-watchlist')
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
+      throw new Error(errorMsg)
+    }
+
+    throw new Error(errorMsg)
   }
+
   const text = await res.text()
   return (text ? JSON.parse(text) : null) as T
 }

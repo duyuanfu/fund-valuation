@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Button, Layout, Typography, Spin } from 'antd'
-import { LogoutOutlined, LineChartOutlined, SettingOutlined } from '@ant-design/icons'
+import { Button, Layout, Typography, Spin, Tag } from 'antd'
+import { LogoutOutlined, LineChartOutlined } from '@ant-design/icons'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 
@@ -65,18 +65,22 @@ function LayoutShell() {
       >
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-          onClick={() => navigate('/')}
+          onClick={() => navigate(isAdmin ? '/admin' : '/')}
         >
           <div
             style={{
               width: 30,
               height: 30,
               borderRadius: 8,
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+              background: isAdmin
+                ? 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)'
+                : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+              boxShadow: isAdmin
+                ? '0 2px 6px rgba(124, 58, 237, 0.25)'
+                : '0 2px 6px rgba(37, 99, 235, 0.25)',
             }}
           >
             <LineChartOutlined style={{ color: '#ffffff', fontSize: 16 }} />
@@ -90,29 +94,16 @@ function LayoutShell() {
               letterSpacing: -0.2,
             }}
           >
-            基金实时估值
+            {isAdmin ? '基金估值管理后台' : '基金实时估值'}
           </Text>
+          {isAdmin && (
+            <Tag color="purple" style={{ borderRadius: 6, margin: 0, fontWeight: 600 }}>
+              ADMIN
+            </Tag>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {isAdmin && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<SettingOutlined />}
-              onClick={() => navigate('/admin')}
-              style={{
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                borderColor: '#6d28d9',
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {!isMobile && '管理后台'}
-            </Button>
-          )}
-
           <div
             style={{
               display: 'flex',
@@ -136,7 +127,7 @@ function LayoutShell() {
               }}
             />
             {username}
-            {isVip && (
+            {isVip && !isAdmin && (
               <span
                 style={{
                   background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -181,11 +172,11 @@ function LayoutShell() {
           }
         >
           <Routes>
-            <Route path="/" element={<WatchlistPage />} />
+            <Route path="/" element={isAdmin ? <Navigate to="/admin" replace /> : <WatchlistPage />} />
             <Route path="/fund/:code" element={<FundDetailPage />} />
             <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" replace />} />
-            <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/login" element={<Navigate to={isAdmin ? '/admin' : '/'} replace />} />
+            <Route path="*" element={<Navigate to={isAdmin ? '/admin' : '/'} replace />} />
           </Routes>
         </Suspense>
       </Content>

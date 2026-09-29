@@ -35,11 +35,9 @@ import {
   DeleteOutlined,
   PlusOutlined,
   ThunderboltOutlined,
-  ArrowLeftOutlined,
   SoundOutlined,
   FireOutlined,
 } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import type {
   UserView,
@@ -53,7 +51,6 @@ import dayjs from 'dayjs'
 const { Title, Text, Paragraph } = Typography
 
 export default function AdminPage() {
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('users')
 
   /* ---------------- 1. 用户管理状态 ---------------- */
@@ -293,22 +290,30 @@ export default function AdminPage() {
   }, [])
 
   return (
-    <div style={{ maxWidth: 1140, margin: '0 auto', padding: '24px 16px 60px' }}>
-      {/* 顶部标题与返回 */}
+    <div style={{ maxWidth: 1160, margin: '0 auto', padding: '24px 16px 60px' }}>
+      {/* 顶部标题栏 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <Space align="center" size={12}>
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/')}
-            style={{ borderRadius: 8 }}
+        <Space align="center" size={10}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.3)',
+            }}
           >
-            返回自选
-          </Button>
-          <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a' }}>
+            <DashboardOutlined style={{ color: '#ffffff', fontSize: 17 }} />
+          </div>
+          <Title level={4} style={{ margin: 0, fontWeight: 700, color: '#0f172a', letterSpacing: -0.2 }}>
             管理控制台
           </Title>
-          <Tag color="purple" style={{ borderRadius: 6, fontWeight: 600 }}>ADMIN CONSOLE</Tag>
+          <Tag color="purple" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+            ADMIN CONSOLE
+          </Tag>
         </Space>
         <Button
           icon={<ReloadOutlined />}
@@ -319,6 +324,7 @@ export default function AdminPage() {
             loadStats()
             message.success('已刷新管理数据')
           }}
+          style={{ borderRadius: 8 }}
         >
           刷新数据
         </Button>
@@ -350,11 +356,13 @@ export default function AdminPage() {
                   rowKey="username"
                   loading={loadingUsers}
                   pagination={{ pageSize: 10 }}
+                  scroll={{ x: 1100 }}
                   columns={[
                     {
                       title: '用户名',
                       dataIndex: 'username',
                       key: 'username',
+                      width: 130,
                       render: (name: string, record: UserView) => (
                         <Space>
                           <Text strong>{name}</Text>
@@ -370,6 +378,7 @@ export default function AdminPage() {
                       title: '角色',
                       dataIndex: 'role',
                       key: 'role',
+                      width: 85,
                       render: (role: string) => (
                         <Tag color={role === 'ADMIN' ? 'purple' : 'default'} style={{ borderRadius: 6 }}>
                           {role}
@@ -380,6 +389,7 @@ export default function AdminPage() {
                       title: '账号状态',
                       dataIndex: 'status',
                       key: 'status',
+                      width: 105,
                       render: (status: string) => (
                         <Tag
                           color={status === 'NORMAL' ? 'success' : 'error'}
@@ -393,10 +403,11 @@ export default function AdminPage() {
                     {
                       title: '会员级别',
                       key: 'vip',
+                      width: 135,
                       render: (_: unknown, record: UserView) => (
                         record.isVip ? (
-                          <Text style={{ color: '#d97706', fontSize: 12 }}>
-                            VIP 有效 {record.vipExpireAt ? `至 ${dayjs(record.vipExpireAt).format('YYYY-MM-DD')}` : '(永久)'}
+                          <Text style={{ color: '#d97706', fontSize: 12, whiteSpace: 'nowrap' }}>
+                            VIP {record.vipExpireAt ? `至 ${dayjs(record.vipExpireAt).format('YYYY-MM-DD')}` : '(永久)'}
                           </Text>
                         ) : (
                           <Text type="secondary" style={{ fontSize: 12 }}>普通会员</Text>
@@ -407,11 +418,18 @@ export default function AdminPage() {
                       title: '自选基金数',
                       dataIndex: 'watchlistCount',
                       key: 'watchlistCount',
-                      render: (cnt: number) => <Tag color="blue">{cnt} 只</Tag>,
+                      width: 95,
+                      render: (cnt: number, record: UserView) =>
+                        record.role === 'ADMIN' ? (
+                          <Text type="secondary" style={{ fontSize: 12 }}>-</Text>
+                        ) : (
+                          <Tag color="blue">{cnt} 只</Tag>
+                        ),
                     },
                     {
                       title: '最后登录 / 活跃度',
                       key: 'loginActivity',
+                      width: 185,
                       render: (_: unknown, record: UserView) => {
                         if (!record.lastLoginAt) {
                           return <Tag style={{ borderRadius: 6 }}>从未登录</Tag>
@@ -433,10 +451,10 @@ export default function AdminPage() {
                         }
                         return (
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 500, color: '#334155' }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: '#334155', whiteSpace: 'nowrap' }}>
                               {last.format('YYYY-MM-DD HH:mm')}
                             </div>
-                            <Space size={4} style={{ marginTop: 2 }}>
+                            <Space size={4} style={{ marginTop: 2, whiteSpace: 'nowrap' }}>
                               <Tag color={tagColor} style={{ borderRadius: 6, margin: 0, fontSize: 10 }}>
                                 {tagText}
                               </Tag>
@@ -452,26 +470,32 @@ export default function AdminPage() {
                       title: '注册时间',
                       dataIndex: 'createdAt',
                       key: 'createdAt',
-                      render: (t: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '-'),
+                      width: 140,
+                      render: (t: string) => (t ? <span style={{ whiteSpace: 'nowrap' }}>{dayjs(t).format('YYYY-MM-DD HH:mm')}</span> : '-'),
                     },
                     {
                       title: '操作',
                       key: 'action',
+                      fixed: 'right',
+                      width: 250,
                       render: (_: unknown, record: UserView) => (
-                        <Space size={8}>
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={<EyeOutlined />}
-                            onClick={() => handleViewWatchlist(record)}
-                          >
-                            调阅自选
-                          </Button>
+                        <Space size={4} wrap={false}>
+                          {record.role !== 'ADMIN' && (
+                            <Button
+                              type="link"
+                              size="small"
+                              icon={<EyeOutlined />}
+                              onClick={() => handleViewWatchlist(record)}
+                              style={{ padding: '0 4px', whiteSpace: 'nowrap' }}
+                            >
+                              调阅自选
+                            </Button>
+                          )}
                           <Button
                             type="link"
                             size="small"
                             icon={<CrownOutlined />}
-                            style={{ color: '#d97706' }}
+                            style={{ color: '#d97706', padding: '0 4px', whiteSpace: 'nowrap' }}
                             onClick={() => openVipModal(record)}
                           >
                             VIP 设置
@@ -480,8 +504,8 @@ export default function AdminPage() {
                             title={`确定要将用户设为 ${record.role === 'ADMIN' ? 'USER' : 'ADMIN'} 吗？`}
                             onConfirm={() => handleToggleRole(record.username, record.role)}
                           >
-                            <Button type="link" size="small">
-                              {record.role === 'ADMIN' ? '降为USER' : '设为管理员'}
+                            <Button type="link" size="small" style={{ padding: '0 4px', whiteSpace: 'nowrap' }}>
+                              {record.role === 'ADMIN' ? '降为用户' : '设为管理员'}
                             </Button>
                           </Popconfirm>
                           <Popconfirm
@@ -492,6 +516,7 @@ export default function AdminPage() {
                               type="link"
                               size="small"
                               danger={record.status === 'NORMAL'}
+                              style={{ padding: '0 4px', whiteSpace: 'nowrap' }}
                             >
                               {record.status === 'NORMAL' ? '停用账号' : '恢复授权'}
                             </Button>
@@ -703,52 +728,59 @@ export default function AdminPage() {
             ),
             children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {/* 统计指标卡片 */}
+                {/* 统计指标卡片: 6卡片严格等分 4/24 列网格 */}
                 <Row gutter={[16, 16]}>
-                  <Col xs={12} sm={8} md={3}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
-                      <Statistic title="总注册用户" value={stats?.totalUsers ?? 0} prefix={<UserOutlined />} />
-                    </Card>
-                  </Col>
-                  <Col xs={12} sm={8} md={3}>
+                  <Col xs={12} sm={8} md={4}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
                       <Statistic
-                        title="今日活跃用户"
+                        title={<span style={{ whiteSpace: 'nowrap' }}>总注册用户</span>}
+                        value={stats?.totalUsers ?? 0}
+                        prefix={<UserOutlined />}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={12} sm={8} md={4}>
+                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                      <Statistic
+                        title={<span style={{ whiteSpace: 'nowrap' }}>今日活跃用户</span>}
                         value={stats?.activeUsersToday ?? 0}
                         valueStyle={{ color: '#dc2626', fontWeight: 700 }}
                         prefix={<FireOutlined />}
                       />
                     </Card>
                   </Col>
-                  <Col xs={12} sm={8} md={3}>
+                  <Col xs={12} sm={8} md={4}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
                       <Statistic
-                        title="👑 VIP 会员"
+                        title={<span style={{ whiteSpace: 'nowrap' }}>👑 VIP 会员</span>}
                         value={stats?.vipUsers ?? 0}
-                        valueStyle={{ color: '#d97706' }}
+                        valueStyle={{ color: '#d97706', fontWeight: 650 }}
                         prefix={<CrownOutlined />}
                       />
                     </Card>
                   </Col>
-                  <Col xs={12} sm={8} md={3}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
-                      <Statistic title="自选记录数" value={stats?.totalWatchlists ?? 0} />
-                    </Card>
-                  </Col>
                   <Col xs={12} sm={8} md={4}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
-                      <Statistic title="监控基金总数" value={stats?.totalFunds ?? 0} />
-                    </Card>
-                  </Col>
-                  <Col xs={12} sm={8} md={4}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
-                      <Statistic title="实时行情缓存" value={stats?.cachedQuotes ?? 0} suffix="只" />
+                      <Statistic
+                        title={<span style={{ whiteSpace: 'nowrap' }}>监控基金总数</span>}
+                        value={stats?.totalFunds ?? 0}
+                        suffix="只"
+                      />
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
                       <Statistic
-                        title="动态休市日期"
+                        title={<span style={{ whiteSpace: 'nowrap' }}>实时行情缓存</span>}
+                        value={stats?.cachedQuotes ?? 0}
+                        suffix="条"
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={12} sm={8} md={4}>
+                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                      <Statistic
+                        title={<span style={{ whiteSpace: 'nowrap' }}>动态休市日期</span>}
                         value={stats?.activeDynamicHolidays ?? 0}
                         suffix="天"
                       />

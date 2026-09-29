@@ -55,7 +55,7 @@ public class AuthService {
             throw new IllegalArgumentException("用户名或密码错误");
         }
         if (User.STATUS_DISABLED.equalsIgnoreCase(u.getStatus())) {
-            throw new IllegalStateException("账号已被管理员停用，请联系管理员");
+            throw new IllegalArgumentException("账号已被管理员停用，请联系管理员");
         }
         // 更新登录活跃时间与累计登录频次
         u.setLastLoginAt(LocalDateTime.now());

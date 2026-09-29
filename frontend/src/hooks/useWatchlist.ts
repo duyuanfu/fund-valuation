@@ -58,6 +58,11 @@ export function useWatchlist() {
       })
       .catch((e: Error) => {
         setError(e.message)
+        if (e.message.includes('停用') || e.message.includes('未登录')) {
+          memoryEstimatesCache = []
+          setEstimates([])
+          localStorage.removeItem(STORAGE_KEY)
+        }
         throw e
       })
       .finally(() => {

@@ -58,7 +58,7 @@ class AuthServiceTest {
         u.setStatus(User.STATUS_DISABLED);
         userMapper.updateById(u);
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> authService.login("eve", "password123"));
         assertTrue(ex.getMessage().contains("停用"));
     }
