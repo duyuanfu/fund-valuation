@@ -22,6 +22,7 @@ import {
   ClockCircleOutlined,
   WarningOutlined,
   HolderOutlined,
+  SwapOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
@@ -354,6 +355,7 @@ export default function WatchlistPage() {
   const [newCode, setNewCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [isSorting, setIsSorting] = useState(false) // 移动端专属的“排序模式”切换
+  const [pctSort, setPctSort] = useState<'default' | 'desc' | 'asc'>('default') // 收益率正序/逆序/默认排序
 
   // 监听屏幕断点 (< 768px 为移动端视图)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -363,8 +365,20 @@ export default function WatchlistPage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const codesRef = useRef(estimates.map((e) => e.fundCode))
-  codesRef.current = estimates.map((e) => e.fundCode)
+  // 按照收益率大小进行正序 (从小到大) 或 逆序 (从大到小) 排序派生
+  const displayEstimates = useMemo(() => {
+    if (pctSort === 'default') {
+      return estimates
+    }
+    return [...estimates].sort((a, b) => {
+      const va = a.estimatePct ?? 0
+      const vb = b.estimatePct ?? 0
+      return pctSort === 'desc' ? vb - va : va - vb
+    })
+  }, [estimates, pctSort])
+
+  const codesRef = useRef(displayEstimates.map((e) => e.fundCode))
+  codesRef.current = displayEstimates.map((e) => e.fundCode)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -380,6 +394,7 @@ export default function WatchlistPage() {
     const newIndex = codesRef.current.indexOf(String(over.id))
     if (oldIndex < 0 || newIndex < 0) return
     const next = arrayMove(codesRef.current, oldIndex, newIndex)
+    setPctSort('default') // 拖拽后自动保持此新的自定义排序
     try {
       await reorder(next)
     } catch (e) {
@@ -471,8 +486,9 @@ export default function WatchlistPage() {
       {
         title: '估算涨跌幅',
         dataIndex: 'estimatePct',
-        width: 125,
+        width: 135,
         align: 'right',
+        sorter: (a, b) => (a.estimatePct ?? 0) - (b.estimatePct ?? 0),
         render: (v: number) => {
           const isUp = (v ?? 0) > 0
           const isDown = (v ?? 0) < 0
@@ -606,16 +622,49 @@ export default function WatchlistPage() {
           </Title>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {estimates.length > 1 && (
+            <Button
+              size="middle"
+              icon={
+                pctSort === 'desc' ? (
+                  <ArrowDownOutlined style={{ color: '#dc2626' }} />
+                ) : pctSort === 'asc' ? (
+                  <ArrowUpOutlined style={{ color: '#16a34a' }} />
+                ) : (
+                  <SwapOutlined />
+                )
+              }
+              type={pctSort !== 'default' ? 'primary' : 'default'}
+              ghost={pctSort !== 'default'}
+              style={{ borderRadius: 8 }}
+              onClick={() => {
+                if (isSorting) setIsSorting(false)
+                setPctSort((prev) => (prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default'))
+              }}
+            >
+              {pctSort === 'desc'
+                ? '涨幅降序 ⬇️'
+                : pctSort === 'asc'
+                ? '涨幅升序 ⬆️'
+                : '收益率排序'}
+            </Button>
+          )}
+
           {isMobile && estimates.length > 1 && (
             <Button
               size="middle"
               icon={isSorting ? <CheckOutlined /> : <MenuOutlined />}
               type={isSorting ? 'primary' : 'default'}
               style={{ borderRadius: 8 }}
-              onClick={() => setIsSorting(!isSorting)}
+              onClick={() => {
+                if (!isSorting) {
+                  setPctSort('default') // 开启拖拽模式时恢复为默认自选顺序
+                }
+                setIsSorting(!isSorting)
+              }}
             >
-              {isSorting ? '完成' : '排序'}
+              {isSorting ? '完成' : '拖拽'}
             </Button>
           )}
 
@@ -664,7 +713,7 @@ export default function WatchlistPage() {
       )}
 
       {/* 核心内容区 */}
-      {estimates.length === 0 && !loading ? (
+      {displayEstimates.length === 0 && !loading ? (
         <Card
           style={{
             borderRadius: 16,
@@ -692,11 +741,11 @@ export default function WatchlistPage() {
           onDragEnd={onDragEnd}
         >
           <SortableContext
-            items={estimates.map((e) => e.fundCode)}
+            items={displayEstimates.map((e) => e.fundCode)}
             strategy={verticalListSortingStrategy}
             disabled={!isSorting}
           >
-            {estimates.map((fund, idx) => (
+            {displayEstimates.map((fund, idx) => (
               <MobileSortableCard
                 key={fund.fundCode}
                 fund={fund}
@@ -704,7 +753,7 @@ export default function WatchlistPage() {
                 onNavigate={(code) => navigate(`/fund/${code}`)}
                 onRemove={(code) => remove(code)}
                 isFirst={idx === 0}
-                isLast={idx === estimates.length - 1}
+                isLast={idx === displayEstimates.length - 1}
                 onMoveUp={() => handleMove(idx, 'up')}
                 onMoveDown={() => handleMove(idx, 'down')}
               />
@@ -729,13 +778,13 @@ export default function WatchlistPage() {
             onDragEnd={onDragEnd}
           >
             <SortableContext
-              items={estimates.map((e) => e.fundCode)}
+              items={displayEstimates.map((e) => e.fundCode)}
               strategy={verticalListSortingStrategy}
             >
               <Table<EstimateResult>
                 rowKey="fundCode"
                 columns={desktopColumns}
-                dataSource={estimates}
+                dataSource={displayEstimates}
                 loading={loading}
                 pagination={false}
                 components={{ body: { row: SortableRow } }}
@@ -748,7 +797,7 @@ export default function WatchlistPage() {
       {/* 免责声明提示 */}
       <div style={{ marginTop: 24, textAlign: 'center' }}>
         <Text type="secondary" style={{ fontSize: 12, color: '#94a3b8' }}>
-          {estimates[0]?.disclaimer ?? '实时估值基于持仓与算法模型计算，仅供参考，不构成投资建议'}
+          {displayEstimates[0]?.disclaimer ?? '实时估值基于持仓与算法模型计算，仅供参考，不构成投资建议'}
         </Text>
       </div>
 
