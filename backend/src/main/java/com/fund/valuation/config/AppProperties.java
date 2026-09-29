@@ -15,6 +15,19 @@ public class AppProperties {
     private final Bond bond = new Bond();
     private final Jwt jwt = new Jwt();
     private final Calendar calendar = new Calendar();
+    private final Notice notice = new Notice();
+
+    @Data
+    public static class Notice {
+        /** 是否启用自定义公告 (false 时自动退化为非交易时段提示) */
+        private boolean enabled = true;
+        /** 公告正文内容 */
+        private String message = "系统公告：自选列表现已上线收益率升序/降序快速排序功能，并支持交易所全天分时线！";
+        /** 公告类型: info / success / warning / error */
+        private String type = "info";
+        /** 用户是否可手动关闭 */
+        private boolean closable = true;
+    }
 
     @Data
     public static class Calendar {

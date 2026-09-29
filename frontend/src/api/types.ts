@@ -59,3 +59,11 @@ export const FUND_TYPE_COLOR: Record<string, string> = {
   bond: 'green',
   other: 'default',
 }
+
+export interface NoticeView {
+  message: string
+  type?: 'info' | 'success' | 'warning' | 'error'
+  closable?: boolean
+  custom?: boolean
+}
+

@@ -46,6 +46,11 @@ fund:
   jwt:
     secret: ${JWT_SECRET:fund-valuation-dev-secret-change-me-0123456789}
     expire-days: 7
+  notice:
+    enabled: true
+    message: "系统公告：自选列表现已上线收益率升序/降序快速排序功能，并支持交易所全天分时线！"
+    type: "info"
+    closable: true
   calendar:
     holidays:
       # 元旦 (1月1日(周四)至1月3日(周六)休市，1月5日(周一)起照常开市。1月4日(周日)为周末休市)

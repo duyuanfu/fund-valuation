@@ -1,4 +1,4 @@
-import type { EstimateResult, FundDetailView } from './types'
+import type { EstimateResult, FundDetailView, NoticeView } from './types'
 
 const TOKEN_KEY = 'fund-valuation-token'
 
@@ -60,6 +60,8 @@ export const api = {
 
   fundDetail: (code: string) =>
     request<FundDetailView>(`/api/fund/${encodeURIComponent(code)}`),
+
+  getNotice: () => request<NoticeView | null>('/api/notice'),
 }
 
 export function sseUrl(): string {

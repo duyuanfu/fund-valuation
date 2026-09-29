@@ -23,6 +23,7 @@ import {
   WarningOutlined,
   HolderOutlined,
   SwapOutlined,
+  SoundOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
@@ -43,7 +44,8 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useWatchlist } from '../hooks/useWatchlist'
 import { FUND_TYPE_COLOR, FUND_TYPE_LABEL } from '../api/types'
-import type { EstimateResult } from '../api/types'
+import type { EstimateResult, NoticeView } from '../api/types'
+import { api } from '../api'
 import { colorOf, fmtNav, fmtPct, isTradingTime } from '../utils/format'
 
 const { Title, Text } = Typography
@@ -356,6 +358,41 @@ export default function WatchlistPage() {
   const [submitting, setSubmitting] = useState(false)
   const [isSorting, setIsSorting] = useState(false) // 移动端专属的“排序模式”切换
   const [pctSort, setPctSort] = useState<'default' | 'desc' | 'asc'>('default') // 收益率正序/逆序/默认排序
+
+  const [notice, setNotice] = useState<NoticeView | null>(null)
+  const [dismissedNotice, setDismissedNotice] = useState<string | null>(() => {
+    return localStorage.getItem('fund-valuation-dismissed-notice')
+  })
+
+  // 获取通用系统公告或交易时段状态提示
+  useEffect(() => {
+    api
+      .getNotice()
+      .then((data) => {
+        if (data) {
+          setNotice(data)
+        } else if (!isTradingTime()) {
+          setNotice({
+            message: '当前为非交易时段，展示最新行情快照',
+            type: 'info',
+            closable: false,
+            custom: false,
+          })
+        } else {
+          setNotice(null)
+        }
+      })
+      .catch(() => {
+        if (!isTradingTime()) {
+          setNotice({
+            message: '当前为非交易时段，展示最新行情快照',
+            type: 'info',
+            closable: false,
+            custom: false,
+          })
+        }
+      })
+  }, [])
 
   // 监听屏幕断点 (< 768px 为移动端视图)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -685,19 +722,47 @@ export default function WatchlistPage() {
         </div>
       </div>
 
-      {/* 市场时段提示 */}
-      {!isTradingTime() && (
+      {/* 通用系统公告 / 市场时段状态提示 */}
+      {notice && (!notice.closable || dismissedNotice !== notice.message) && (
         <Alert
-          type="info"
+          type={notice.type || 'info'}
           showIcon
-          icon={<ClockCircleOutlined />}
-          message="当前为非交易时段，展示最新行情快照"
+          icon={
+            notice.custom ? (
+              <SoundOutlined
+                style={{
+                  color: notice.type === 'success' ? '#16a34a' : '#2563eb',
+                  fontSize: 15,
+                }}
+              />
+            ) : (
+              <ClockCircleOutlined style={{ color: '#64748b' }} />
+            )
+          }
+          message={notice.message}
+          closable={notice.closable}
+          onClose={() => {
+            if (notice.closable) {
+              setDismissedNotice(notice.message)
+              localStorage.setItem('fund-valuation-dismissed-notice', notice.message)
+            }
+          }}
           style={{
             marginBottom: 14,
             borderRadius: 10,
             fontSize: 13,
-            backgroundColor: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            backgroundColor:
+              notice.type === 'success'
+                ? '#f0fdf4'
+                : notice.custom
+                ? '#eff6ff'
+                : '#f8fafc',
+            border:
+              notice.type === 'success'
+                ? '1px solid #bbf7d0'
+                : notice.custom
+                ? '1px solid #bfdbfe'
+                : '1px solid #e2e8f0',
           }}
         />
       )}
