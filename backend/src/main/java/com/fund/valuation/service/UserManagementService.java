@@ -94,4 +94,18 @@ public class UserManagementService {
         userMapper.updateById(u);
         log.info("user {} role updated to {}", username, role);
     }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteUser(String username) {
+        if ("admin".equalsIgnoreCase(username)) {
+            throw new IllegalArgumentException("系统内置超级管理员账号不可删除");
+        }
+        User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
+        if (u == null) {
+            throw new IllegalArgumentException("用户不存在: " + username);
+        }
+        userFundMapper.delete(new LambdaQueryWrapper<UserFund>().eq(UserFund::getUserId, username));
+        userMapper.deleteById(u.getId());
+        log.info("user {} and its watchlists deleted successfully", username);
+    }
 }

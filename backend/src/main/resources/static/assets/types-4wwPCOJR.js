@@ -1,1 +1,0 @@
-var e={index:`指数型`,enhanced:`指数增强`,active:`主动股票`,mixed:`混合型`,bond:`债券型`,other:`其他`},t={index:`blue`,enhanced:`purple`,active:`red`,mixed:`orange`,bond:`green`,other:`default`};export{e as n,t};

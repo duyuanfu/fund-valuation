@@ -58,5 +58,12 @@ class UserManagementServiceTest {
         userManagementService.updateRole("tester2", User.ROLE_ADMIN);
         User u2 = authService.getUser("tester2");
         assertEquals(User.ROLE_ADMIN, u2.getRole());
+
+        // 测试删除用户
+        userManagementService.deleteUser("tester1");
+        assertNull(authService.getUser("tester1"), "用户已被成功物理删除");
+
+        // 禁止删除内置 admin
+        assertThrows(IllegalArgumentException.class, () -> userManagementService.deleteUser("admin"));
     }
 }

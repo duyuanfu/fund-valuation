@@ -92,6 +92,18 @@ export interface CalendarHolidaysResponse {
   allDynamicHolidays: string[]
 }
 
+export interface FundView {
+  code: string
+  name: string
+  type: string
+  typeRaw?: string
+  trackIndex?: string
+  prevNav: number | null
+  navDate: string
+  userCount: number
+  updatedAt: string
+}
+
 export interface SystemStats {
   totalUsers: number
   vipUsers: number

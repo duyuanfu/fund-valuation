@@ -37,6 +37,8 @@ import {
   ThunderboltOutlined,
   SoundOutlined,
   FireOutlined,
+  FundOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import { api } from '../api'
 import type {
@@ -44,7 +46,9 @@ import type {
   CalendarHolidayView,
   SystemStats,
   EstimateResult,
+  FundView,
 } from '../api/types'
+import { FUND_TYPE_COLOR, FUND_TYPE_LABEL } from '../api/types'
 import { colorOf, fmtNav, fmtPct } from '../utils/format'
 import dayjs from 'dayjs'
 
@@ -98,6 +102,33 @@ export default function AdminPage() {
       loadUsers()
     } catch (e) {
       message.error((e as Error).message)
+    }
+  }
+
+  const handleDeleteUser = async (username: string) => {
+    try {
+      await api.deleteUser(username)
+      message.success(`用户 ${username} 及其自选关联已永久删除`)
+      loadUsers()
+    } catch (e) {
+      message.error((e as Error).message)
+    }
+  }
+
+  /* ---------------- 2. 监控基金库状态 ---------------- */
+  const [funds, setFunds] = useState<FundView[]>([])
+  const [loadingFunds, setLoadingFunds] = useState(false)
+  const [fundSearch, setFundSearch] = useState('')
+
+  const loadFunds = async () => {
+    setLoadingFunds(true)
+    try {
+      const list = await api.listFunds()
+      setFunds(list)
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setLoadingFunds(false)
     }
   }
 
@@ -284,6 +315,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     loadUsers()
+    loadFunds()
     loadCalendar()
     loadNotice()
     loadStats()
@@ -319,6 +351,7 @@ export default function AdminPage() {
           icon={<ReloadOutlined />}
           onClick={() => {
             loadUsers()
+            loadFunds()
             loadCalendar()
             loadNotice()
             loadStats()
@@ -356,23 +389,14 @@ export default function AdminPage() {
                   rowKey="username"
                   loading={loadingUsers}
                   pagination={{ pageSize: 10 }}
-                  scroll={{ x: 1100 }}
+                  scroll={{ x: 1180 }}
                   columns={[
                     {
                       title: '用户名',
                       dataIndex: 'username',
                       key: 'username',
-                      width: 130,
-                      render: (name: string, record: UserView) => (
-                        <Space>
-                          <Text strong>{name}</Text>
-                          {record.isVip && (
-                            <Tag color="gold" style={{ borderRadius: 10, fontSize: 11 }}>
-                              👑 VIP
-                            </Tag>
-                          )}
-                        </Space>
-                      ),
+                      width: 120,
+                      render: (name: string) => <Text strong style={{ color: '#0f172a' }}>{name}</Text>,
                     },
                     {
                       title: '角色',
@@ -477,7 +501,7 @@ export default function AdminPage() {
                       title: '操作',
                       key: 'action',
                       fixed: 'right',
-                      width: 250,
+                      width: 290,
                       render: (_: unknown, record: UserView) => (
                         <Space size={4} wrap={false}>
                           {record.role !== 'ADMIN' && (
@@ -521,7 +545,136 @@ export default function AdminPage() {
                               {record.status === 'NORMAL' ? '停用账号' : '恢复授权'}
                             </Button>
                           </Popconfirm>
+                          {record.role !== 'ADMIN' && (
+                            <Popconfirm
+                              title={`确定要彻底删除用户【${record.username}】吗？`}
+                              description="此操作将物理删除该账号及其所有自选关联，且不可恢复！"
+                              onConfirm={() => handleDeleteUser(record.username)}
+                              okText="删除"
+                              cancelText="取消"
+                              okButtonProps={{ danger: true }}
+                            >
+                              <Button
+                                type="link"
+                                size="small"
+                                danger
+                                icon={<DeleteOutlined />}
+                                style={{ padding: '0 4px', whiteSpace: 'nowrap' }}
+                              >
+                                删除
+                              </Button>
+                            </Popconfirm>
+                          )}
                         </Space>
+                      ),
+                    },
+                  ]}
+                />
+              </Card>
+            ),
+          },
+          {
+            key: 'funds',
+            label: (
+              <span>
+                <FundOutlined /> 监控基金总览 ({funds.length})
+              </span>
+            ),
+            children: (
+              <Card
+                bordered={false}
+                style={{
+                  borderRadius: 14,
+                  boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                  <Input
+                    prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                    placeholder="按基金代码或基金名称快速筛选搜索..."
+                    allowClear
+                    value={fundSearch}
+                    onChange={(e) => setFundSearch(e.target.value)}
+                    style={{ maxWidth: 360, borderRadius: 8 }}
+                  />
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    系统当前共收录监控 <Text strong style={{ color: '#2563eb' }}>{funds.length}</Text> 只基金
+                  </Text>
+                </div>
+
+                <Table
+                  dataSource={funds.filter(
+                    (f) =>
+                      f.code.toLowerCase().includes(fundSearch.toLowerCase()) ||
+                      f.name.toLowerCase().includes(fundSearch.toLowerCase())
+                  )}
+                  rowKey="code"
+                  loading={loadingFunds}
+                  pagination={{ pageSize: 10 }}
+                  scroll={{ x: 1000 }}
+                  columns={[
+                    {
+                      title: '基金代码',
+                      dataIndex: 'code',
+                      key: 'code',
+                      width: 100,
+                      render: (c: string) => <Text code style={{ fontWeight: 600 }}>{c}</Text>,
+                    },
+                    {
+                      title: '基金名称',
+                      dataIndex: 'name',
+                      key: 'name',
+                      width: 220,
+                      render: (name: string) => <Text strong style={{ color: '#0f172a' }}>{name}</Text>,
+                    },
+                    {
+                      title: '类型',
+                      dataIndex: 'type',
+                      key: 'type',
+                      width: 110,
+                      render: (t: string) => (
+                        <Tag color={FUND_TYPE_COLOR[t] ?? 'default'} style={{ borderRadius: 6 }}>
+                          {FUND_TYPE_LABEL[t] ?? t}
+                        </Tag>
+                      ),
+                    },
+                    {
+                      title: '细分类型原文',
+                      dataIndex: 'typeRaw',
+                      key: 'typeRaw',
+                      width: 140,
+                      render: (tr: string) => (tr ? <span style={{ fontSize: 12, color: '#64748b' }}>{tr}</span> : '-'),
+                    },
+                    {
+                      title: '跟踪标的指数',
+                      dataIndex: 'trackIndex',
+                      key: 'trackIndex',
+                      width: 120,
+                      render: (idx: string) => (idx ? <Text code style={{ fontSize: 11 }}>{idx}</Text> : '-'),
+                    },
+                    {
+                      title: '昨日官方净值',
+                      dataIndex: 'prevNav',
+                      key: 'prevNav',
+                      width: 110,
+                      render: (nav: number | null) => fmtNav(nav),
+                    },
+                    {
+                      title: '净值公布日期',
+                      dataIndex: 'navDate',
+                      key: 'navDate',
+                      width: 120,
+                      render: (d: string) => <span style={{ fontSize: 12 }}>{d}</span>,
+                    },
+                    {
+                      title: '用户关注量',
+                      dataIndex: 'userCount',
+                      key: 'userCount',
+                      width: 110,
+                      render: (cnt: number) => (
+                        <Tag color={cnt > 0 ? 'cyan' : 'default'} style={{ borderRadius: 6 }}>
+                          {cnt} 人自选
+                        </Tag>
                       ),
                     },
                   ]}
@@ -728,44 +881,81 @@ export default function AdminPage() {
             ),
             children: (
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                {/* 统计指标卡片: 6卡片严格等分 4/24 列网格 */}
+                {/* 统计指标卡片: 6卡片严格等分 4/24 列网格，支持一键点击穿透切换 Tab */}
                 <Row gutter={[16, 16]}>
                   <Col xs={12} sm={8} md={4}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                    <Card
+                      hoverable
+                      bordered={false}
+                      style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s' }}
+                      loading={loadingStats}
+                      onClick={() => setActiveTab('users')}
+                    >
                       <Statistic
                         title={<span style={{ whiteSpace: 'nowrap' }}>总注册用户</span>}
                         value={stats?.totalUsers ?? 0}
                         prefix={<UserOutlined />}
                       />
+                      <div style={{ fontSize: 11, color: '#2563eb', marginTop: 4, whiteSpace: 'nowrap' }}>
+                        点击查看用户列表 ➔
+                      </div>
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                    <Card
+                      hoverable
+                      bordered={false}
+                      style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s' }}
+                      loading={loadingStats}
+                      onClick={() => setActiveTab('users')}
+                    >
                       <Statistic
                         title={<span style={{ whiteSpace: 'nowrap' }}>今日活跃用户</span>}
                         value={stats?.activeUsersToday ?? 0}
                         valueStyle={{ color: '#dc2626', fontWeight: 700 }}
                         prefix={<FireOutlined />}
                       />
+                      <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4, whiteSpace: 'nowrap' }}>
+                        查看活跃状态 ➔
+                      </div>
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                    <Card
+                      hoverable
+                      bordered={false}
+                      style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s' }}
+                      loading={loadingStats}
+                      onClick={() => setActiveTab('users')}
+                    >
                       <Statistic
                         title={<span style={{ whiteSpace: 'nowrap' }}>👑 VIP 会员</span>}
                         value={stats?.vipUsers ?? 0}
                         valueStyle={{ color: '#d97706', fontWeight: 650 }}
                         prefix={<CrownOutlined />}
                       />
+                      <div style={{ fontSize: 11, color: '#d97706', marginTop: 4, whiteSpace: 'nowrap' }}>
+                        查看VIP列表 ➔
+                      </div>
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                    <Card
+                      hoverable
+                      bordered={false}
+                      style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s' }}
+                      loading={loadingStats}
+                      onClick={() => setActiveTab('funds')}
+                    >
                       <Statistic
                         title={<span style={{ whiteSpace: 'nowrap' }}>监控基金总数</span>}
                         value={stats?.totalFunds ?? 0}
                         suffix="只"
+                        prefix={<FundOutlined />}
                       />
+                      <div style={{ fontSize: 11, color: '#2563eb', marginTop: 4, whiteSpace: 'nowrap' }}>
+                        点击查看基金详情 ➔
+                      </div>
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>
@@ -775,15 +965,28 @@ export default function AdminPage() {
                         value={stats?.cachedQuotes ?? 0}
                         suffix="条"
                       />
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, whiteSpace: 'nowrap' }}>
+                        内存快速毫秒级检索
+                      </div>
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>
-                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                    <Card
+                      hoverable
+                      bordered={false}
+                      style={{ borderRadius: 12, cursor: 'pointer', transition: 'all 0.2s' }}
+                      loading={loadingStats}
+                      onClick={() => setActiveTab('calendar')}
+                    >
                       <Statistic
                         title={<span style={{ whiteSpace: 'nowrap' }}>动态休市日期</span>}
                         value={stats?.activeDynamicHolidays ?? 0}
                         suffix="天"
+                        prefix={<CalendarOutlined />}
                       />
+                      <div style={{ fontSize: 11, color: '#d97706', marginTop: 4, whiteSpace: 'nowrap' }}>
+                        点击配置休市日历 ➔
+                      </div>
                     </Card>
                   </Col>
                 </Row>

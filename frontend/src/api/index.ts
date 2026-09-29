@@ -5,6 +5,7 @@ import type {
   UserView,
   CalendarHolidaysResponse,
   SystemStats,
+  FundView,
 } from './types'
 
 const TOKEN_KEY = 'fund-valuation-token'
@@ -103,6 +104,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ role }),
     }),
+
+  deleteUser: (username: string) =>
+    request<unknown>(`/api/admin/users/${encodeURIComponent(username)}`, {
+      method: 'DELETE',
+    }),
+
+  listFunds: () => request<FundView[]>('/api/admin/funds'),
 
   getUserWatchlist: (username: string) =>
     request<EstimateResult[]>(`/api/admin/users/${encodeURIComponent(username)}/watchlist`),

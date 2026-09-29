@@ -27,9 +27,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 运维与管理后台接口 (强制经由 JwtAuthFilter 进行 ADMIN 角色校验)。
@@ -74,6 +76,33 @@ public class AdminController {
     public Map<String, String> updateUserRole(@PathVariable String username, @RequestBody UserRoleRequest req) {
         userManagementService.updateRole(username, req.role());
         return Map.of("status", "ok");
+    }
+
+    @DeleteMapping("/users/{username}")
+    public Map<String, String> deleteUser(@PathVariable String username) {
+        userManagementService.deleteUser(username);
+        return Map.of("status", "ok");
+    }
+
+    @GetMapping("/funds")
+    public List<FundView> listFunds() {
+        List<com.fund.valuation.domain.Fund> funds = fundMapper.selectList(new LambdaQueryWrapper<com.fund.valuation.domain.Fund>()
+                .orderByDesc(com.fund.valuation.domain.Fund::getUpdatedAt));
+        List<com.fund.valuation.domain.UserFund> allUserFunds = userFundMapper.selectList(null);
+        Map<String, Long> userCountByFund = allUserFunds.stream()
+                .collect(Collectors.groupingBy(com.fund.valuation.domain.UserFund::getFundCode, Collectors.counting()));
+
+        return funds.stream().map(f -> new FundView(
+                f.getCode(),
+                f.getName(),
+                f.getType(),
+                f.getTypeRaw(),
+                f.getTrackIndex(),
+                f.getPrevNav(),
+                f.getNavDate() != null ? f.getNavDate().toString() : "-",
+                userCountByFund.getOrDefault(f.getCode(), 0L).intValue(),
+                f.getUpdatedAt()
+        )).toList();
     }
 
     @GetMapping("/users/{username}/watchlist")
@@ -192,5 +221,18 @@ public class AdminController {
     }
 
     public record HolidayRequest(String date, String description) {
+    }
+
+    public record FundView(
+            String code,
+            String name,
+            String type,
+            String typeRaw,
+            String trackIndex,
+            BigDecimal prevNav,
+            String navDate,
+            int userCount,
+            LocalDateTime updatedAt
+    ) {
     }
 }
