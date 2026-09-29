@@ -31,13 +31,36 @@ class AuthServiceTest {
     @Test
     void registerAndLogin() {
         authService.register("alice", "password123");
-        String token = authService.login("alice", "password123");
-        assertNotNull(token);
-        assertEquals("alice", authService.resolveUsername(token));
+        AuthService.LoginResult res = authService.login("alice", "password123");
+        assertNotNull(res.token());
+        assertEquals("alice", res.username());
+        assertEquals(User.ROLE_USER, res.role());
+        assertEquals(false, res.isVip());
+        assertEquals("alice", authService.resolveUsername(res.token()));
 
         User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, "alice"));
         assertNotNull(u);
         assertTrue(new BCryptPasswordEncoder().matches("password123", u.getPasswordHash()));
+    }
+
+    @Test
+    void adminUserAutomaticallyAssignedAdminRole() {
+        authService.register("admin", "admin123");
+        AuthService.LoginResult res = authService.login("admin", "admin123");
+        assertEquals(User.ROLE_ADMIN, res.role());
+        assertTrue(res.isVip()); // ADMIN 亦具备 VIP 特权
+    }
+
+    @Test
+    void disabledUserCannotLogin() {
+        authService.register("eve", "password123");
+        User u = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, "eve"));
+        u.setStatus(User.STATUS_DISABLED);
+        userMapper.updateById(u);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> authService.login("eve", "password123"));
+        assertTrue(ex.getMessage().contains("停用"));
     }
 
     @Test

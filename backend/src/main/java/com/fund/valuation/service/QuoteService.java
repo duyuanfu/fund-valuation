@@ -137,6 +137,10 @@ public class QuoteService {
         return isExpired(q) ? null : q;
     }
 
+    public int getCachedQuoteCount() {
+        return memoryCache.size();
+    }
+
     private boolean isExpired(Quote q) {
         if (q == null || q.quoteTs() == null) {
             return true;

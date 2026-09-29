@@ -20,7 +20,7 @@ export default function AuthPage() {
         mode === 'login'
           ? await api.login(values.username, values.password)
           : await api.register(values.username, values.password)
-      login(res.token, res.username)
+      login(res.token, res.username, res.role, res.isVip)
       message.success(mode === 'login' ? '欢迎回来' : '账号注册成功，已自动登录')
       navigate('/', { replace: true })
     } catch (e) {

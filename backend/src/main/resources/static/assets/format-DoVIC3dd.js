@@ -1,0 +1,1 @@
+function e(e){return e==null||e===0?`#999`:e>0?`#d93026`:`#0a7a3f`}function t(e){return e==null?`--`:`${e>0?`+`:``}${e.toFixed(2)}%`}function n(e){return e==null?`--`:e.toFixed(4)}function r(e=new Date){let t=e.getDay();if(t===0||t===6)return!1;let n=e.getHours()*100+e.getMinutes();return n>=930&&n<=1130||n>=1300&&n<=1500}export{r as i,n,t as r,e as t};

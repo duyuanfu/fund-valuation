@@ -34,20 +34,35 @@ public class AuthService {
         User u = new User();
         u.setUsername(username);
         u.setPasswordHash(encoder.encode(password));
+        u.setRole("admin".equalsIgnoreCase(username) ? User.ROLE_ADMIN : User.ROLE_USER);
+        u.setStatus(User.STATUS_NORMAL);
+        u.setIsVip(false);
         u.setCreatedAt(LocalDateTime.now());
         userMapper.insert(u);
     }
 
     /**
-     * 登录,成功返回 JWT;失败抛 IllegalArgumentException。
+     * 登录,成功返回 LoginResult;失败抛 IllegalArgumentException 或 IllegalStateException。
      */
-    public String login(String username, String password) {
+    public LoginResult login(String username, String password) {
         User u = userMapper.selectOne(new LambdaQueryWrapper<User>()
                 .eq(User::getUsername, username));
         if (u == null || !encoder.matches(password, u.getPasswordHash())) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
-        return jwtService.generate(username);
+        if (User.STATUS_DISABLED.equalsIgnoreCase(u.getStatus())) {
+            throw new IllegalStateException("账号已被管理员停用，请联系管理员");
+        }
+        String token = jwtService.generate(username);
+        String role = (u.getRole() == null || u.getRole().isBlank()) ? User.ROLE_USER : u.getRole();
+        return new LoginResult(token, u.getUsername(), role, u.isVipEffective());
+    }
+
+    public User getUser(String username) {
+        return userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
+    }
+
+    public record LoginResult(String token, String username, String role, boolean isVip) {
     }
 
     public String resolveUsername(String token) {

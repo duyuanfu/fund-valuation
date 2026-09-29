@@ -55,6 +55,13 @@ public final class TradingCalendar {
     }
 
     /**
+     * 获取当前生效的动态休市日期集合。
+     */
+    public static Set<String> getDynamicHolidays() {
+        return Set.copyOf(DYNAMIC_HOLIDAYS);
+    }
+
+    /**
      * 判定指定日期是否为 A 股交易日。
      * 规则:
      * 1. 周六、周日默认非交易日。

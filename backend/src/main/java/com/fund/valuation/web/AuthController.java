@@ -17,18 +17,21 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public Map<String, String> register(@RequestBody Credentials req) {
+    public LoginResponse register(@RequestBody Credentials req) {
         authService.register(req.username(), req.password());
-        String token = authService.login(req.username(), req.password());
-        return Map.of("token", token, "username", req.username());
+        AuthService.LoginResult res = authService.login(req.username(), req.password());
+        return new LoginResponse(res.token(), res.username(), res.role(), res.isVip());
     }
 
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody Credentials req) {
-        String token = authService.login(req.username(), req.password());
-        return Map.of("token", token, "username", req.username());
+    public LoginResponse login(@RequestBody Credentials req) {
+        AuthService.LoginResult res = authService.login(req.username(), req.password());
+        return new LoginResponse(res.token(), res.username(), res.role(), res.isVip());
     }
 
     public record Credentials(String username, String password) {
+    }
+
+    public record LoginResponse(String token, String username, String role, boolean isVip) {
     }
 }

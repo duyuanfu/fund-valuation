@@ -67,3 +67,36 @@ export interface NoticeView {
   custom?: boolean
 }
 
+export interface UserView {
+  id: number
+  username: string
+  role: string
+  status: string
+  isVip: boolean
+  vipExpireAt: string | null
+  createdAt: string
+  watchlistCount: number
+}
+
+export interface CalendarHolidayView {
+  id: number
+  holidayDate: string
+  description: string
+  createdAt: string
+}
+
+export interface CalendarHolidaysResponse {
+  customHolidays: CalendarHolidayView[]
+  allDynamicHolidays: string[]
+}
+
+export interface SystemStats {
+  totalUsers: number
+  vipUsers: number
+  totalWatchlists: number
+  totalFunds: number
+  cachedQuotes: number
+  lastValuationRunTime: string
+  activeDynamicHolidays: number
+}
+

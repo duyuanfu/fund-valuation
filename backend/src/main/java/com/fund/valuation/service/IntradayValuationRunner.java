@@ -35,6 +35,11 @@ public class IntradayValuationRunner {
 
     /** 互斥锁:防止定时任务与 admin 手动触发并发执行,避免历史重复写入。 */
     private final Object runLock = new Object();
+    private volatile LocalDateTime lastRunTime;
+
+    public LocalDateTime getLastRunTime() {
+        return lastRunTime;
+    }
 
     /**
      * 冷启动自愈: 新服部署上线或盘后新增自选时,若数据库中从未采集过历史快照,自动执行一次初次采样。
@@ -76,6 +81,7 @@ public class IntradayValuationRunner {
     }
 
     private void doRun() {
+        lastRunTime = LocalDateTime.now();
         List<UserFund> userFunds = watchlistService.allUserFunds();
         List<String> fundCodes = userFunds.stream().map(UserFund::getFundCode).distinct().toList();
         if (fundCodes.isEmpty()) {

@@ -81,7 +81,30 @@ CREATE TABLE IF NOT EXISTS `user` (
     id            BIGINT      NOT NULL AUTO_INCREMENT,
     username      VARCHAR(32) NOT NULL COMMENT '用户名',
     password_hash VARCHAR(100) NOT NULL COMMENT 'BCrypt 密码哈希',
+    role          VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT '角色: ADMIN/USER',
+    status        VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '状态: NORMAL/DISABLED',
+    is_vip        TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否为VIP: 0/1',
+    vip_expire_at DATETIME    NULL COMMENT 'VIP过期时间',
     created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户账号';
+
+CREATE TABLE IF NOT EXISTS sys_calendar_holiday (
+    id           BIGINT      NOT NULL AUTO_INCREMENT,
+    holiday_date DATE        NOT NULL COMMENT '休市日期(yyyy-MM-dd)',
+    description  VARCHAR(64) NULL COMMENT '节假日/休市原因描述',
+    created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '添加时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_holiday_date (holiday_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统自定义交易休市日历';
+
+CREATE TABLE IF NOT EXISTS sys_notice (
+    id             BIGINT       NOT NULL AUTO_INCREMENT,
+    notice_message VARCHAR(500) NULL COMMENT '公告正文',
+    notice_type    VARCHAR(20)  NOT NULL DEFAULT 'info' COMMENT '公告类型: info/success/warning/error',
+    is_enabled     TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用',
+    is_closable    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否允许关闭',
+    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统通知公告配置';

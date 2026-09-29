@@ -1,23 +1,38 @@
 package com.fund.valuation.web;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fund.valuation.common.TradingCalendar;
+import com.fund.valuation.domain.User;
 import com.fund.valuation.dto.NoticeView;
+import com.fund.valuation.mapper.FundMapper;
+import com.fund.valuation.mapper.UserFundMapper;
+import com.fund.valuation.mapper.UserMapper;
 import com.fund.valuation.service.BondDurationService;
+import com.fund.valuation.service.CalendarHolidayService;
+import com.fund.valuation.service.EstimateResult;
 import com.fund.valuation.service.FundCatalogService;
 import com.fund.valuation.service.IntradayValuationRunner;
+import com.fund.valuation.service.QuoteService;
 import com.fund.valuation.service.SystemNoticeService;
+import com.fund.valuation.service.UserManagementService;
+import com.fund.valuation.service.WatchlistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
- * 运维接口(冒烟/调试用,生产可关闭)。
+ * 运维与管理后台接口 (强制经由 JwtAuthFilter 进行 ADMIN 角色校验)。
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -28,6 +43,67 @@ public class AdminController {
     private final BondDurationService bondDurationService;
     private final FundCatalogService fundCatalogService;
     private final SystemNoticeService noticeService;
+    private final UserManagementService userManagementService;
+    private final WatchlistService watchlistService;
+    private final CalendarHolidayService calendarHolidayService;
+    private final QuoteService quoteService;
+    private final UserMapper userMapper;
+    private final UserFundMapper userFundMapper;
+    private final FundMapper fundMapper;
+
+    /* ---------------- 用户管理与自选调阅 ---------------- */
+
+    @GetMapping("/users")
+    public List<UserManagementService.UserView> listUsers() {
+        return userManagementService.listUsers();
+    }
+
+    @PostMapping("/users/{username}/status")
+    public Map<String, String> updateUserStatus(@PathVariable String username, @RequestBody UserStatusRequest req) {
+        userManagementService.updateStatus(username, req.status());
+        return Map.of("status", "ok");
+    }
+
+    @PostMapping("/users/{username}/vip")
+    public Map<String, String> updateUserVip(@PathVariable String username, @RequestBody UserVipRequest req) {
+        userManagementService.updateVip(username, req.isVip(), req.expireAt());
+        return Map.of("status", "ok");
+    }
+
+    @PostMapping("/users/{username}/role")
+    public Map<String, String> updateUserRole(@PathVariable String username, @RequestBody UserRoleRequest req) {
+        userManagementService.updateRole(username, req.role());
+        return Map.of("status", "ok");
+    }
+
+    @GetMapping("/users/{username}/watchlist")
+    public List<EstimateResult> getUserWatchlist(@PathVariable String username) {
+        return watchlistService.estimates(username);
+    }
+
+    /* ---------------- 交易日历休市管理 ---------------- */
+
+    @GetMapping("/calendar/holidays")
+    public Map<String, Object> listHolidays() {
+        return Map.of(
+                "customHolidays", calendarHolidayService.listHolidays(),
+                "allDynamicHolidays", TradingCalendar.getDynamicHolidays()
+        );
+    }
+
+    @PostMapping("/calendar/holidays")
+    public Map<String, String> addHoliday(@RequestBody HolidayRequest req) {
+        calendarHolidayService.addHoliday(req.date(), req.description());
+        return Map.of("status", "ok");
+    }
+
+    @DeleteMapping("/calendar/holidays/{date}")
+    public Map<String, String> deleteHoliday(@PathVariable String date) {
+        calendarHolidayService.removeHoliday(date);
+        return Map.of("status", "ok");
+    }
+
+    /* ---------------- 运维与调度任务 ---------------- */
 
     @PostMapping("/intraday")
     public Map<String, String> triggerIntraday(@RequestParam(defaultValue = "false") boolean force) {
@@ -71,9 +147,46 @@ public class AdminController {
         return ResponseEntity.ok(v);
     }
 
+    /**
+     * 系统运维监控与资源统计大盘。
+     */
+    @GetMapping("/stats")
+    public Map<String, Object> getSystemStats() {
+        Long totalUsers = userMapper.selectCount(null);
+        Long vipUsers = userMapper.selectCount(new LambdaQueryWrapper<User>()
+                .and(w -> w.eq(User::getIsVip, true).or().eq(User::getRole, User.ROLE_ADMIN)));
+        Long totalWatchlists = userFundMapper.selectCount(null);
+        Long totalFunds = fundMapper.selectCount(null);
+        int cachedQuotes = quoteService.getCachedQuoteCount();
+        LocalDateTime lastRun = runner.getLastRunTime();
+        int dynamicHolidays = TradingCalendar.getDynamicHolidays().size();
+
+        return Map.of(
+                "totalUsers", totalUsers != null ? totalUsers : 0,
+                "vipUsers", vipUsers != null ? vipUsers : 0,
+                "totalWatchlists", totalWatchlists != null ? totalWatchlists : 0,
+                "totalFunds", totalFunds != null ? totalFunds : 0,
+                "cachedQuotes", cachedQuotes,
+                "lastValuationRunTime", lastRun != null ? lastRun.toString() : "尚未执行",
+                "activeDynamicHolidays", dynamicHolidays
+        );
+    }
+
     public record DurationRequest(String fundCode, String reportQt, double duration) {
     }
 
     public record NoticeRequest(String message, String type, Boolean enabled, Boolean closable) {
+    }
+
+    public record UserStatusRequest(String status) {
+    }
+
+    public record UserVipRequest(boolean isVip, LocalDateTime expireAt) {
+    }
+
+    public record UserRoleRequest(String role) {
+    }
+
+    public record HolidayRequest(String date, String description) {
     }
 }

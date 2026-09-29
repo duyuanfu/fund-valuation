@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Button, Layout, Typography, Spin } from 'antd'
-import { LogoutOutlined, LineChartOutlined } from '@ant-design/icons'
+import { LogoutOutlined, LineChartOutlined, SettingOutlined } from '@ant-design/icons'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 
@@ -8,12 +8,13 @@ import { AuthProvider, useAuth } from './hooks/useAuth'
 const AuthPage = lazy(() => import('./pages/AuthPage'))
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'))
 const FundDetailPage = lazy(() => import('./pages/FundDetailPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
 
 const { Header, Content } = Layout
 const { Text } = Typography
 
 function LayoutShell() {
-  const { token, username, logout } = useAuth()
+  const { token, username, isVip, isAdmin, logout } = useAuth()
   const navigate = useNavigate()
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
 
@@ -93,7 +94,25 @@ function LayoutShell() {
           </Text>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {isAdmin && (
+            <Button
+              type="primary"
+              size="small"
+              icon={<SettingOutlined />}
+              onClick={() => navigate('/admin')}
+              style={{
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                borderColor: '#6d28d9',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {!isMobile && '管理后台'}
+            </Button>
+          )}
+
           <div
             style={{
               display: 'flex',
@@ -117,6 +136,21 @@ function LayoutShell() {
               }}
             />
             {username}
+            {isVip && (
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#ffffff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: 8,
+                  marginLeft: 2,
+                }}
+              >
+                👑 VIP
+              </span>
+            )}
           </div>
           <Button
             type="text"
@@ -149,6 +183,7 @@ function LayoutShell() {
           <Routes>
             <Route path="/" element={<WatchlistPage />} />
             <Route path="/fund/:code" element={<FundDetailPage />} />
+            <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" replace />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
