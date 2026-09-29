@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,9 +41,6 @@ public final class TradingCalendar {
     /** 动态注入/配置的特定年份节假日 (格式 yyyy-MM-dd) */
     private static final Set<String> DYNAMIC_HOLIDAYS = ConcurrentHashMap.newKeySet();
 
-    /** 市场行情驱动的最近有效交易日缓存 */
-    private static volatile LocalDate lastKnownTradingDay = null;
-
     private TradingCalendar() {
     }
 
@@ -56,23 +52,6 @@ public final class TradingCalendar {
         if (holidays != null) {
             DYNAMIC_HOLIDAYS.addAll(holidays);
         }
-    }
-
-    public static Set<String> getHolidays() {
-        return Collections.unmodifiableSet(DYNAMIC_HOLIDAYS);
-    }
-
-    /**
-     * 记录最新由真实行情验证的交易日。
-     */
-    public static void setLastKnownTradingDay(LocalDate date) {
-        if (date != null) {
-            lastKnownTradingDay = date;
-        }
-    }
-
-    public static LocalDate getLastKnownTradingDay() {
-        return lastKnownTradingDay;
     }
 
     /**

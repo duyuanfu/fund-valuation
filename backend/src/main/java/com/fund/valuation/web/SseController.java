@@ -6,6 +6,7 @@ import com.fund.valuation.service.SseService;
 import com.fund.valuation.service.WatchlistService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/watchlist")
 @RequiredArgsConstructor
@@ -29,8 +31,12 @@ public class SseController {
     public SseEmitter stream(HttpServletRequest request) {
         String userId = (String) request.getAttribute(JwtAuthFilter.ATTR_USERNAME);
         SseEmitter emitter = sseService.register(userId);
-        List<EstimateResult> snapshot = watchlistService.estimates(userId);
-        sseService.push(userId, snapshot);
+        try {
+            List<EstimateResult> snapshot = watchlistService.estimates(userId);
+            sseService.push(userId, snapshot);
+        } catch (Exception e) {
+            log.debug("initial sse snapshot push skipped (client may have aborted): {}", e.getMessage());
+        }
         return emitter;
     }
 }
