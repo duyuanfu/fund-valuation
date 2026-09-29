@@ -41,7 +41,6 @@ export default function FundDetailPage() {
   useEffect(() => {
     if (!code) return
     let cancelled = false
-    setLoading(true)
     api
       .fundDetail(code)
       .then((d) => {

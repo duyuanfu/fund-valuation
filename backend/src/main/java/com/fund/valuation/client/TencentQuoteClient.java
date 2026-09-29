@@ -34,8 +34,7 @@ public class TencentQuoteClient {
     private final ObjectMapper objectMapper;
 
     public TencentQuoteClient(HttpSupport http) {
-        this.http = http;
-        this.objectMapper = new ObjectMapper();
+        this(http, new ObjectMapper());
     }
 
     @org.springframework.beans.factory.annotation.Autowired

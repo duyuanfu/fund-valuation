@@ -46,6 +46,15 @@ public class WatchlistController {
     }
 
     /**
+     * 批量添加自选: 一次提交多个基金代码，返回逐条添加结果。
+     */
+    @PostMapping("/batch")
+    public ResponseEntity<List<WatchlistService.AddResult>> addBatch(HttpServletRequest request,
+                                                                     @RequestBody AddBatchRequest req) {
+        return ResponseEntity.ok(watchlistService.addBatch(currentUser(request), req.fundCodes()));
+    }
+
+    /**
      * 删除自选。
      */
     @DeleteMapping("/{fundCode}")
@@ -68,6 +77,9 @@ public class WatchlistController {
     }
 
     public record AddRequest(@NotBlank String fundCode) {
+    }
+
+    public record AddBatchRequest(List<String> fundCodes) {
     }
 
     public record ReorderRequest(List<String> fundCodes) {

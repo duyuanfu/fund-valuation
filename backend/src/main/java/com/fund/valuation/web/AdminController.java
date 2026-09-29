@@ -56,8 +56,8 @@ public class AdminController {
     /* ---------------- 用户管理与自选调阅 ---------------- */
 
     @GetMapping("/users")
-    public List<UserManagementService.UserView> listUsers() {
-        return userManagementService.listUsers();
+    public List<UserManagementService.UserView> listUsers(@RequestParam(required = false) String keyword) {
+        return userManagementService.listUsers(keyword);
     }
 
     @PostMapping("/users/{username}/status")
@@ -103,6 +103,11 @@ public class AdminController {
                 userCountByFund.getOrDefault(f.getCode(), 0L).intValue(),
                 f.getUpdatedAt()
         )).toList();
+    }
+
+    @GetMapping("/funds/{fundCode}/watchers")
+    public List<UserManagementService.UserView> getFundWatchers(@PathVariable String fundCode) {
+        return userManagementService.listFundWatchers(fundCode);
     }
 
     @GetMapping("/users/{username}/watchlist")
@@ -164,7 +169,9 @@ public class AdminController {
      */
     @GetMapping("/notice")
     public ResponseEntity<NoticeView> getNotice() {
-        return ResponseEntity.ok(noticeService.getActiveNotice());
+        return ResponseEntity.ok()
+                .cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(noticeService.getConfiguredNotice());
     }
 
     /**
@@ -193,12 +200,27 @@ public class AdminController {
         LocalDateTime lastRun = runner.getLastRunTime();
         int dynamicHolidays = TradingCalendar.getDynamicHolidays().size();
 
-        List<User> allUsers = userMapper.selectList(null);
-        Map<String, Long> referralStats = allUsers.stream()
-                .collect(Collectors.groupingBy(
-                        u -> (u.getReferralSource() != null && !u.getReferralSource().isBlank()) ? u.getReferralSource() : "自己搜索",
-                        Collectors.counting()
-                ));
+        Map<String, Long> referralStats = new java.util.HashMap<>();
+        try {
+            List<Map<String, Object>> rows = userMapper.countByReferralSource();
+            if (rows != null) {
+                for (Map<String, Object> r : rows) {
+                    Object s = r.get("source");
+                    if (s == null) {
+                        s = r.get("SOURCE");
+                    }
+                    String src = s != null && !s.toString().isBlank() ? s.toString() : "自己搜索";
+                    Object t = r.get("total");
+                    if (t == null) {
+                        t = r.get("TOTAL");
+                    }
+                    long count = t instanceof Number num ? num.longValue() : 0L;
+                    referralStats.merge(src, count, Long::sum);
+                }
+            }
+        } catch (Exception e) {
+            // 兜底保障
+        }
 
         return Map.of(
                 "totalUsers", totalUsers != null ? totalUsers : 0,

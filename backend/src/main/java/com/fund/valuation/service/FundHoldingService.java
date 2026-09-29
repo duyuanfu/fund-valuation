@@ -34,8 +34,8 @@ public class FundHoldingService {
 
     /**
      * 刷新全部基金的持仓与资产配置。
+     * 非事务: 网络爬虫 I/O 绝不持有数据库长事务，避免耗尽 HikariCP 连接池。
      */
-    @Transactional
     public void refreshAll() {
         List<Fund> funds = fundMapper.selectList(null);
         for (Fund fund : funds) {
@@ -47,7 +47,6 @@ public class FundHoldingService {
         }
     }
 
-    @Transactional
     public void refreshOne(Fund fund) {
         // 1. 场内基金直接在交易所撮合成交，不需要爬取网页重仓股票
         if (com.fund.valuation.common.SecCodeConverter.isOnMarket(fund.getCode(), fund.getName())) {
@@ -72,7 +71,8 @@ public class FundHoldingService {
         }
     }
 
-    private void upsertHoldings(String fundCode, HoldingData data) {
+    @Transactional
+    public void upsertHoldings(String fundCode, HoldingData data) {
         String reportDate = data.reportDate();
         List<FundHolding> existing = getHoldings(fundCode);
         if (!existing.isEmpty() && reportDate != null && reportDate.equals(existing.get(0).getReportQt())) {
@@ -93,7 +93,8 @@ public class FundHoldingService {
         log.info("updated holdings for {} (report {})", fundCode, reportDate);
     }
 
-    private void upsertAlloc(String fundCode, AssetAllocData data) {
+    @Transactional
+    public void upsertAlloc(String fundCode, AssetAllocData data) {
         FundAssetAlloc existing = latestAlloc(fundCode);
         if (existing != null && existing.getReportDate().equals(data.reportDate())) {
             return;

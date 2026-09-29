@@ -35,9 +35,18 @@ public class AuthService {
         u.setUsername(username);
         u.setPasswordHash(encoder.encode(password));
         boolean isAdmin = "admin".equalsIgnoreCase(username);
-        u.setRole(isAdmin ? User.ROLE_ADMIN : User.ROLE_USER);
-        // 新用户注册后默认状态为 PENDING (待管理员审核授权)，初始 admin 直接生效
-        u.setStatus(isAdmin ? User.STATUS_NORMAL : User.STATUS_PENDING);
+        if (isAdmin) {
+            // 安全防护: 仅当数据库中不存在任何超级管理员账号时，才允许首个 admin 初始化注册
+            Long adminCount = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getRole, User.ROLE_ADMIN));
+            if (adminCount != null && adminCount > 0) {
+                throw new IllegalArgumentException("超级管理员账号已存在，禁止重复注册");
+            }
+            u.setRole(User.ROLE_ADMIN);
+            u.setStatus(User.STATUS_NORMAL);
+        } else {
+            u.setRole(User.ROLE_USER);
+            u.setStatus(User.STATUS_PENDING);
+        }
         u.setIsVip(false);
         u.setReferralSource((referralSource != null && !referralSource.isBlank()) ? referralSource.trim() : "自己搜索");
         u.setLastLoginAt(null);

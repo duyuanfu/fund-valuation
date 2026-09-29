@@ -50,17 +50,7 @@ public class FundController {
             return ResponseEntity.notFound().build();
         }
         java.util.Set<String> required = valuationEngine.collectRequiredSecids(fund);
-        if (required != null && !required.isEmpty()) {
-            java.util.Set<String> missing = new java.util.HashSet<>();
-            for (String secid : required) {
-                if (quoteService.getFreshQuote(secid) == null) {
-                    missing.add(secid);
-                }
-            }
-            if (!missing.isEmpty()) {
-                quoteService.refreshQuotes(missing);
-            }
-        }
+        quoteService.ensureFreshQuotes(required);
         EstimateResult estimate = valuationEngine.estimate(fund);
         List<FundHolding> holdings = holdingService.getHoldings(code);
         String reportQt = holdingService.latestReportQt(code);

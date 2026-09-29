@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { EstimateResult } from '../api/types'
+import type { AddFundResult, EstimateResult } from '../api/types'
 import { api, sseUrl } from '../api'
 
 const STORAGE_KEY = 'fund-valuation-cached-watchlist'
@@ -104,6 +104,13 @@ export function useWatchlist() {
     refresh()
   }
 
+  // 批量添加: 返回逐条结果，调用方据此提示成功/失败明细
+  const addBatch = async (fundCodes: string[]): Promise<AddFundResult[]> => {
+    const results = await api.addFunds(fundCodes)
+    refresh()
+    return results
+  }
+
   const remove = async (fundCode: string) => {
     await api.removeFund(fundCode)
     updateAndCache(estimates.filter((e) => e.fundCode !== fundCode))
@@ -117,5 +124,5 @@ export function useWatchlist() {
     await api.reorder(fundCodes)
   }
 
-  return { estimates, loading, error, refresh, add, remove, reorder }
+  return { estimates, loading, error, refresh, add, addBatch, remove, reorder }
 }

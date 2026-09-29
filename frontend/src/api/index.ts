@@ -6,9 +6,15 @@ import type {
   CalendarHolidaysResponse,
   SystemStats,
   FundView,
+  AddFundResult,
 } from './types'
-
-const TOKEN_KEY = 'fund-valuation-token'
+import {
+  TOKEN_KEY,
+  USER_KEY,
+  ROLE_KEY,
+  VIP_KEY,
+  WATCHLIST_CACHE_KEY,
+} from '../context/auth-context'
 
 function authHeader(): Record<string, string> {
   const token = localStorage.getItem(TOKEN_KEY)
@@ -38,10 +44,10 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     // 针对业务接口（如 /api/watchlist），若收到 401（未登录）或 403（账号被封禁停用）
     if (res.status === 401 || res.status === 403) {
       localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem('fund-valuation-username')
-      localStorage.removeItem('fund-valuation-role')
-      localStorage.removeItem('fund-valuation-is-vip')
-      localStorage.removeItem('fund-valuation-cached-watchlist')
+      localStorage.removeItem(USER_KEY)
+      localStorage.removeItem(ROLE_KEY)
+      localStorage.removeItem(VIP_KEY)
+      localStorage.removeItem(WATCHLIST_CACHE_KEY)
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login'
       }
@@ -73,6 +79,12 @@ export const api = {
   addFund: (fundCode: string) =>
     request<unknown>('/api/watchlist', { method: 'POST', body: JSON.stringify({ fundCode }) }),
 
+  addFunds: (fundCodes: string[]) =>
+    request<AddFundResult[]>('/api/watchlist/batch', {
+      method: 'POST',
+      body: JSON.stringify({ fundCodes }),
+    }),
+
   removeFund: (fundCode: string) =>
     request<unknown>(`/api/watchlist/${encodeURIComponent(fundCode)}`, { method: 'DELETE' }),
 
@@ -85,7 +97,11 @@ export const api = {
   getNotice: () => request<NoticeView | null>('/api/notice'),
 
   // 管理员后台接口
-  listUsers: () => request<UserView[]>('/api/admin/users'),
+  listUsers: (keyword?: string) =>
+    request<UserView[]>(`/api/admin/users${keyword ? `?keyword=${encodeURIComponent(keyword)}` : ''}`),
+
+  getFundWatchers: (fundCode: string) =>
+    request<UserView[]>(`/api/admin/funds/${encodeURIComponent(fundCode)}/watchers`),
 
   updateUserStatus: (username: string, status: string) =>
     request<unknown>(`/api/admin/users/${encodeURIComponent(username)}/status`, {

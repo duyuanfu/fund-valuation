@@ -6,11 +6,15 @@ import com.fund.valuation.domain.UserFund;
 import com.fund.valuation.mapper.FundMapper;
 import com.fund.valuation.mapper.UserFundMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * 多用户自选基金管理与自选估值列表组装。
@@ -25,6 +29,18 @@ public class WatchlistService {
     private final FundHoldingService fundHoldingService;
     private final ValuationEngine valuationEngine;
     private final QuoteService quoteService;
+
+    @Autowired(required = false)
+    @Qualifier("crawlerExecutor")
+    private Executor crawlerExecutor;
+
+    private void runAsyncCrawler(Runnable task) {
+        if (crawlerExecutor != null) {
+            CompletableFuture.runAsync(task, crawlerExecutor);
+        } else {
+            CompletableFuture.runAsync(task);
+        }
+    }
 
     /**
      * 添加自选,基金不存在时先采集基础元数据。
@@ -41,8 +57,8 @@ public class WatchlistService {
         uf.setSortNo(fundCodesOf(userId).size());
         userFundMapper.insert(uf);
 
-        // 异步在后台静默拉取持仓与资产配置，避免让用户在网页端苦等十几秒
-        java.util.concurrent.CompletableFuture.runAsync(() -> {
+        // 异步在专属后台爬虫线程池中静默拉取持仓与资产配置，不阻塞通用计算线程
+        runAsyncCrawler(() -> {
             try {
                 fundHoldingService.refreshOne(fund);
             } catch (Exception e) {
@@ -51,6 +67,57 @@ public class WatchlistService {
         });
 
         return uf;
+    }
+
+    /**
+     * 批量添加自选: 支持一次提交多个基金代码，逐只独立处理并返回逐条结果。
+     * 已在自选或代码无效的条目会被跳过并标记原因，不影响其余代码的添加。
+     */
+    public List<AddResult> addBatch(String userId, List<String> rawCodes) {
+        List<AddResult> results = new ArrayList<>();
+        if (rawCodes == null || rawCodes.isEmpty()) {
+            return results;
+        }
+
+        List<String> codes = rawCodes.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .toList();
+
+        int sort = fundCodesOf(userId).size();
+        for (String code : codes) {
+            try {
+                if (exists(userId, code)) {
+                    results.add(new AddResult(code, false, "已在自选中"));
+                    continue;
+                }
+                Fund fund = fundCatalogService.ensureFund(code);
+                UserFund uf = new UserFund();
+                uf.setUserId(userId);
+                uf.setFundCode(code);
+                uf.setSortNo(sort++);
+                userFundMapper.insert(uf);
+
+                final Fund added = fund;
+                runAsyncCrawler(() -> {
+                    try {
+                        fundHoldingService.refreshOne(added);
+                    } catch (Exception e) {
+                        // 静默记录
+                    }
+                });
+
+                results.add(new AddResult(code, true, "添加成功"));
+            } catch (Exception e) {
+                results.add(new AddResult(code, false, e.getMessage() == null ? "添加失败" : e.getMessage()));
+            }
+        }
+        return results;
+    }
+
+    public record AddResult(String fundCode, boolean success, String message) {
     }
 
     @Transactional
@@ -123,20 +190,10 @@ public class WatchlistService {
             }
         }
 
-        // 2. 检查哪些标的在内存缓存中缺失
-        java.util.Set<String> missing = new java.util.HashSet<>();
-        for (String secid : required) {
-            if (quoteService.getFreshQuote(secid) == null) {
-                missing.add(secid);
-            }
-        }
+        // 2. 一次性批量确保行情新鲜 (纯内存判定 + 缺失标的合并单次批量网络拉取)
+        quoteService.ensureFreshQuotes(required);
 
-        // 3. 一次性单次批量刷新全部缺失标的（极速完成）
-        if (!missing.isEmpty()) {
-            quoteService.refreshQuotes(missing);
-        }
-
-        // 4. 纯内存装配估值结果
+        // 3. 纯内存装配估值结果
         List<EstimateResult> out = new ArrayList<>();
         for (Fund fund : funds) {
             EstimateResult r = valuationEngine.estimate(fund);

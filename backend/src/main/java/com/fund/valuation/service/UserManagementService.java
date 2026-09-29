@@ -37,8 +37,54 @@ public class UserManagementService {
     ) {}
 
     public List<UserView> listUsers() {
+        return listUsers(null);
+    }
+
+    public List<UserView> listUsers(String keyword) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .orderByDesc(User::getCreatedAt);
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(User::getUsername, kw)
+                    .or().like(User::getReferralSource, kw)
+                    .or().like(User::getStatus, kw)
+                    .or().like(User::getRole, kw));
+        }
+        List<User> users = userMapper.selectList(wrapper);
+        return toUserViews(users);
+    }
+
+    public List<UserView> listFundWatchers(String fundCode) {
+        if (fundCode == null || fundCode.isBlank()) {
+            return List.of();
+        }
+        List<UserFund> userFunds = userFundMapper.selectList(new LambdaQueryWrapper<UserFund>()
+                .eq(UserFund::getFundCode, fundCode.trim()));
+        if (userFunds.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> usernames = userFunds.stream()
+                .map(UserFund::getUserId)
+                .filter(u -> u != null && !u.isBlank())
+                .distinct()
+                .toList();
+
+        if (usernames.isEmpty()) {
+            return List.of();
+        }
+
         List<User> users = userMapper.selectList(new LambdaQueryWrapper<User>()
+                .in(User::getUsername, usernames)
                 .orderByDesc(User::getCreatedAt));
+
+        return toUserViews(users);
+    }
+
+    private List<UserView> toUserViews(List<User> users) {
+        if (users == null || users.isEmpty()) {
+            return List.of();
+        }
         List<UserFund> allFunds = userFundMapper.selectList(null);
         Map<String, Long> countMap = allFunds.stream()
                 .collect(Collectors.groupingBy(UserFund::getUserId, Collectors.counting()));

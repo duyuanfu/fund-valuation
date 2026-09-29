@@ -1,29 +1,12 @@
-import { createContext, useCallback, useContext, useState } from 'react'
-
-const TOKEN_KEY = 'fund-valuation-token'
-const USER_KEY = 'fund-valuation-username'
-const ROLE_KEY = 'fund-valuation-role'
-const VIP_KEY = 'fund-valuation-is-vip'
-
-interface AuthContextValue {
-  token: string
-  username: string
-  role: string
-  isVip: boolean
-  isAdmin: boolean
-  login: (token: string, username: string, role?: string, isVip?: boolean) => void
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthContextValue>({
-  token: '',
-  username: '',
-  role: 'USER',
-  isVip: false,
-  isAdmin: false,
-  login: () => {},
-  logout: () => {},
-})
+import React, { useCallback, useState } from 'react'
+import {
+  AuthContext,
+  TOKEN_KEY,
+  USER_KEY,
+  ROLE_KEY,
+  VIP_KEY,
+  WATCHLIST_CACHE_KEY,
+} from './auth-context'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_KEY) ?? '')
@@ -49,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(USER_KEY)
     localStorage.removeItem(ROLE_KEY)
     localStorage.removeItem(VIP_KEY)
-    localStorage.removeItem('fund-valuation-cached-watchlist')
+    localStorage.removeItem(WATCHLIST_CACHE_KEY)
     setToken('')
     setUsername('')
     setRole('USER')
@@ -63,8 +46,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  return useContext(AuthContext)
 }

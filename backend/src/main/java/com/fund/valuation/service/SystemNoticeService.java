@@ -1,35 +1,31 @@
 package com.fund.valuation.service;
 
-import com.fund.valuation.common.TradingCalendar;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fund.valuation.config.AppProperties;
+import com.fund.valuation.domain.SysNotice;
 import com.fund.valuation.dto.NoticeView;
+import com.fund.valuation.mapper.SysNoticeMapper;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.DependsOn;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 通用系统公告与消息区服务:
  * 1. 优先展示由 Admin 或配置维护的系统通知公告 (如新功能上线、系统维护等);
- * 2. 未启用自定义公告时，在非交易时段自动展示默认的行情快照提示;
- * 3. 盘中交易时段且无公告时自动隐藏。
+ * 2. Admin 每次保存公告都会覆盖替换旧文案，并通过 MyBatis-Plus 持久化至数据库，重启不丢失;
+ * 3. Admin 在控制台关闭自定义公告后，前端不再向用户展示任何公告。
  */
 @Slf4j
 @Service
 public class SystemNoticeService {
 
     private final AppProperties properties;
-    private final DataSource dataSource;
-
+    private final SysNoticeMapper noticeMapper;
     private final AtomicReference<NoticeState> currentNotice = new AtomicReference<>();
 
     public record NoticeState(String message, String type, boolean enabled, boolean closable) {}
@@ -38,10 +34,10 @@ public class SystemNoticeService {
         this(properties, null);
     }
 
-    @org.springframework.beans.factory.annotation.Autowired
-    public SystemNoticeService(AppProperties properties, DataSource dataSource) {
+    @Autowired
+    public SystemNoticeService(AppProperties properties, @Autowired(required = false) SysNoticeMapper noticeMapper) {
         this.properties = properties;
-        this.dataSource = dataSource;
+        this.noticeMapper = noticeMapper;
     }
 
     @PostConstruct
@@ -55,17 +51,20 @@ public class SystemNoticeService {
         }
 
         // 2. 检查数据库持久化配置，若存在数据库自定义公告则覆盖内存默认值
-        if (dataSource != null) {
-            try (Connection conn = dataSource.getConnection();
-                 Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery("SELECT notice_message, notice_type, is_enabled, is_closable FROM sys_notice ORDER BY id DESC LIMIT 1")) {
-                if (rs.next()) {
-                    String msg = rs.getString("notice_message");
-                    String type = rs.getString("notice_type");
-                    boolean enabled = rs.getBoolean("is_enabled");
-                    boolean closable = rs.getBoolean("is_closable");
-                    currentNotice.set(new NoticeState(msg, type, enabled, closable));
-                    log.info("loaded persistent system notice from database: enabled={}, type={}, message={}", enabled, type, msg);
+        if (noticeMapper != null) {
+            try {
+                SysNotice persistent = noticeMapper.selectOne(new LambdaQueryWrapper<SysNotice>()
+                        .orderByDesc(SysNotice::getId)
+                        .last("limit 1"));
+                if (persistent != null) {
+                    currentNotice.set(new NoticeState(
+                            persistent.getNoticeMessage(),
+                            persistent.getNoticeType(),
+                            Boolean.TRUE.equals(persistent.getIsEnabled()),
+                            Boolean.TRUE.equals(persistent.getIsClosable())
+                    ));
+                    log.info("loaded persistent system notice from database: enabled={}, type={}, message={}",
+                            persistent.getIsEnabled(), persistent.getNoticeType(), persistent.getNoticeMessage());
                 }
             } catch (Exception e) {
                 log.debug("could not load notice from sys_notice: {}", e.getMessage());
@@ -74,50 +73,56 @@ public class SystemNoticeService {
     }
 
     /**
-     * 获取当前有效公告或市场状态提示。
+     * 获取当前有效公告。
+     * 未启用自定义公告时返回 null，即不再向用户展示任何公告。
      */
     public NoticeView getActiveNotice() {
         NoticeState state = currentNotice.get();
         if (state != null && state.enabled() && state.message() != null && !state.message().isBlank()) {
             return new NoticeView(state.message(), state.type(), state.closable(), true);
         }
-        // 若无自定义公告，且处于非交易时段，自动展示默认的非交易时段提示
-        if (!TradingCalendar.isTradingTime(LocalDateTime.now())) {
-            return new NoticeView("当前为非交易时段，展示最新行情快照", "info", false, false);
-        }
         return null;
     }
 
     /**
-     * Admin 动态配置/更新公告并持久化至数据库。
+     * 获取后台配置的公告 (含已关闭状态)，用于管理控制台表单回显。
      */
+    public NoticeView getConfiguredNotice() {
+        NoticeState state = currentNotice.get();
+        if (state == null || state.message() == null || state.message().isBlank()) {
+            return null;
+        }
+        return new NoticeView(state.message(), state.type(), state.closable(), state.enabled());
+    }
+
+    /**
+     * Admin 动态配置/更新公告并持久化至数据库 (覆盖替换旧文案)。
+     */
+    @Transactional
     public NoticeView updateNotice(String message, String type, Boolean enabled, Boolean closable) {
         boolean isEnabled = enabled == null ? (message != null && !message.isBlank()) : enabled;
         boolean isClosable = closable == null || closable;
         String noticeType = (type == null || type.isBlank()) ? "info" : type;
         NoticeState newState = new NoticeState(message, noticeType, isEnabled, isClosable);
-        currentNotice.set(newState);
 
-        // 持久化至数据库
-        if (dataSource != null) {
-            try (Connection conn = dataSource.getConnection()) {
-                try (Statement del = conn.createStatement()) {
-                    del.executeUpdate("DELETE FROM sys_notice");
-                }
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "INSERT INTO sys_notice (notice_message, notice_type, is_enabled, is_closable) VALUES (?, ?, ?, ?)")) {
-                    ps.setString(1, message);
-                    ps.setString(2, noticeType);
-                    ps.setBoolean(3, isEnabled);
-                    ps.setBoolean(4, isClosable);
-                    ps.executeUpdate();
-                }
+        if (noticeMapper != null) {
+            try {
+                noticeMapper.delete(null);
+                SysNotice entity = new SysNotice();
+                entity.setNoticeMessage(message);
+                entity.setNoticeType(noticeType);
+                entity.setIsEnabled(isEnabled);
+                entity.setIsClosable(isClosable);
+                entity.setUpdatedAt(LocalDateTime.now());
+                noticeMapper.insert(entity);
+                log.info("system notice persisted to database (replaced previous), enabled={}", isEnabled);
             } catch (Exception e) {
                 log.warn("failed to persist system notice to db: {}", e.getMessage());
             }
         }
 
+        currentNotice.set(newState);
         log.info("system notice updated: enabled={}, type={}, message={}", isEnabled, noticeType, message);
-        return getActiveNotice();
+        return getConfiguredNotice();
     }
 }

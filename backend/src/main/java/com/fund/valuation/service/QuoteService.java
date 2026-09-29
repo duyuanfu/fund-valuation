@@ -86,36 +86,81 @@ public class QuoteService {
         }
         for (Quote q : fetched.values()) {
             memoryCache.put(q.secid(), q);
-            upsertCache(q);
         }
+        batchUpsertCache(fetched.values());
         return fetched;
     }
 
-    private void upsertCache(Quote q) {
-        QuoteCache c = quoteCacheMapper.selectOne(new LambdaQueryWrapper<QuoteCache>()
-                .eq(QuoteCache::getSecid, q.secid()));
-        if (c == null) {
-            c = new QuoteCache();
-            c.setSecid(q.secid());
-            c.setName(q.name());
-            c.setPrice(q.price());
-            c.setPctChg(q.pctChg());
-            c.setQuoteTs(q.quoteTs());
-            try {
-                quoteCacheMapper.insert(c);
-                return;
-            } catch (DuplicateKeyException e) {
-                // 并发插入冲突:回退为更新
-                c = quoteCacheMapper.selectOne(new LambdaQueryWrapper<QuoteCache>()
-                        .eq(QuoteCache::getSecid, q.secid()));
+    private void batchUpsertCache(java.util.Collection<Quote> quotes) {
+        if (quotes == null || quotes.isEmpty()) {
+            return;
+        }
+        java.util.Set<String> secids = quotes.stream().map(Quote::secid).collect(java.util.stream.Collectors.toSet());
+        java.util.List<QuoteCache> existing = quoteCacheMapper.selectList(new LambdaQueryWrapper<QuoteCache>()
+                .in(QuoteCache::getSecid, secids));
+        java.util.Map<String, QuoteCache> map = existing.stream()
+                .collect(java.util.stream.Collectors.toMap(QuoteCache::getSecid, c -> c, (a, b) -> a));
+
+        for (Quote q : quotes) {
+            QuoteCache c = map.get(q.secid());
+            if (c == null) {
+                c = new QuoteCache();
+                c.setSecid(q.secid());
+                c.setName(q.name());
+                c.setPrice(q.price());
+                c.setPctChg(q.pctChg());
+                c.setQuoteTs(q.quoteTs());
+                try {
+                    quoteCacheMapper.insert(c);
+                } catch (DuplicateKeyException e) {
+                    QuoteCache conflict = quoteCacheMapper.selectOne(new LambdaQueryWrapper<QuoteCache>()
+                            .eq(QuoteCache::getSecid, q.secid()));
+                    if (conflict != null) {
+                        conflict.setName(q.name());
+                        conflict.setPrice(q.price());
+                        conflict.setPctChg(q.pctChg());
+                        conflict.setQuoteTs(q.quoteTs());
+                        quoteCacheMapper.updateById(conflict);
+                    }
+                }
+            } else {
+                c.setName(q.name());
+                c.setPrice(q.price());
+                c.setPctChg(q.pctChg());
+                c.setQuoteTs(q.quoteTs());
+                quoteCacheMapper.updateById(c);
             }
         }
-        c.setName(q.name());
-        c.setPrice(q.price());
-        c.setPctChg(q.pctChg());
-        c.setQuoteTs(q.quoteTs());
-        if (c.getId() != null) {
-            quoteCacheMapper.updateById(c);
+    }
+
+    /**
+     * 判断内存缓存中是否存在指定 secid 且尚未过期的行情。
+     * 纯内存判定，绝不触发外部网络 I/O。
+     */
+    public boolean hasFreshQuote(String secid) {
+        if (secid == null) {
+            return false;
+        }
+        Quote q = memoryCache.get(secid);
+        return q != null && !isExpired(q);
+    }
+
+    /**
+     * 批量确保一组 secids 的行情新鲜可用:
+     * 仅对内存中缺失或已过期的标的收集后执行单次合并批量网络拉取，杜绝循环单只请求。
+     */
+    public void ensureFreshQuotes(Set<String> secids) {
+        if (secids == null || secids.isEmpty()) {
+            return;
+        }
+        Set<String> missing = new HashSet<>();
+        for (String secid : secids) {
+            if (!hasFreshQuote(secid)) {
+                missing.add(secid);
+            }
+        }
+        if (!missing.isEmpty()) {
+            refreshQuotes(missing);
         }
     }
 

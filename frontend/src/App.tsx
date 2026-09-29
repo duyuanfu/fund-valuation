@@ -1,8 +1,10 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Button, Layout, Typography, Spin, Tag } from 'antd'
-import { LogoutOutlined, LineChartOutlined, UserOutlined } from '@ant-design/icons'
+import { LogoutOutlined, LineChartOutlined, UserOutlined, CustomerServiceOutlined } from '@ant-design/icons'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './hooks/useAuth'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './hooks/useAuth'
+import { ContactModal } from './components/ContactModal'
 
 // 全路由懒加载: 各模块独立按需割离，登录页不加载自选表/图表，首屏提速 80%
 const AuthPage = lazy(() => import('./pages/AuthPage'))
@@ -17,6 +19,7 @@ function LayoutShell() {
   const { token, username, isVip, isAdmin, logout } = useAuth()
   const navigate = useNavigate()
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [contactOpen, setContactOpen] = useState(false)
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -103,44 +106,105 @@ function LayoutShell() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1 }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              padding: '4px 10px',
-              borderRadius: 20,
-              fontSize: 12,
-              color: '#1e293b',
-              fontWeight: 500,
-              lineHeight: 1,
-              height: 28,
-              boxSizing: 'border-box',
-            }}
-          >
-            <UserOutlined style={{ color: '#64748b', fontSize: 12 }} />
-            <span>{username}</span>
-            {isVip && !isAdmin && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, lineHeight: 1 }}>
+          {/* 用户区域 - 与浅色界面融合的轻量质感，VIP 仅以柔和金色点缀 */}
+          {isVip && !isAdmin ? (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
+                border: '1px solid #fde68a',
+                padding: '4px 9px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 600,
+                height: 28,
+                boxSizing: 'border-box',
+                boxShadow: '0 1px 3px rgba(217, 119, 6, 0.08)',
+              }}
+            >
+              <UserOutlined style={{ color: '#d97706', fontSize: 12 }} />
+              <span style={{ color: '#92400e' }}>{username}</span>
               <span
                 style={{
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  background: '#b45309',
                   color: '#ffffff',
                   fontSize: 10,
-                  fontWeight: 700,
+                  fontWeight: 800,
                   padding: '1px 5px',
-                  borderRadius: 8,
+                  borderRadius: 4,
                   lineHeight: '12px',
+                  letterSpacing: 0.6,
                   display: 'inline-flex',
                   alignItems: 'center',
                 }}
               >
-                👑 VIP
+                VIP
               </span>
-            )}
-          </div>
+            </div>
+          ) : isAdmin ? (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)',
+                border: '1px solid #ddd6fe',
+                padding: '4px 10px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 600,
+                height: 28,
+                boxSizing: 'border-box',
+                boxShadow: '0 1px 3px rgba(124, 58, 237, 0.08)',
+              }}
+            >
+              <UserOutlined style={{ color: '#7c3aed', fontSize: 12 }} />
+              <span style={{ color: '#5b21b6' }}>{username}</span>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                padding: '4px 10px',
+                borderRadius: 20,
+                fontSize: 12,
+                color: '#1e293b',
+                fontWeight: 500,
+                lineHeight: 1,
+                height: 28,
+                boxSizing: 'border-box',
+              }}
+            >
+              <UserOutlined style={{ color: '#64748b', fontSize: 12 }} />
+              <span>{username}</span>
+            </div>
+          )}
+
+          {/* 联系客服支持 */}
+          <Button
+            type="text"
+            size="small"
+            icon={<CustomerServiceOutlined style={{ color: '#2563eb' }} />}
+            onClick={() => setContactOpen(true)}
+            style={{
+              color: '#475569',
+              fontSize: 12,
+              display: 'flex',
+              alignItems: 'center',
+              height: 28,
+              borderRadius: 6,
+            }}
+          >
+            {!isMobile && '联系'}
+          </Button>
+
           <Button
             type="text"
             size="small"
@@ -151,6 +215,7 @@ function LayoutShell() {
               display: 'flex',
               alignItems: 'center',
               height: 28,
+              borderRadius: 6,
             }}
             onClick={() => {
               logout()
@@ -179,6 +244,9 @@ function LayoutShell() {
           </Routes>
         </Suspense>
       </Content>
+
+      {/* 联系管理员弹窗 */}
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </Layout>
   )
 }

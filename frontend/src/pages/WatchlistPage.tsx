@@ -24,9 +24,11 @@ import {
   HolderOutlined,
   SwapOutlined,
   SoundOutlined,
+  CustomerServiceOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
+import { ContactModal } from '../components/ContactModal'
 import {
   DndContext,
   PointerSensor,
@@ -46,7 +48,7 @@ import { useWatchlist } from '../hooks/useWatchlist'
 import { FUND_TYPE_COLOR, FUND_TYPE_LABEL } from '../api/types'
 import type { EstimateResult, NoticeView } from '../api/types'
 import { api } from '../api'
-import { colorOf, fmtNav, fmtPct, isTradingTime } from '../utils/format'
+import { colorOf, fmtNav, fmtPct } from '../utils/format'
 
 const { Title, Text } = Typography
 
@@ -350,7 +352,7 @@ function MobileSortableCard({
 
 /* ------------------ 主页面组件 ------------------ */
 export default function WatchlistPage() {
-  const { estimates, loading, error, add, remove, reorder } = useWatchlist()
+  const { estimates, loading, error, addBatch, remove, reorder } = useWatchlist()
   const navigate = useNavigate()
 
   const [adding, setAdding] = useState(false)
@@ -364,38 +366,41 @@ export default function WatchlistPage() {
     return localStorage.getItem('fund-valuation-dismissed-notice')
   })
 
-  // 获取通用系统公告或交易时段状态提示
+  // 获取系统公告 (后台关闭自定义公告时返回空，此时不展示任何提示)
+  // 定时轮询 + 窗口聚焦/可见时刷新，确保管理员推送的最新公告能及时同步到已打开页面
   useEffect(() => {
-    api
-      .getNotice()
-      .then((data) => {
-        if (data) {
-          setNotice(data)
-        } else if (!isTradingTime()) {
-          setNotice({
-            message: '当前为非交易时段，展示最新行情快照',
-            type: 'info',
-            closable: false,
-            custom: false,
-          })
-        } else {
-          setNotice(null)
-        }
-      })
-      .catch(() => {
-        if (!isTradingTime()) {
-          setNotice({
-            message: '当前为非交易时段，展示最新行情快照',
-            type: 'info',
-            closable: false,
-            custom: false,
-          })
-        }
-      })
+    let active = true
+    const fetchNotice = () => {
+      api
+        .getNotice()
+        .then((data) => {
+          if (active) setNotice(data || null)
+        })
+        .catch(() => {
+          if (active) setNotice(null)
+        })
+    }
+
+    fetchNotice()
+    const timer = window.setInterval(fetchNotice, 60000)
+    const onFocus = () => fetchNotice()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') fetchNotice()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   // 监听屏幕断点 (< 768px 为移动端视图)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [contactOpen, setContactOpen] = useState(false)
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -452,17 +457,40 @@ export default function WatchlistPage() {
   }
 
   const submitAdd = async () => {
-    const code = newCode.trim()
-    if (!code) {
+    // 支持一次添加多个基金代码，以英文/中文逗号、顿号、分号或空白分隔
+    const codes = Array.from(
+      new Set(
+        newCode
+          .split(/[,，、;；\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      )
+    )
+    if (codes.length === 0) {
       message.warning('请输入基金代码')
       return
     }
+
     setSubmitting(true)
     try {
-      await add(code)
-      message.success(`已成功添加 ${code}`)
-      setNewCode('')
-      setAdding(false)
+      const results = await addBatch(codes)
+      const ok = results.filter((r) => r.success)
+      const fail = results.filter((r) => !r.success)
+
+      if (ok.length > 0 && fail.length === 0) {
+        message.success(`已成功添加 ${ok.length} 只基金：${ok.map((r) => r.fundCode).join('、')}`)
+      } else if (ok.length > 0) {
+        message.warning(
+          `成功 ${ok.length} 只，失败 ${fail.length} 只（${fail.map((r) => `${r.fundCode}: ${r.message}`).join('；')}）`
+        )
+      } else {
+        message.error(`添加失败：${fail.map((r) => `${r.fundCode}: ${r.message}`).join('；')}`)
+      }
+
+      if (ok.length > 0) {
+        setNewCode('')
+        setAdding(false)
+      }
     } catch (e) {
       message.error((e as Error).message)
     } finally {
@@ -624,8 +652,10 @@ export default function WatchlistPage() {
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
           justifyContent: 'space-between',
+          gap: isMobile ? 12 : 16,
           marginBottom: 16,
         }}
       >
@@ -659,10 +689,19 @@ export default function WatchlistPage() {
           </Title>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {/* 操作区：移动端单行等宽排布，杜绝换行错位 */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'nowrap',
+            width: isMobile ? '100%' : undefined,
+            alignItems: 'center',
+          }}
+        >
           {estimates.length > 1 && (
             <Button
-              size="middle"
+              size={isMobile ? 'small' : 'middle'}
               icon={
                 pctSort === 'desc' ? (
                   <ArrowDownOutlined style={{ color: '#dc2626' }} />
@@ -674,26 +713,32 @@ export default function WatchlistPage() {
               }
               type={pctSort !== 'default' ? 'primary' : 'default'}
               ghost={pctSort !== 'default'}
-              style={{ borderRadius: 8 }}
+              style={{ borderRadius: 8, flex: isMobile ? 1 : undefined }}
               onClick={() => {
                 if (isSorting) setIsSorting(false)
                 setPctSort((prev) => (prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default'))
               }}
             >
               {pctSort === 'desc'
-                ? '涨幅降序 ⬇️'
+                ? isMobile
+                  ? '降序'
+                  : '涨幅降序'
                 : pctSort === 'asc'
-                ? '涨幅升序 ⬆️'
+                ? isMobile
+                  ? '升序'
+                  : '涨幅升序'
+                : isMobile
+                ? '排序'
                 : '收益率排序'}
             </Button>
           )}
 
           {isMobile && estimates.length > 1 && (
             <Button
-              size="middle"
+              size="small"
               icon={isSorting ? <CheckOutlined /> : <MenuOutlined />}
               type={isSorting ? 'primary' : 'default'}
-              style={{ borderRadius: 8 }}
+              style={{ borderRadius: 8, flex: 1 }}
               onClick={() => {
                 if (!isSorting) {
                   setPctSort('default') // 开启拖拽模式时恢复为默认自选顺序
@@ -708,16 +753,26 @@ export default function WatchlistPage() {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            size="middle"
+            size={isMobile ? 'small' : 'middle'}
             style={{
               borderRadius: 8,
+              flex: isMobile ? 1 : undefined,
               background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
               fontWeight: 550,
               boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
             }}
             onClick={() => setAdding(true)}
           >
-            添加基金
+            {isMobile ? '添加' : '添加基金'}
+          </Button>
+
+          <Button
+            size={isMobile ? 'small' : 'middle'}
+            icon={<CustomerServiceOutlined style={{ color: '#2563eb' }} />}
+            style={{ borderRadius: 8, flex: isMobile ? 1 : undefined, color: '#334155' }}
+            onClick={() => setContactOpen(true)}
+          >
+            联系
           </Button>
         </div>
       </div>
@@ -880,21 +935,23 @@ export default function WatchlistPage() {
         centered
       >
         <div style={{ padding: '16px 0' }}>
-          <Text type="secondary" style={{ display: 'block', marginBottom: 10, fontSize: 13, color: '#64748b' }}>
-            支持 6 位公募基金代码（股票型、混合型、纯债型及 510300 等场内 ETF）。
-          </Text>
-          <Input
-            placeholder="例如: 110022 或 510300"
-            size="large"
+          <Input.TextArea
+            placeholder="可一次添加多个，用逗号分隔，例如：110022,510300,008559"
             value={newCode}
-            maxLength={10}
-            style={{ borderRadius: 8 }}
+            autoSize={{ minRows: 2, maxRows: 5 }}
+            style={{ borderRadius: 8, fontSize: 14 }}
             onChange={(e) => setNewCode(e.target.value)}
-            onPressEnter={submitAdd}
             autoFocus
+            allowClear
           />
+          <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12, color: '#94a3b8' }}>
+            多个代码可用英文逗号「,」、中文逗号「，」、顿号或换行分隔。
+          </Text>
         </div>
       </Modal>
+
+      {/* 联系管理员弹窗 */}
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </div>
   )
 }

@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -110,5 +111,25 @@ class WatchlistServiceTest {
         assertEquals(1, list.size());
         assertEquals("110022", list.get(0).fundCode());
         assertEquals(0, new BigDecimal("3.0300").compareTo(list.get(0).estimateNav()));
+    }
+
+    @Test
+    void addBatchDedupAndSkipExisting() {
+        // 首次批量添加：含重复与空白项，应去重后全部成功
+        var results = watchlistService.addBatch("u1",
+                java.util.List.of("110022", "161725", "110022", "  ", "510300"));
+        assertEquals(3, results.size(), "重复与空白代码应被去重/忽略");
+        assertTrue(results.stream().allMatch(WatchlistService.AddResult::success));
+        assertEquals(3, watchlistService.fundCodesOf("u1").size());
+
+        // 二次批量：已存在的被跳过标记，新增的正常添加
+        var results2 = watchlistService.addBatch("u1", java.util.List.of("110022", "008559"));
+        assertEquals(2, results2.size());
+        var existing = results2.stream().filter(r -> r.fundCode().equals("110022")).findFirst().orElseThrow();
+        var added = results2.stream().filter(r -> r.fundCode().equals("008559")).findFirst().orElseThrow();
+        assertFalse(existing.success());
+        assertEquals("已在自选中", existing.message());
+        assertTrue(added.success());
+        assertEquals(4, watchlistService.fundCodesOf("u1").size());
     }
 }

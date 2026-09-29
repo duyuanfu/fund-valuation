@@ -27,6 +27,13 @@ public class FundCatalogService {
     private final FundTypeClassifier classifier;
     private final TrackIndexResolver indexResolver;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    @org.springframework.beans.factory.annotation.Qualifier("crawlerExecutor")
+    private java.util.concurrent.Executor crawlerExecutor;
+
+    /** 正在进行异步轻量净值刷新的基金代码集合，防止高频重复向线程池提交相同任务 */
+    private final java.util.Set<String> refreshingCodes = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     /**
      * 确保基金存在:不存在则采集元数据入库;
      * 若已存在但净值日期落后于最近交易日(如因系统离线或跨交易日未准时20:30刷新),自动执行一次单只轻量增量更新。
@@ -34,21 +41,7 @@ public class FundCatalogService {
     public Fund ensureFund(String code) {
         Fund fund = fundMapper.selectById(code);
         if (fund != null) {
-            boolean updated = false;
-            if (fund.getTrackIndex() == null || "1.990001".equals(fund.getTrackIndex())) {
-                String newIndex = indexResolver.resolve(fund.getCode(), fund.getName());
-                if (newIndex != null && !newIndex.equals(fund.getTrackIndex())) {
-                    fund.setTrackIndex(newIndex);
-                    updated = true;
-                }
-            }
-            final Fund existing = fund;
-            if (isNavOutdated(existing.getNavDate())) {
-                java.util.concurrent.CompletableFuture.runAsync(() -> refreshSingleFund(existing));
-            } else if (updated) {
-                fundMapper.updateById(fund);
-            }
-            return fund;
+            return checkAndUpdateFund(fund);
         }
         FundBasicInfo info = fundClient.fetchBasicInfo(code);
         if (info == null || info.code() == null || info.name() == null || info.name().isBlank()) {
@@ -87,6 +80,7 @@ public class FundCatalogService {
             if (info != null && info.prevNav() != null && info.navDate() != null) {
                 // 当远端实际公布的净值日期晚于数据库现有日期时，执行更新覆盖
                 if (fund.getNavDate() == null || info.navDate().isAfter(fund.getNavDate())) {
+                    java.time.LocalDate oldDate = fund.getNavDate();
                     fund.setName(info.name());
                     fund.setPrevNav(info.prevNav());
                     fund.setNavDate(info.navDate());
@@ -99,7 +93,7 @@ public class FundCatalogService {
                     }
                     fund.setUpdatedAt(LocalDateTime.now());
                     fundMapper.updateById(fund);
-                    log.info("fund {} navDate updated: {} -> {}", fund.getCode(), fund.getNavDate(), info.navDate());
+                    log.info("fund {} navDate updated: {} -> {}", fund.getCode(), oldDate, info.navDate());
                 }
             }
         } catch (Exception e) {
@@ -142,22 +136,46 @@ public class FundCatalogService {
     }
 
     public Fund get(String code) {
-        Fund fund = fundMapper.selectById(code);
-        if (fund != null) {
-            boolean updated = false;
-            if (fund.getTrackIndex() == null || "1.990001".equals(fund.getTrackIndex())) {
-                String newIndex = indexResolver.resolve(fund.getCode(), fund.getName());
-                if (newIndex != null && !newIndex.equals(fund.getTrackIndex())) {
-                    fund.setTrackIndex(newIndex);
-                    updated = true;
-                }
-            }
-            if (isNavOutdated(fund.getNavDate())) {
-                java.util.concurrent.CompletableFuture.runAsync(() -> refreshSingleFund(fund));
-            } else if (updated) {
-                fundMapper.updateById(fund);
+        return checkAndUpdateFund(fundMapper.selectById(code));
+    }
+
+    private Fund checkAndUpdateFund(Fund fund) {
+        if (fund == null) {
+            return null;
+        }
+        boolean updated = false;
+        if (fund.getTrackIndex() == null || "1.990001".equals(fund.getTrackIndex())) {
+            String newIndex = indexResolver.resolve(fund.getCode(), fund.getName());
+            if (newIndex != null && !newIndex.equals(fund.getTrackIndex())) {
+                fund.setTrackIndex(newIndex);
+                updated = true;
             }
         }
+        if (updated) {
+            fundMapper.updateById(fund);
+        }
+        triggerAsyncRefreshIfNeeded(fund);
         return fund;
+    }
+
+    private void triggerAsyncRefreshIfNeeded(Fund fund) {
+        if (fund == null || !isNavOutdated(fund.getNavDate())) {
+            return;
+        }
+        String code = fund.getCode();
+        if (refreshingCodes.add(code)) {
+            Runnable task = () -> {
+                try {
+                    refreshSingleFund(fund);
+                } finally {
+                    refreshingCodes.remove(code);
+                }
+            };
+            if (crawlerExecutor != null) {
+                java.util.concurrent.CompletableFuture.runAsync(task, crawlerExecutor);
+            } else {
+                java.util.concurrent.CompletableFuture.runAsync(task);
+            }
+        }
     }
 }

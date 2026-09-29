@@ -30,13 +30,12 @@ public final class TradingCalendar {
 
     private static final DateTimeFormatter MONTH_DAY = DateTimeFormatter.ofPattern("MM-dd");
 
-    /** 公历每年固定不变的法定全国休市日(MM-dd): 元旦、劳动节、国庆节假期主体 */
+    /** 公历每年固定不变的法定全国休市日(MM-dd): 元旦(01-01)、劳动节(05-01)、国庆节主体(10-01~10-03) */
     private static final Set<String> FIXED_ANNUAL_HOLIDAYS = Set.of(
-            "01-01","01-02","01-03",
-            "04-04","04-05","04-06",
-            "05-01","05-02","05-03","05-04","05-05",
-            "10-01", "10-02", "10-03", "10-04", "10-05", "10-06", "10-07"
-            );
+            "01-01",
+            "05-01",
+            "10-01", "10-02", "10-03"
+    );
 
     /** 动态注入/配置的特定年份节假日 (格式 yyyy-MM-dd) */
     private static final Set<String> DYNAMIC_HOLIDAYS = ConcurrentHashMap.newKeySet();

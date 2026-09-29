@@ -46,13 +46,10 @@ public class ScheduledTasks {
     }
 
     /**
-     * 盘中估值(交易时段内执行,其余时间跳过)。
+     * 盘中估值(由 runner 内部权威判定交易时段)。
      */
     @Scheduled(fixedDelayString = "${fund.schedule.intraday-interval-ms}")
     public void intradayValuation() {
-        if (!TradingCalendar.isTradingTime(LocalDateTime.now())) {
-            return;
-        }
         try {
             intradayRunner.run();
         } catch (Exception e) {

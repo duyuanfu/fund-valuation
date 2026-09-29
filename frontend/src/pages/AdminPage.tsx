@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Card,
   Table,
@@ -40,6 +40,8 @@ import {
   FundOutlined,
   SearchOutlined,
   ClockCircleOutlined,
+  TeamOutlined,
+  ClearOutlined,
 } from '@ant-design/icons'
 import { api } from '../api'
 import type {
@@ -67,16 +69,22 @@ export default function AdminPage() {
   const [loadingWatchlist, setLoadingWatchlist] = useState(false)
   const [watchlistModalOpen, setWatchlistModalOpen] = useState(false)
 
+  // 用户搜索与筛选
+  const [userKeyword, setUserKeyword] = useState('')
+  const [userStatusFilter, setUserStatusFilter] = useState('ALL')
+  const [userVipFilter, setUserVipFilter] = useState('ALL')
+  const [userRoleFilter, setUserRoleFilter] = useState('ALL')
+
   // VIP 设置弹窗
   const [vipModalOpen, setVipModalOpen] = useState(false)
   const [vipUser, setVipUser] = useState<UserView | null>(null)
   const [vipEnabled, setVipEnabled] = useState(false)
   const [vipExpireDate, setVipExpireDate] = useState<dayjs.Dayjs | null>(null)
 
-  const loadUsers = async () => {
+  const loadUsers = async (kw?: string) => {
     setLoadingUsers(true)
     try {
-      const list = await api.listUsers()
+      const list = await api.listUsers(kw !== undefined ? kw : (userKeyword.trim() || undefined))
       setUsers(list)
     } catch (e) {
       message.error((e as Error).message)
@@ -84,6 +92,35 @@ export default function AdminPage() {
       setLoadingUsers(false)
     }
   }
+
+  // 客户端即时联动过滤
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      if (userKeyword.trim()) {
+        const kw = userKeyword.trim().toLowerCase()
+        const matchName = u.username.toLowerCase().includes(kw)
+        const matchSource = u.referralSource && u.referralSource.toLowerCase().includes(kw)
+        const matchRole = u.role.toLowerCase().includes(kw)
+        const matchStatus = u.status.toLowerCase().includes(kw)
+        if (!matchName && !matchSource && !matchRole && !matchStatus) {
+          return false
+        }
+      }
+      if (userStatusFilter !== 'ALL' && u.status !== userStatusFilter) {
+        return false
+      }
+      if (userVipFilter === 'VIP' && !u.isVip) {
+        return false
+      }
+      if (userVipFilter === 'NORMAL' && u.isVip) {
+        return false
+      }
+      if (userRoleFilter !== 'ALL' && u.role !== userRoleFilter) {
+        return false
+      }
+      return true
+    })
+  }, [users, userKeyword, userStatusFilter, userVipFilter, userRoleFilter])
 
   const handleToggleStatus = async (username: string, currentStatus: string) => {
     const nextStatus = currentStatus === 'NORMAL' ? 'DISABLED' : 'NORMAL'
@@ -131,6 +168,26 @@ export default function AdminPage() {
       message.error((e as Error).message)
     } finally {
       setLoadingFunds(false)
+    }
+  }
+
+  // 监控基金被关注用户列表弹窗
+  const [watchersModalOpen, setWatchersModalOpen] = useState(false)
+  const [selectedFundForWatchers, setSelectedFundForWatchers] = useState<FundView | null>(null)
+  const [fundWatchers, setFundWatchers] = useState<UserView[]>([])
+  const [loadingWatchers, setLoadingWatchers] = useState(false)
+
+  const openFundWatchersModal = async (f: FundView) => {
+    setSelectedFundForWatchers(f)
+    setWatchersModalOpen(true)
+    setLoadingWatchers(true)
+    try {
+      const list = await api.getFundWatchers(f.code)
+      setFundWatchers(list)
+    } catch (e) {
+      message.error((e as Error).message)
+    } finally {
+      setLoadingWatchers(false)
     }
   }
 
@@ -316,11 +373,38 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    loadUsers()
-    loadFunds()
-    loadCalendar()
-    loadNotice()
-    loadStats()
+    let cancelled = false
+    const init = async () => {
+      try {
+        const [u, f, c, n, s] = await Promise.allSettled([
+          api.listUsers(),
+          api.listFunds(),
+          api.getCalendarHolidays(),
+          api.getAdminNotice(),
+          api.getSystemStats(),
+        ])
+        if (cancelled) return
+        if (u.status === 'fulfilled') setUsers(u.value)
+        if (f.status === 'fulfilled') setFunds(f.value)
+        if (c.status === 'fulfilled') {
+          setCustomHolidays(c.value.customHolidays || [])
+          setAllDynamicHolidays(c.value.allDynamicHolidays || [])
+        }
+        if (n.status === 'fulfilled' && n.value) {
+          setNoticeMessage(n.value.message || '')
+          setNoticeType(n.value.type || 'info')
+          setNoticeClosable(n.value.closable ?? true)
+          setNoticeEnabled(n.value.custom ?? true)
+        }
+        if (s.status === 'fulfilled') setStats(s.value)
+      } catch (e) {
+        message.error((e as Error).message)
+      }
+    }
+    init()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (
@@ -395,8 +479,93 @@ export default function AdminPage() {
                     style={{ marginBottom: 14, borderRadius: 10 }}
                   />
                 )}
+
+                {/* 用户搜索与多维状态筛选工具栏 */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 16,
+                    flexWrap: 'wrap',
+                    gap: 12,
+                  }}
+                >
+                  <Space wrap size={10}>
+                    <Input
+                      prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                      placeholder="按用户名 / 获客渠道 / 角色搜索..."
+                      allowClear
+                      value={userKeyword}
+                      onChange={(e) => setUserKeyword(e.target.value)}
+                      onPressEnter={() => loadUsers(userKeyword)}
+                      style={{ width: 250, borderRadius: 8 }}
+                    />
+                    <Select
+                      value={userStatusFilter}
+                      onChange={(val) => setUserStatusFilter(val)}
+                      style={{ width: 120 }}
+                      options={[
+                        { label: '全部状态', value: 'ALL' },
+                        { label: '待审核', value: 'PENDING' },
+                        { label: '正常授权', value: 'NORMAL' },
+                        { label: '已停用', value: 'DISABLED' },
+                      ]}
+                    />
+                    <Select
+                      value={userVipFilter}
+                      onChange={(val) => setUserVipFilter(val)}
+                      style={{ width: 120 }}
+                      options={[
+                        { label: '全部级别', value: 'ALL' },
+                        { label: 'VIP 会员', value: 'VIP' },
+                        { label: '普通会员', value: 'NORMAL' },
+                      ]}
+                    />
+                    <Select
+                      value={userRoleFilter}
+                      onChange={(val) => setUserRoleFilter(val)}
+                      style={{ width: 120 }}
+                      options={[
+                        { label: '全部角色', value: 'ALL' },
+                        { label: '普通用户 (USER)', value: 'USER' },
+                        { label: '管理员 (ADMIN)', value: 'ADMIN' },
+                      ]}
+                    />
+                    {(userKeyword || userStatusFilter !== 'ALL' || userVipFilter !== 'ALL' || userRoleFilter !== 'ALL') && (
+                      <Button
+                        icon={<ClearOutlined />}
+                        onClick={() => {
+                          setUserKeyword('')
+                          setUserStatusFilter('ALL')
+                          setUserVipFilter('ALL')
+                          setUserRoleFilter('ALL')
+                          loadUsers('')
+                        }}
+                        style={{ borderRadius: 8 }}
+                      >
+                        重置筛选
+                      </Button>
+                    )}
+                  </Space>
+
+                  <Space size={10}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      共筛选出 <Text strong style={{ color: '#2563eb' }}>{filteredUsers.length}</Text> 位用户 (总注册 {users.length} 人)
+                    </Text>
+                    <Button
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      onClick={() => loadUsers()}
+                      style={{ borderRadius: 6 }}
+                    >
+                      刷新
+                    </Button>
+                  </Space>
+                </div>
+
                 <Table
-                  dataSource={users}
+                  dataSource={filteredUsers}
                   rowKey="username"
                   loading={loadingUsers}
                   pagination={{ pageSize: 10 }}
@@ -731,11 +900,39 @@ export default function AdminPage() {
                       title: '用户关注量',
                       dataIndex: 'userCount',
                       key: 'userCount',
-                      width: 110,
-                      render: (cnt: number) => (
-                        <Tag color={cnt > 0 ? 'cyan' : 'default'} style={{ borderRadius: 6 }}>
-                          {cnt} 人自选
-                        </Tag>
+                      width: 140,
+                      render: (cnt: number, record: FundView) =>
+                        cnt > 0 ? (
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={<TeamOutlined />}
+                            onClick={() => openFundWatchersModal(record)}
+                            style={{ padding: 0, fontWeight: 550 }}
+                          >
+                            {cnt} 人自选 (查看列表)
+                          </Button>
+                        ) : (
+                          <Tag style={{ borderRadius: 6, color: '#94a3b8' }}>0 人自选</Tag>
+                        ),
+                    },
+                    {
+                      title: '操作',
+                      key: 'action',
+                      fixed: 'right',
+                      width: 120,
+                      render: (_: unknown, record: FundView) => (
+                        <Button
+                          size="small"
+                          type="primary"
+                          ghost
+                          icon={<EyeOutlined />}
+                          disabled={record.userCount === 0}
+                          onClick={() => openFundWatchersModal(record)}
+                          style={{ borderRadius: 6 }}
+                        >
+                          关注用户
+                        </Button>
                       ),
                     },
                   ]}
@@ -1262,6 +1459,148 @@ export default function AdminPage() {
             </Form.Item>
           )}
         </Form>
+      </Modal>
+
+      {/* 监控基金被关注用户列表弹窗 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TeamOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+            <span>
+              关注基金【{selectedFundForWatchers?.name} ({selectedFundForWatchers?.code})】的用户列表
+            </span>
+            <Tag color="blue" style={{ borderRadius: 6, marginLeft: 4 }}>
+              共 {fundWatchers.length} 人关注
+            </Tag>
+          </div>
+        }
+        open={watchersModalOpen}
+        onCancel={() => setWatchersModalOpen(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setWatchersModalOpen(false)} style={{ borderRadius: 6 }}>
+            关闭
+          </Button>,
+        ]}
+        width={850}
+        destroyOnClose
+      >
+        <Table
+          dataSource={fundWatchers}
+          rowKey="username"
+          loading={loadingWatchers}
+          pagination={{ pageSize: 8 }}
+          scroll={{ x: 'max-content' }}
+          columns={[
+            {
+              title: '用户名',
+              dataIndex: 'username',
+              key: 'username',
+              width: 120,
+              render: (name: string) => <Text strong style={{ color: '#0f172a' }}>{name}</Text>,
+            },
+            {
+              title: '角色',
+              dataIndex: 'role',
+              key: 'role',
+              width: 80,
+              render: (role: string) => (
+                <Tag color={role === 'ADMIN' ? 'purple' : 'default'} style={{ borderRadius: 6 }}>
+                  {role}
+                </Tag>
+              ),
+            },
+            {
+              title: '账号状态',
+              dataIndex: 'status',
+              key: 'status',
+              width: 100,
+              render: (status: string) => (
+                <Tag
+                  color={status === 'NORMAL' ? 'success' : status === 'PENDING' ? 'warning' : 'error'}
+                  style={{ borderRadius: 6 }}
+                >
+                  {status === 'NORMAL' ? '正常' : status === 'PENDING' ? '待审核' : '已停用'}
+                </Tag>
+              ),
+            },
+            {
+              title: '会员级别',
+              key: 'vip',
+              width: 130,
+              render: (_: unknown, record: UserView) =>
+                record.isVip ? (
+                  <Text style={{ color: '#d97706', fontSize: 12 }}>
+                    VIP {record.vipExpireAt ? `至 ${dayjs(record.vipExpireAt).format('YYYY-MM-DD')}` : '(永久)'}
+                  </Text>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>普通会员</Text>
+                ),
+            },
+            {
+              title: '了解来源',
+              dataIndex: 'referralSource',
+              key: 'referralSource',
+              width: 95,
+              render: (src: string) => {
+                const s = src || '自己搜索'
+                let c = 'default'
+                if (s.includes('闲鱼')) c = 'orange'
+                else if (s.includes('B站')) c = 'magenta'
+                else if (s.includes('朋友')) c = 'green'
+                else if (s.includes('搜索')) c = 'blue'
+                return <Tag color={c} style={{ borderRadius: 6 }}>{s}</Tag>
+              },
+            },
+            {
+              title: '自选总数',
+              dataIndex: 'watchlistCount',
+              key: 'watchlistCount',
+              width: 90,
+              render: (cnt: number) => <Tag color="blue">{cnt} 只</Tag>,
+            },
+            {
+              title: '注册时间',
+              dataIndex: 'createdAt',
+              key: 'createdAt',
+              width: 135,
+              render: (t: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '-'),
+            },
+            {
+              title: '操作',
+              key: 'action',
+              fixed: 'right',
+              width: 140,
+              render: (_: unknown, record: UserView) => (
+                <Space size={8}>
+                  <Button
+                    size="small"
+                    type="link"
+                    icon={<EyeOutlined />}
+                    onClick={() => {
+                      setWatchersModalOpen(false)
+                      handleViewWatchlist(record)
+                    }}
+                    style={{ padding: 0 }}
+                  >
+                    调阅自选
+                  </Button>
+                  <Button
+                    size="small"
+                    type="link"
+                    icon={<CrownOutlined />}
+                    onClick={() => {
+                      setWatchersModalOpen(false)
+                      openVipModal(record)
+                    }}
+                    style={{ padding: 0 }}
+                  >
+                    VIP
+                  </Button>
+                </Space>
+              ),
+            },
+          ]}
+        />
       </Modal>
     </div>
   )

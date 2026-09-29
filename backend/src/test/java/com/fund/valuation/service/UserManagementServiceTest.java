@@ -66,4 +66,33 @@ class UserManagementServiceTest {
         // 禁止删除内置 admin
         assertThrows(IllegalArgumentException.class, () -> userManagementService.deleteUser("admin"));
     }
+
+    @Test
+    void testKeywordSearchAndFundWatchers() {
+        authService.register("alice", "pass123456", "闲鱼");
+        authService.register("bob", "pass123456", "B站");
+
+        // 关键词搜索匹配
+        List<UserManagementService.UserView> searchAlice = userManagementService.listUsers("alice");
+        assertEquals(1, searchAlice.size());
+        assertEquals("alice", searchAlice.get(0).username());
+
+        List<UserManagementService.UserView> searchSource = userManagementService.listUsers("B站");
+        assertEquals(1, searchSource.size());
+        assertEquals("bob", searchSource.get(0).username());
+
+        // 模拟自选添加
+        com.fund.valuation.domain.UserFund uf = new com.fund.valuation.domain.UserFund();
+        uf.setUserId("alice");
+        uf.setFundCode("001186");
+        uf.setSortNo(0);
+        userFundMapper.insert(uf);
+
+        List<UserManagementService.UserView> watchers = userManagementService.listFundWatchers("001186");
+        assertEquals(1, watchers.size());
+        assertEquals("alice", watchers.get(0).username());
+
+        List<UserManagementService.UserView> emptyWatchers = userManagementService.listFundWatchers("999999");
+        assertTrue(emptyWatchers.isEmpty());
+    }
 }

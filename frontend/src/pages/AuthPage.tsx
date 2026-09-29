@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Button, Card, Form, Input, Tabs, Typography, message, Modal, Select } from 'antd'
-import { LineChartOutlined, LockOutlined, UserOutlined } from '@ant-design/icons'
+import { LineChartOutlined, LockOutlined, UserOutlined, CustomerServiceOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api'
+import { ContactModal } from '../components/ContactModal'
 
 const { Title, Paragraph, Text } = Typography
 
@@ -12,6 +13,7 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [submitting, setSubmitting] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
 
   const submit = async (values: { username: string; password: string; referralSource?: string }) => {
     setSubmitting(true)
@@ -64,6 +66,28 @@ export default function AuthPage() {
         overflow: 'hidden',
       }}
     >
+      {/* 顶部右侧快捷联系按钮 */}
+      <Button
+        icon={<CustomerServiceOutlined />}
+        onClick={() => setContactOpen(true)}
+        style={{
+          position: 'absolute',
+          top: 20,
+          right: 20,
+          zIndex: 10,
+          borderRadius: 20,
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid #e2e8f0',
+          color: '#334155',
+          fontSize: 13,
+          fontWeight: 500,
+          boxShadow: '0 2px 6px rgba(15, 23, 42, 0.05)',
+        }}
+      >
+        联系支持
+      </Button>
+
       {/* 极简淡雅微环境光斑 */}
       <div
         style={{
@@ -159,7 +183,16 @@ export default function AuthPage() {
                 lineHeight: 1.5,
               }}
             >
-              <b>💡 注册说明：</b>新账号提交注册后需等待管理员审批授权，管理员通过后即可正常登录系统。
+              <div><b>💡 注册说明：</b>新账号提交注册后需等待管理员审批授权，管理员通过后即可正常登录系统。</div>
+              <div style={{ marginTop: 4 }}>
+                如需快速审核开通，可直接{' '}
+                <a
+                  style={{ fontWeight: 600, textDecoration: 'underline', color: '#1d4ed8' }}
+                  onClick={() => setContactOpen(true)}
+                >
+                  联系管理员
+                </a>
+              </div>
             </div>
           ) : (
             <div
@@ -261,6 +294,19 @@ export default function AuthPage() {
               {mode === 'login' ? '立即登录' : '提交注册申请'}
             </Button>
           </Form>
+
+          {/* 底部遇到问题联系支持入口 */}
+          <div style={{ textAlign: 'center', marginTop: 14 }}>
+            <Button
+              type="link"
+              size="small"
+              icon={<CustomerServiceOutlined />}
+              onClick={() => setContactOpen(true)}
+              style={{ color: '#64748b', fontSize: 12 }}
+            >
+              遇到问题？联系管理员 / 客服支持
+            </Button>
+          </div>
         </Card>
 
         {/* 底部极简版权声明 */}
@@ -270,6 +316,9 @@ export default function AuthPage() {
           </Text>
         </div>
       </div>
+
+      {/* 联系管理员弹窗 */}
+      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
     </div>
   )
 }

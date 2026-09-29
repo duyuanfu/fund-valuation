@@ -41,13 +41,14 @@ class SystemNoticeServiceTest {
         assertEquals("success", updated.type());
         assertTrue(updated.custom());
 
-        // 动态关闭公告
-        service.updateNotice(null, "info", false, false);
-        // 关闭后不再是 custom 公告 (可能是 null 或 兜底非交易时段提示)
-        NoticeView fallback = service.getActiveNotice();
-        if (fallback != null) {
-            assertFalse(fallback.custom());
-            assertEquals("当前为非交易时段，展示最新行情快照", fallback.message());
-        }
+        // 再次写入必须替换旧文案
+        NoticeView replaced = service.updateNotice("系统公告：全新覆盖文案", "info", true, false);
+        assertNotNull(replaced);
+        assertEquals("系统公告：全新覆盖文案", replaced.message());
+        assertFalse(replaced.closable());
+
+        // 管理员关闭自定义公告后，用户端不再展示任何公告
+        service.updateNotice("系统公告：全新覆盖文案", "info", false, false);
+        assertNull(service.getActiveNotice(), "关闭自定义公告后应对用户隐藏公告");
     }
 }

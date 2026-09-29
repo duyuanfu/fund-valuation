@@ -13,6 +13,12 @@ export interface EstimateResult {
   disclaimer: string | null
 }
 
+export interface AddFundResult {
+  fundCode: string
+  success: boolean
+  message: string
+}
+
 export interface HoldingView {
   stockCode: string
   stockName: string
