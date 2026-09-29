@@ -80,6 +80,14 @@ public class FundController {
                 history = new java.util.ArrayList<>(trends);
             }
         }
+        // 金融分时走势图规范对齐: 若首个记录点晚于 09:30(如中途开机启动或新加自选)，在头部自动锚定 09:30 开盘昨收基准点(0.00%)
+        if (!history.isEmpty() && fund.getPrevNav() != null) {
+            EstimatePointView first = history.get(0);
+            if (first.estTime().toLocalTime().isAfter(java.time.LocalTime.of(9, 30))) {
+                LocalDateTime openTime = first.estTime().toLocalDate().atTime(9, 30, 0);
+                history.add(0, new EstimatePointView(openTime, fund.getPrevNav(), java.math.BigDecimal.ZERO));
+            }
+        }
         BondInfo bondInfo = buildBondInfo(fund);
         return ResponseEntity.ok(new FundDetailView(estimate, holdingViews, history, bondInfo));
     }
