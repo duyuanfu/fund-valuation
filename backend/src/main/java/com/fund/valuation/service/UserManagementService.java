@@ -29,6 +29,8 @@ public class UserManagementService {
             String status,
             boolean isVip,
             LocalDateTime vipExpireAt,
+            LocalDateTime lastLoginAt,
+            int loginCount,
             LocalDateTime createdAt,
             int watchlistCount
     ) {}
@@ -47,6 +49,8 @@ public class UserManagementService {
                 u.getStatus() == null ? User.STATUS_NORMAL : u.getStatus(),
                 u.isVipEffective(),
                 u.getVipExpireAt(),
+                u.getLastLoginAt(),
+                u.getLoginCount() == null ? 0 : u.getLoginCount(),
                 u.getCreatedAt(),
                 countMap.getOrDefault(u.getUsername(), 0L).intValue()
         )).toList();

@@ -134,6 +134,18 @@ public class DatabaseInitializer implements ApplicationRunner {
                     ? "ALTER TABLE \"USER\" ADD COLUMN vip_expire_at TIMESTAMP NULL"
                     : "ALTER TABLE `user` ADD COLUMN vip_expire_at DATETIME NULL COMMENT 'VIP过期时间'");
             }
+            if (!existingColumns.contains("last_login_at")) {
+                log.info("Adding column last_login_at to user table");
+                stmt.execute(dbType.contains("h2")
+                    ? "ALTER TABLE \"USER\" ADD COLUMN last_login_at TIMESTAMP NULL"
+                    : "ALTER TABLE `user` ADD COLUMN last_login_at DATETIME NULL COMMENT '最后登录时间'");
+            }
+            if (!existingColumns.contains("login_count")) {
+                log.info("Adding column login_count to user table");
+                stmt.execute(dbType.contains("h2")
+                    ? "ALTER TABLE \"USER\" ADD COLUMN login_count INT DEFAULT 0"
+                    : "ALTER TABLE `user` ADD COLUMN login_count INT NOT NULL DEFAULT 0 COMMENT '累计登录次数'");
+            }
 
             // 3. 初始管理员账户赋权 (如果存在 admin 用户，保证其 role=ADMIN)
             try {

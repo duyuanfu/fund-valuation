@@ -38,6 +38,12 @@ public class User {
     /** VIP 过期时间 (null 且 isVip 为 true 表示永久有效) */
     private LocalDateTime vipExpireAt;
 
+    /** 最后登录时间 */
+    private LocalDateTime lastLoginAt;
+
+    /** 累计登录次数 */
+    private Integer loginCount;
+
     private LocalDateTime createdAt;
 
     /**

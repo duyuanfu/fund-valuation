@@ -37,6 +37,7 @@ import {
   ThunderboltOutlined,
   ArrowLeftOutlined,
   SoundOutlined,
+  FireOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
@@ -409,6 +410,45 @@ export default function AdminPage() {
                       render: (cnt: number) => <Tag color="blue">{cnt} 只</Tag>,
                     },
                     {
+                      title: '最后登录 / 活跃度',
+                      key: 'loginActivity',
+                      render: (_: unknown, record: UserView) => {
+                        if (!record.lastLoginAt) {
+                          return <Tag style={{ borderRadius: 6 }}>从未登录</Tag>
+                        }
+                        const last = dayjs(record.lastLoginAt)
+                        const diffHours = dayjs().diff(last, 'hour')
+                        const diffDays = dayjs().diff(last, 'day')
+                        let tagColor = 'default'
+                        let tagText = `${diffDays}天前`
+                        if (diffHours < 1) {
+                          tagColor = 'success'
+                          tagText = '刚刚活跃'
+                        } else if (diffHours < 24) {
+                          tagColor = 'green'
+                          tagText = '今日活跃'
+                        } else if (diffDays <= 7) {
+                          tagColor = 'blue'
+                          tagText = `${diffDays}天内活跃`
+                        }
+                        return (
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: '#334155' }}>
+                              {last.format('YYYY-MM-DD HH:mm')}
+                            </div>
+                            <Space size={4} style={{ marginTop: 2 }}>
+                              <Tag color={tagColor} style={{ borderRadius: 6, margin: 0, fontSize: 10 }}>
+                                {tagText}
+                              </Tag>
+                              <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                                累计 {record.loginCount ?? 0} 次
+                              </span>
+                            </Space>
+                          </div>
+                        )
+                      },
+                    },
+                    {
                       title: '注册时间',
                       dataIndex: 'createdAt',
                       key: 'createdAt',
@@ -665,12 +705,22 @@ export default function AdminPage() {
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 {/* 统计指标卡片 */}
                 <Row gutter={[16, 16]}>
-                  <Col xs={12} sm={8} md={4}>
+                  <Col xs={12} sm={8} md={3}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
                       <Statistic title="总注册用户" value={stats?.totalUsers ?? 0} prefix={<UserOutlined />} />
                     </Card>
                   </Col>
-                  <Col xs={12} sm={8} md={4}>
+                  <Col xs={12} sm={8} md={3}>
+                    <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
+                      <Statistic
+                        title="今日活跃用户"
+                        value={stats?.activeUsersToday ?? 0}
+                        valueStyle={{ color: '#dc2626', fontWeight: 700 }}
+                        prefix={<FireOutlined />}
+                      />
+                    </Card>
+                  </Col>
+                  <Col xs={12} sm={8} md={3}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
                       <Statistic
                         title="👑 VIP 会员"
@@ -680,14 +730,14 @@ export default function AdminPage() {
                       />
                     </Card>
                   </Col>
-                  <Col xs={12} sm={8} md={4}>
+                  <Col xs={12} sm={8} md={3}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
-                      <Statistic title="总自选基金条数" value={stats?.totalWatchlists ?? 0} />
+                      <Statistic title="自选记录数" value={stats?.totalWatchlists ?? 0} />
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>
                     <Card bordered={false} style={{ borderRadius: 12 }} loading={loadingStats}>
-                      <Statistic title="系统基金库总数" value={stats?.totalFunds ?? 0} />
+                      <Statistic title="监控基金总数" value={stats?.totalFunds ?? 0} />
                     </Card>
                   </Col>
                   <Col xs={12} sm={8} md={4}>

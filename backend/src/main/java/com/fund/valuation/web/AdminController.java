@@ -155,6 +155,9 @@ public class AdminController {
         Long totalUsers = userMapper.selectCount(null);
         Long vipUsers = userMapper.selectCount(new LambdaQueryWrapper<User>()
                 .and(w -> w.eq(User::getIsVip, true).or().eq(User::getRole, User.ROLE_ADMIN)));
+        LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        Long activeUsersToday = userMapper.selectCount(new LambdaQueryWrapper<User>()
+                .ge(User::getLastLoginAt, startOfToday));
         Long totalWatchlists = userFundMapper.selectCount(null);
         Long totalFunds = fundMapper.selectCount(null);
         int cachedQuotes = quoteService.getCachedQuoteCount();
@@ -164,6 +167,7 @@ public class AdminController {
         return Map.of(
                 "totalUsers", totalUsers != null ? totalUsers : 0,
                 "vipUsers", vipUsers != null ? vipUsers : 0,
+                "activeUsersToday", activeUsersToday != null ? activeUsersToday : 0,
                 "totalWatchlists", totalWatchlists != null ? totalWatchlists : 0,
                 "totalFunds", totalFunds != null ? totalFunds : 0,
                 "cachedQuotes", cachedQuotes,

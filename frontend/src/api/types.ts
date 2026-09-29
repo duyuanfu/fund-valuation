@@ -74,6 +74,8 @@ export interface UserView {
   status: string
   isVip: boolean
   vipExpireAt: string | null
+  lastLoginAt: string | null
+  loginCount: number
   createdAt: string
   watchlistCount: number
 }
@@ -93,6 +95,7 @@ export interface CalendarHolidaysResponse {
 export interface SystemStats {
   totalUsers: number
   vipUsers: number
+  activeUsersToday: number
   totalWatchlists: number
   totalFunds: number
   cachedQuotes: number

@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS `user` (
     status        VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '状态: NORMAL/DISABLED',
     is_vip        TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否为VIP: 0/1',
     vip_expire_at DATETIME    NULL COMMENT 'VIP过期时间',
+    last_login_at DATETIME    NULL COMMENT '最后登录时间',
+    login_count   INT         NOT NULL DEFAULT 0 COMMENT '累计登录次数',
     created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_username (username)

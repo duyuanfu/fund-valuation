@@ -37,6 +37,8 @@ public class AuthService {
         u.setRole("admin".equalsIgnoreCase(username) ? User.ROLE_ADMIN : User.ROLE_USER);
         u.setStatus(User.STATUS_NORMAL);
         u.setIsVip(false);
+        u.setLastLoginAt(LocalDateTime.now());
+        u.setLoginCount(1);
         u.setCreatedAt(LocalDateTime.now());
         userMapper.insert(u);
     }
@@ -53,6 +55,11 @@ public class AuthService {
         if (User.STATUS_DISABLED.equalsIgnoreCase(u.getStatus())) {
             throw new IllegalStateException("账号已被管理员停用，请联系管理员");
         }
+        // 更新登录活跃时间与累计登录频次
+        u.setLastLoginAt(LocalDateTime.now());
+        u.setLoginCount((u.getLoginCount() == null ? 0 : u.getLoginCount()) + 1);
+        userMapper.updateById(u);
+
         String token = jwtService.generate(username);
         String role = (u.getRole() == null || u.getRole().isBlank()) ? User.ROLE_USER : u.getRole();
         return new LoginResult(token, u.getUsername(), role, u.isVipEffective());
