@@ -43,6 +43,13 @@ public class TrackIndexResolver {
         KEYWORD_INDEX.put("半导体", "0.399959");
         KEYWORD_INDEX.put("光伏", "0.399808");
         KEYWORD_INDEX.put("新能源", "1.000941");
+        KEYWORD_INDEX.put("储能电池", "0.159566");
+        KEYWORD_INDEX.put("储能", "0.159566");
+        KEYWORD_INDEX.put("新能源车", "1.515700");
+        KEYWORD_INDEX.put("新能车", "1.515700");
+        KEYWORD_INDEX.put("电池", "0.159755");
+        KEYWORD_INDEX.put("创新药", "0.159992");
+        KEYWORD_INDEX.put("医疗", "1.512170");
         KEYWORD_INDEX.put("煤炭", "0.399998");
         KEYWORD_INDEX.put("传媒", "0.399971");
         KEYWORD_INDEX.put("计算机", "1.000935");
