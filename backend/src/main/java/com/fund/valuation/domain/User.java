@@ -45,6 +45,9 @@ public class User {
     /** 累计登录次数 */
     private Integer loginCount;
 
+    /** 推荐/获客来源: 闲鱼 / B站 / 朋友推荐 / 自己搜索 / 其他 */
+    private String referralSource;
+
     private LocalDateTime createdAt;
 
     /**

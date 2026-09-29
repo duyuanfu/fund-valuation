@@ -76,6 +76,7 @@ export interface UserView {
   vipExpireAt: string | null
   lastLoginAt: string | null
   loginCount: number
+  referralSource?: string
   createdAt: string
   watchlistCount: number
 }
@@ -113,5 +114,6 @@ export interface SystemStats {
   cachedQuotes: number
   lastValuationRunTime: string
   activeDynamicHolidays: number
+  referralStats?: Record<string, number>
 }
 

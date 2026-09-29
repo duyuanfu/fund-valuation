@@ -62,10 +62,10 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
-  register: (username: string, password: string) =>
+  register: (username: string, password: string, referralSource?: string) =>
     request<{ status: string; username: string; message: string }>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, referralSource }),
     }),
 
   listWatchlist: () => request<EstimateResult[]>('/api/watchlist'),

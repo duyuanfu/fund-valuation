@@ -193,6 +193,13 @@ public class AdminController {
         LocalDateTime lastRun = runner.getLastRunTime();
         int dynamicHolidays = TradingCalendar.getDynamicHolidays().size();
 
+        List<User> allUsers = userMapper.selectList(null);
+        Map<String, Long> referralStats = allUsers.stream()
+                .collect(Collectors.groupingBy(
+                        u -> (u.getReferralSource() != null && !u.getReferralSource().isBlank()) ? u.getReferralSource() : "自己搜索",
+                        Collectors.counting()
+                ));
+
         return Map.of(
                 "totalUsers", totalUsers != null ? totalUsers : 0,
                 "vipUsers", vipUsers != null ? vipUsers : 0,
@@ -201,7 +208,8 @@ public class AdminController {
                 "totalFunds", totalFunds != null ? totalFunds : 0,
                 "cachedQuotes", cachedQuotes,
                 "lastValuationRunTime", lastRun != null ? lastRun.toString() : "尚未执行",
-                "activeDynamicHolidays", dynamicHolidays
+                "activeDynamicHolidays", dynamicHolidays,
+                "referralStats", referralStats
         );
     }
 

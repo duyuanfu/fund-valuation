@@ -459,6 +459,21 @@ export default function AdminPage() {
                       ),
                     },
                     {
+                      title: '了解来源',
+                      dataIndex: 'referralSource',
+                      key: 'referralSource',
+                      width: 105,
+                      render: (src: string) => {
+                        const source = src || '自己搜索'
+                        let tagColor = 'default'
+                        if (source.includes('闲鱼')) tagColor = 'orange'
+                        else if (source.includes('B站')) tagColor = 'magenta'
+                        else if (source.includes('朋友')) tagColor = 'green'
+                        else if (source.includes('搜索')) tagColor = 'blue'
+                        return <Tag color={tagColor} style={{ borderRadius: 6, margin: 0 }}>{source}</Tag>
+                      },
+                    },
+                    {
                       title: '自选基金数',
                       dataIndex: 'watchlistCount',
                       key: 'watchlistCount',
@@ -1036,6 +1051,52 @@ export default function AdminPage() {
                     </Card>
                   </Col>
                 </Row>
+
+                {/* 用户推荐来源流量大盘 */}
+                {stats?.referralStats && (
+                  <Card
+                    title="📊 用户获客与推荐来源流量分析"
+                    bordered={false}
+                    style={{ borderRadius: 14 }}
+                  >
+                    <Row gutter={[16, 16]}>
+                      {['闲鱼', 'B站', '朋友推荐', '自己搜索', '其他'].map((src) => {
+                        const count = stats.referralStats?.[src] ?? 0
+                        const pct = stats.totalUsers > 0 ? ((count / stats.totalUsers) * 100).toFixed(1) : '0'
+                        let tagColor = 'default'
+                        let icon = '🌐'
+                        if (src === '闲鱼') { tagColor = 'orange'; icon = '🐟' }
+                        else if (src === 'B站') { tagColor = 'magenta'; icon = '📺' }
+                        else if (src === '朋友推荐') { tagColor = 'green'; icon = '🤝' }
+                        else if (src === '自己搜索') { tagColor = 'blue'; icon = '🔍' }
+
+                        return (
+                          <Col xs={12} sm={8} md={4} key={src} style={{ minWidth: 140 }}>
+                            <div
+                              style={{
+                                background: '#f8fafc',
+                                border: '1px solid #f1f5f9',
+                                borderRadius: 10,
+                                padding: '12px 14px',
+                                textAlign: 'center',
+                              }}
+                            >
+                              <Tag color={tagColor} style={{ borderRadius: 6, margin: '0 0 6px 0', fontSize: 13 }}>
+                                {icon} {src}
+                              </Tag>
+                              <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a' }}>
+                                {count} <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>人</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                                占比 {pct}%
+                              </div>
+                            </div>
+                          </Col>
+                        )
+                      })}
+                    </Row>
+                  </Card>
+                )}
 
                 {/* 运维快捷触发与久期覆盖 */}
                 <Row gutter={[16, 16]}>

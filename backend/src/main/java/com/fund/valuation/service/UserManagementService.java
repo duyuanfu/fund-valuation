@@ -31,6 +31,7 @@ public class UserManagementService {
             LocalDateTime vipExpireAt,
             LocalDateTime lastLoginAt,
             int loginCount,
+            String referralSource,
             LocalDateTime createdAt,
             int watchlistCount
     ) {}
@@ -51,6 +52,7 @@ public class UserManagementService {
                 u.getVipExpireAt(),
                 u.getLastLoginAt(),
                 u.getLoginCount() == null ? 0 : u.getLoginCount(),
+                u.getReferralSource() != null && !u.getReferralSource().isBlank() ? u.getReferralSource() : "自己搜索",
                 u.getCreatedAt(),
                 countMap.getOrDefault(u.getUsername(), 0L).intValue()
         )).toList();

@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     vip_expire_at TIMESTAMP    NULL,
     last_login_at TIMESTAMP    NULL,
     login_count   INT          DEFAULT 0,
+    referral_source VARCHAR(32) NULL,
     created_at    TIMESTAMP    NOT NULL,
     PRIMARY KEY (id)
 );

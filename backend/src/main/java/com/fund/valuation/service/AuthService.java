@@ -20,7 +20,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    public void register(String username, String password) {
+    public void register(String username, String password, String referralSource) {
         if (username == null || username.isBlank() || username.length() > 32) {
             throw new IllegalArgumentException("用户名不能为空且不超过32字符");
         }
@@ -39,10 +39,15 @@ public class AuthService {
         // 新用户注册后默认状态为 PENDING (待管理员审核授权)，初始 admin 直接生效
         u.setStatus(isAdmin ? User.STATUS_NORMAL : User.STATUS_PENDING);
         u.setIsVip(false);
+        u.setReferralSource((referralSource != null && !referralSource.isBlank()) ? referralSource.trim() : "自己搜索");
         u.setLastLoginAt(null);
         u.setLoginCount(0);
         u.setCreatedAt(LocalDateTime.now());
         userMapper.insert(u);
+    }
+
+    public void register(String username, String password) {
+        register(username, password, "自己搜索");
     }
 
     /**

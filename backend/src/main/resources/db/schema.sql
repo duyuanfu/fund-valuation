@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS `user` (
     vip_expire_at DATETIME    NULL COMMENT 'VIP过期时间',
     last_login_at DATETIME    NULL COMMENT '最后登录时间',
     login_count   INT         NOT NULL DEFAULT 0 COMMENT '累计登录次数',
+    referral_source VARCHAR(32) NULL COMMENT '推荐来源: 闲鱼/B站/朋友推荐/自己搜索/其他',
     created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
     UNIQUE KEY uk_username (username)

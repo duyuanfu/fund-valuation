@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Form, Input, Tabs, Typography, message, Modal } from 'antd'
+import { Button, Card, Form, Input, Tabs, Typography, message, Modal, Select } from 'antd'
 import { LineChartOutlined, LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -13,7 +13,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [submitting, setSubmitting] = useState(false)
 
-  const submit = async (values: { username: string; password: string }) => {
+  const submit = async (values: { username: string; password: string; referralSource?: string }) => {
     setSubmitting(true)
     try {
       if (mode === 'login') {
@@ -26,7 +26,7 @@ export default function AuthPage() {
           navigate('/', { replace: true })
         }
       } else {
-        const regRes = await api.register(values.username, values.password)
+        const regRes = await api.register(values.username, values.password, values.referralSource)
         Modal.success({
           title: '注册申请已提交',
           content: (
@@ -207,7 +207,7 @@ export default function AuthPage() {
                 { required: true, message: '请输入密码' },
                 { min: 6, message: '密码长度至少需 6 位' },
               ]}
-              style={{ marginBottom: 22 }}
+              style={{ marginBottom: mode === 'register' ? 16 : 22 }}
             >
               <Input.Password
                 prefix={<LockOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
@@ -221,6 +221,28 @@ export default function AuthPage() {
                 }}
               />
             </Form.Item>
+
+            {mode === 'register' && (
+              <Form.Item
+                name="referralSource"
+                label={<span style={{ fontSize: 13, fontWeight: 500, color: '#334155' }}>您从哪里了解到本系统？</span>}
+                initialValue="闲鱼"
+                rules={[{ required: true, message: '请选择推荐/了解来源' }]}
+                style={{ marginBottom: 22 }}
+              >
+                <Select
+                  size="large"
+                  style={{ borderRadius: 10 }}
+                  options={[
+                    { label: '🐟 闲鱼', value: '闲鱼' },
+                    { label: '📺 B站 (哔哩哔哩)', value: 'B站' },
+                    { label: '🤝 朋友推荐', value: '朋友推荐' },
+                    { label: '🔍 自己搜索 / 网上发现', value: '自己搜索' },
+                    { label: '🌐 其他渠道', value: '其他' },
+                  ]}
+                />
+              </Form.Item>
+            )}
 
             <Button
               type="primary"

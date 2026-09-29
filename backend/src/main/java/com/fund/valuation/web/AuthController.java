@@ -17,8 +17,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public RegisterResponse register(@RequestBody Credentials req) {
-        authService.register(req.username(), req.password());
+    public RegisterResponse register(@RequestBody RegisterRequest req) {
+        authService.register(req.username(), req.password(), req.referralSource());
         return new RegisterResponse("PENDING", req.username(), "注册申请已提交成功！新账号需经管理员审核授权后方可登录，请等待管理员开通。");
     }
 
@@ -29,6 +29,9 @@ public class AuthController {
     }
 
     public record Credentials(String username, String password) {
+    }
+
+    public record RegisterRequest(String username, String password, String referralSource) {
     }
 
     public record LoginResponse(String token, String username, String role, boolean isVip) {
