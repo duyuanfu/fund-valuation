@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fund.valuation.domain.User;
 import com.fund.valuation.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
  * 用户注册与登录。
  */
 @Service
+@DependsOn("databaseInitializer")
 @RequiredArgsConstructor
 public class AuthService {
 

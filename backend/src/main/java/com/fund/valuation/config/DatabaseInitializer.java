@@ -10,11 +10,8 @@ import org.springframework.stereotype.Component;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.HashSet;
 import java.util.Locale;
-import java.util.Set;
 
 /**
  * 数据库启动检查与动态结构迁移器:
@@ -81,83 +78,55 @@ public class DatabaseInitializer implements ApplicationRunner {
                 """);
             }
 
-            // 2. 检查 user 表是否存在，若存在则动态补全 role, status, is_vip, vip_expire_at
-            boolean userTableExists = false;
-            try (ResultSet rs = meta.getTables(null, null, dbType.contains("h2") ? "USER" : "user", null)) {
-                if (rs.next()) userTableExists = true;
-            }
-            if (!userTableExists) {
-                try (ResultSet rs = meta.getTables(null, null, dbType.contains("h2") ? "user" : "USER", null)) {
-                    if (rs.next()) userTableExists = true;
-                }
-            }
-            if (!userTableExists) {
-                log.debug("user table does not exist yet, skipping alter columns");
-                return;
-            }
-
-            Set<String> existingColumns = new HashSet<>();
-            try (ResultSet rs = meta.getColumns(null, null, dbType.contains("h2") ? "USER" : "user", null)) {
-                while (rs.next()) {
-                    existingColumns.add(rs.getString("COLUMN_NAME").toLowerCase(Locale.ROOT));
-                }
-            }
-            if (existingColumns.isEmpty()) {
-                try (ResultSet rs = meta.getColumns(null, null, dbType.contains("h2") ? "user" : "USER", null)) {
-                    while (rs.next()) {
-                        existingColumns.add(rs.getString("COLUMN_NAME").toLowerCase(Locale.ROOT));
-                    }
-                }
-            }
-
-            if (!existingColumns.contains("role")) {
-                log.info("Adding column role to user table");
-                stmt.execute(dbType.contains("h2")
-                    ? "ALTER TABLE \"USER\" ADD COLUMN role VARCHAR(20) DEFAULT 'USER'"
-                    : "ALTER TABLE `user` ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT '角色: ADMIN/USER'");
-            }
-            if (!existingColumns.contains("status")) {
-                log.info("Adding column status to user table");
-                stmt.execute(dbType.contains("h2")
-                    ? "ALTER TABLE \"USER\" ADD COLUMN status VARCHAR(20) DEFAULT 'NORMAL'"
-                    : "ALTER TABLE `user` ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '状态: NORMAL/DISABLED'");
-            }
-            if (!existingColumns.contains("is_vip")) {
-                log.info("Adding column is_vip to user table");
-                stmt.execute(dbType.contains("h2")
-                    ? "ALTER TABLE \"USER\" ADD COLUMN is_vip BOOLEAN DEFAULT FALSE"
-                    : "ALTER TABLE `user` ADD COLUMN is_vip TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否为VIP: 0/1'");
-            }
-            if (!existingColumns.contains("vip_expire_at")) {
-                log.info("Adding column vip_expire_at to user table");
-                stmt.execute(dbType.contains("h2")
-                    ? "ALTER TABLE \"USER\" ADD COLUMN vip_expire_at TIMESTAMP NULL"
-                    : "ALTER TABLE `user` ADD COLUMN vip_expire_at DATETIME NULL COMMENT 'VIP过期时间'");
-            }
-            if (!existingColumns.contains("last_login_at")) {
-                log.info("Adding column last_login_at to user table");
-                stmt.execute(dbType.contains("h2")
-                    ? "ALTER TABLE \"USER\" ADD COLUMN last_login_at TIMESTAMP NULL"
-                    : "ALTER TABLE `user` ADD COLUMN last_login_at DATETIME NULL COMMENT '最后登录时间'");
-            }
-            if (!existingColumns.contains("login_count")) {
-                log.info("Adding column login_count to user table");
-                stmt.execute(dbType.contains("h2")
-                    ? "ALTER TABLE \"USER\" ADD COLUMN login_count INT DEFAULT 0"
-                    : "ALTER TABLE `user` ADD COLUMN login_count INT NOT NULL DEFAULT 0 COMMENT '累计登录次数'");
-            }
+            // 2. 补全 user 表字段: role, status, is_vip, vip_expire_at, last_login_at, login_count
+            ensureColumn(stmt, dbType, "role",
+                    dbType.contains("h2") ? "ALTER TABLE \"USER\" ADD COLUMN role VARCHAR(20) DEFAULT 'USER'"
+                            : "ALTER TABLE `user` ADD COLUMN `role` VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT '角色: ADMIN/USER'");
+            ensureColumn(stmt, dbType, "status",
+                    dbType.contains("h2") ? "ALTER TABLE \"USER\" ADD COLUMN status VARCHAR(20) DEFAULT 'NORMAL'"
+                            : "ALTER TABLE `user` ADD COLUMN `status` VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '状态: NORMAL/DISABLED'");
+            ensureColumn(stmt, dbType, "is_vip",
+                    dbType.contains("h2") ? "ALTER TABLE \"USER\" ADD COLUMN is_vip BOOLEAN DEFAULT FALSE"
+                            : "ALTER TABLE `user` ADD COLUMN `is_vip` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否为VIP: 0/1'");
+            ensureColumn(stmt, dbType, "vip_expire_at",
+                    dbType.contains("h2") ? "ALTER TABLE \"USER\" ADD COLUMN vip_expire_at TIMESTAMP NULL"
+                            : "ALTER TABLE `user` ADD COLUMN `vip_expire_at` DATETIME NULL COMMENT 'VIP过期时间'");
+            ensureColumn(stmt, dbType, "last_login_at",
+                    dbType.contains("h2") ? "ALTER TABLE \"USER\" ADD COLUMN last_login_at TIMESTAMP NULL"
+                            : "ALTER TABLE `user` ADD COLUMN `last_login_at` DATETIME NULL COMMENT '最后登录时间'");
+            ensureColumn(stmt, dbType, "login_count",
+                    dbType.contains("h2") ? "ALTER TABLE \"USER\" ADD COLUMN login_count INT DEFAULT 0"
+                            : "ALTER TABLE `user` ADD COLUMN `login_count` INT NOT NULL DEFAULT 0 COMMENT '累计登录次数'");
 
             // 3. 初始管理员账户赋权 (如果存在 admin 用户，保证其 role=ADMIN)
             try {
                 stmt.executeUpdate(dbType.contains("h2")
                     ? "UPDATE \"USER\" SET role = 'ADMIN' WHERE username = 'admin'"
-                    : "UPDATE `user` SET role = 'ADMIN' WHERE username = 'admin'");
+                    : "UPDATE `user` SET `role` = 'ADMIN' WHERE username = 'admin'");
             } catch (Exception ignored) {
             }
 
             log.info("Database schema check and initialization completed successfully");
         } catch (Exception e) {
             log.warn("Database initialization check encountered an exception: {}", e.getMessage());
+        }
+    }
+
+    private void ensureColumn(Statement stmt, String dbType, String column, String alterSql) {
+        String testSql = dbType.contains("h2")
+                ? "SELECT " + column + " FROM \"USER\" WHERE 1=0"
+                : "SELECT `" + column + "` FROM `user` WHERE 1=0";
+        try {
+            stmt.execute(testSql);
+            // 列已存在
+        } catch (Exception e) {
+            log.info("Column {} is missing in user table, executing alter: {}", column, alterSql);
+            try {
+                stmt.execute(alterSql);
+                log.info("Column {} added successfully", column);
+            } catch (Exception ex) {
+                log.warn("Notice when adding column {}: {}", column, ex.getMessage());
+            }
         }
     }
 }
