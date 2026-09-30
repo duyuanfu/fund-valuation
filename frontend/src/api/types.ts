@@ -123,3 +123,64 @@ export interface SystemStats {
   referralStats?: Record<string, number>
 }
 
+export interface PositionItemView {
+  id: number
+  fundCode: string
+  fundName: string
+  fundType: string | null
+  holdingAmount: number
+  yesterdayIncome: number
+  holdingProfit: number
+  holdingProfitRate: number | null
+  costAmount: number
+  holdingShares: number | null
+  costPrice: number | null
+  prevNav: number | null
+  navDate: string | null
+  estimateNav: number | null
+  estimatePct: number | null
+  quoteTs: string | null
+  stale: boolean
+  todayIncome: number
+  dynamicMarketValue: number
+  dynamicTotalProfit: number
+  dynamicTotalProfitRate: number
+}
+
+export interface PortfolioSummaryView {
+  totalMarketValue: number
+  totalHoldingAmount: number
+  totalYesterdayIncome: number
+  totalHoldingProfit: number
+  totalTodayIncome: number
+  totalTodayIncomePct: number
+  dynamicTotalProfit: number
+  dynamicTotalProfitRate: number
+}
+
+export interface PortfolioView {
+  summary: PortfolioSummaryView
+  items: PositionItemView[]
+}
+
+export interface PositionSaveRequest {
+  fundCode: string
+  holdingAmount: number
+  yesterdayIncome?: number | null
+  holdingProfit?: number | null
+  holdingProfitRate?: number | null
+}
+
+export interface VipConfigView {
+  monthlyPrice: number
+  quarterlyPrice: number
+  quarterlyOrigPrice?: number | null
+  yearlyPrice: number
+  yearlyOrigPrice?: number | null
+  wechatQrUrl?: string | null
+  alipayQrUrl?: string | null
+  payeeName?: string | null
+  paymentTip?: string | null
+}
+
+

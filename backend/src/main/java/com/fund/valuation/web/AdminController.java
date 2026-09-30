@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fund.valuation.common.TradingCalendar;
 import com.fund.valuation.domain.User;
 import com.fund.valuation.dto.NoticeView;
+import com.fund.valuation.dto.VipConfigView;
 import com.fund.valuation.mapper.FundMapper;
 import com.fund.valuation.mapper.UserFundMapper;
 import com.fund.valuation.mapper.UserMapper;
@@ -13,6 +14,7 @@ import com.fund.valuation.service.EstimateResult;
 import com.fund.valuation.service.FundCatalogService;
 import com.fund.valuation.service.IntradayValuationRunner;
 import com.fund.valuation.service.QuoteService;
+import com.fund.valuation.service.SysVipConfigService;
 import com.fund.valuation.service.SystemNoticeService;
 import com.fund.valuation.service.UserManagementService;
 import com.fund.valuation.service.WatchlistService;
@@ -52,6 +54,7 @@ public class AdminController {
     private final UserMapper userMapper;
     private final UserFundMapper userFundMapper;
     private final FundMapper fundMapper;
+    private final SysVipConfigService sysVipConfigService;
 
     /* ---------------- 用户管理与自选调阅 ---------------- */
 
@@ -233,6 +236,16 @@ public class AdminController {
                 "activeDynamicHolidays", dynamicHolidays,
                 "referralStats", referralStats
         );
+    }
+
+    @GetMapping("/vip-config")
+    public ResponseEntity<VipConfigView> getVipConfig() {
+        return ResponseEntity.ok(sysVipConfigService.getVipConfig());
+    }
+
+    @PostMapping("/vip-config")
+    public ResponseEntity<VipConfigView> updateVipConfig(@RequestBody VipConfigView req) {
+        return ResponseEntity.ok(sysVipConfigService.updateVipConfig(req));
     }
 
     public record DurationRequest(String fundCode, String reportQt, double duration) {

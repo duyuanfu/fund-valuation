@@ -48,6 +48,22 @@ CREATE TABLE IF NOT EXISTS user_fund (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS user_position (
+    id                  BIGINT        NOT NULL AUTO_INCREMENT,
+    user_id             VARCHAR(64)   NOT NULL,
+    fund_code           VARCHAR(10)   NOT NULL,
+    holding_amount      DECIMAL(14,2) NOT NULL,
+    yesterday_income    DECIMAL(14,2) DEFAULT 0,
+    holding_profit      DECIMAL(14,2) NOT NULL DEFAULT 0,
+    holding_profit_rate DECIMAL(8,4)  NULL,
+    cost_amount         DECIMAL(14,2) NOT NULL DEFAULT 0,
+    holding_shares      DECIMAL(14,4) NULL,
+    cost_price          DECIMAL(10,4) NULL,
+    created_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS quote_cache (
     id       BIGINT        NOT NULL AUTO_INCREMENT,
     secid    VARCHAR(20)   NOT NULL,
@@ -96,4 +112,18 @@ CREATE TABLE IF NOT EXISTS sys_notice (
     is_enabled     BOOLEAN DEFAULT TRUE,
     is_closable    BOOLEAN DEFAULT TRUE,
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sys_vip_config (
+    id                   BIGINT AUTO_INCREMENT PRIMARY KEY,
+    monthly_price        DECIMAL(8,2) DEFAULT 2.90,
+    quarterly_price      DECIMAL(8,2) DEFAULT 6.90,
+    quarterly_orig_price DECIMAL(8,2) DEFAULT 8.70,
+    yearly_price         DECIMAL(8,2) DEFAULT 19.90,
+    yearly_orig_price    DECIMAL(8,2) DEFAULT 34.80,
+    wechat_qr_url        CLOB         NULL,
+    alipay_qr_url        CLOB         NULL,
+    payee_name           VARCHAR(64)  DEFAULT '管理员',
+    payment_tip          VARCHAR(255) DEFAULT '付款请务必备注用户名',
+    updated_at           TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );

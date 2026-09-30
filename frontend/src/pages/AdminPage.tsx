@@ -21,6 +21,7 @@ import {
   InputNumber,
   Divider,
   Alert,
+  Upload,
 } from 'antd'
 import {
   UserOutlined,
@@ -42,6 +43,9 @@ import {
   ClockCircleOutlined,
   TeamOutlined,
   ClearOutlined,
+  UploadOutlined,
+  WechatOutlined,
+  AlipayCircleOutlined,
 } from '@ant-design/icons'
 import { api } from '../api'
 import type {
@@ -372,6 +376,69 @@ export default function AdminPage() {
     }
   }
 
+  /* ---------------- 6. VIP会员价格与收款码配置 ---------------- */
+  const [vipConfigForm] = Form.useForm()
+  const [savingVipConfig, setSavingVipConfig] = useState(false)
+  const [wechatQrPreview, setWechatQrPreview] = useState<string>('')
+  const [alipayQrPreview, setAlipayQrPreview] = useState<string>('')
+
+  const loadVipConfig = async () => {
+    try {
+      const cfg = await api.getAdminVipConfig()
+      if (cfg) {
+        vipConfigForm.setFieldsValue({
+          monthlyPrice: cfg.monthlyPrice,
+          quarterlyPrice: cfg.quarterlyPrice,
+          quarterlyOrigPrice: cfg.quarterlyOrigPrice,
+          yearlyPrice: cfg.yearlyPrice,
+          yearlyOrigPrice: cfg.yearlyOrigPrice,
+          wechatQrUrl: cfg.wechatQrUrl,
+          alipayQrUrl: cfg.alipayQrUrl,
+          payeeName: cfg.payeeName,
+          paymentTip: cfg.paymentTip,
+        })
+        setWechatQrPreview(cfg.wechatQrUrl || '/wechat-pay.png')
+        setAlipayQrPreview(cfg.alipayQrUrl || '/alipay.jpg')
+      }
+    } catch (e) {
+      // 容错静默
+    }
+  }
+
+  const handleSaveVipConfig = async () => {
+    try {
+      const vals = await vipConfigForm.validateFields()
+      setSavingVipConfig(true)
+      await api.setAdminVipConfig({
+        ...vals,
+        wechatQrUrl: wechatQrPreview,
+        alipayQrUrl: alipayQrPreview,
+      })
+      message.success('VIP会员价格与收款码配置已成功保存并立即生效')
+    } catch (e: any) {
+      message.error(e?.error || e?.message || '保存失败')
+    } finally {
+      setSavingVipConfig(false)
+    }
+  }
+
+  const handleQrUpload = (file: File, type: 'wechat' | 'alipay') => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const res = e.target?.result as string
+      if (type === 'wechat') {
+        setWechatQrPreview(res)
+        vipConfigForm.setFieldValue('wechatQrUrl', res)
+      } else {
+        setAlipayQrPreview(res)
+        vipConfigForm.setFieldValue('alipayQrUrl', res)
+      }
+      message.success(`${type === 'wechat' ? '微信' : '支付宝'}收款码图片已成功加载`)
+    }
+    reader.readAsDataURL(file)
+    return false
+  }
+
   useEffect(() => {
     let cancelled = false
     const init = async () => {
@@ -397,6 +464,7 @@ export default function AdminPage() {
           setNoticeEnabled(n.value.custom ?? true)
         }
         if (s.status === 'fulfilled') setStats(s.value)
+        loadVipConfig()
       } catch (e) {
         message.error((e as Error).message)
       }
@@ -1125,6 +1193,261 @@ export default function AdminPage() {
                         style={{ borderRadius: 10 }}
                       />
                     )}
+                  </Card>
+                </Col>
+              </Row>
+            ),
+          },
+          {
+            key: 'vipConfig',
+            label: (
+              <span>
+                <CrownOutlined style={{ color: '#d97706' }} /> VIP与收款设置
+              </span>
+            ),
+            children: (
+              <Row gutter={[20, 20]}>
+                {/* 左侧：价格与收款码设置表单 */}
+                <Col xs={24} lg={14}>
+                  <Card
+                    title={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CrownOutlined style={{ color: '#d97706' }} />
+                        <span style={{ fontWeight: 650 }}>VIP 套餐价格与收款设置</span>
+                      </div>
+                    }
+                    bordered={false}
+                    style={{ borderRadius: 14, boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)' }}
+                  >
+                    <Alert
+                      type="info"
+                      showIcon
+                      message="在此处配置 VIP 会员的价格阶梯、收款二维码及付款备注说明。配置保存后，前台持仓估值页的“开通 VIP”弹窗将实时同步展示。"
+                      style={{ marginBottom: 20, borderRadius: 10 }}
+                    />
+
+                    <Form form={vipConfigForm} layout="vertical" onFinish={handleSaveVipConfig}>
+                      <Title level={5} style={{ fontSize: 14, marginBottom: 12, color: '#334155' }}>
+                        1. 会员套餐价格设置 (元)
+                      </Title>
+                      <Row gutter={16}>
+                        <Col xs={24} sm={8}>
+                          <Form.Item
+                            name="monthlyPrice"
+                            label="月度会员价格"
+                            rules={[{ required: true, message: '请输入月度会员价格' }]}
+                          >
+                            <InputNumber style={{ width: '100%' }} precision={2} min={0.01} prefix="¥" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={8}>
+                          <Form.Item
+                            name="quarterlyPrice"
+                            label="季度会员价格"
+                            rules={[{ required: true, message: '请输入季度会员价格' }]}
+                          >
+                            <InputNumber style={{ width: '100%' }} precision={2} min={0.01} prefix="¥" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={8}>
+                          <Form.Item name="quarterlyOrigPrice" label="季度原价 (划线展示)">
+                            <InputNumber style={{ width: '100%' }} precision={2} min={0.01} prefix="¥" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="yearlyPrice"
+                            label="年度会员价格"
+                            rules={[{ required: true, message: '请输入年度会员价格' }]}
+                          >
+                            <InputNumber style={{ width: '100%' }} precision={2} min={0.01} prefix="¥" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item name="yearlyOrigPrice" label="年度原价 (划线展示)">
+                            <InputNumber style={{ width: '100%' }} precision={2} min={0.01} prefix="¥" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Divider style={{ margin: '12px 0 18px' }} />
+
+                      <Title level={5} style={{ fontSize: 14, marginBottom: 12, color: '#334155' }}>
+                        2. 收款人与备注指引
+                      </Title>
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="payeeName"
+                            label="收款人显示名称"
+                            rules={[{ required: true, message: '请输入收款人名称' }]}
+                          >
+                            <Input placeholder="例如: 管理员 / 客服小助手" />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="paymentTip"
+                            label="付款备注提示"
+                            rules={[{ required: true, message: '请输入备注提示' }]}
+                          >
+                            <Input placeholder="例如: 付款请务必备注用户名" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Divider style={{ margin: '12px 0 18px' }} />
+
+                      <Title level={5} style={{ fontSize: 14, marginBottom: 12, color: '#334155' }}>
+                        3. 收款二维码设置 (微信 / 支付宝)
+                      </Title>
+                      <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item label="微信收款码" extra="支持直接选择本地图片或填写图片链接">
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <Input
+                                placeholder="图片URL或直接上传图片"
+                                value={wechatQrPreview}
+                                onChange={(e) => {
+                                  setWechatQrPreview(e.target.value)
+                                  vipConfigForm.setFieldValue('wechatQrUrl', e.target.value)
+                                }}
+                              />
+                              <Upload
+                                showUploadList={false}
+                                beforeUpload={(file) => handleQrUpload(file, 'wechat')}
+                                accept="image/*"
+                              >
+                                <Button icon={<UploadOutlined />}>选择本地微信收款码图片</Button>
+                              </Upload>
+                            </Space>
+                          </Form.Item>
+                        </Col>
+
+                        <Col xs={24} sm={12}>
+                          <Form.Item label="支付宝收款码" extra="支持直接选择本地图片或填写图片链接">
+                            <Space direction="vertical" style={{ width: '100%' }}>
+                              <Input
+                                placeholder="图片URL或直接上传图片"
+                                value={alipayQrPreview}
+                                onChange={(e) => {
+                                  setAlipayQrPreview(e.target.value)
+                                  vipConfigForm.setFieldValue('alipayQrUrl', e.target.value)
+                                }}
+                              />
+                              <Upload
+                                showUploadList={false}
+                                beforeUpload={(file) => handleQrUpload(file, 'alipay')}
+                                accept="image/*"
+                              >
+                                <Button icon={<UploadOutlined />}>选择本地支付宝收款码图片</Button>
+                              </Upload>
+                            </Space>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Form.Item style={{ marginTop: 16 }}>
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          size="large"
+                          loading={savingVipConfig}
+                          style={{
+                            background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                            borderColor: '#b45309',
+                            fontWeight: 650,
+                            borderRadius: 8,
+                            padding: '0 32px',
+                          }}
+                        >
+                          保存配置并生效
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                  </Card>
+                </Col>
+
+                {/* 右侧：前台效果实时预览卡片 */}
+                <Col xs={24} lg={10}>
+                  <Card
+                    title="前台充值弹窗效果预览"
+                    bordered={false}
+                    style={{ borderRadius: 14, boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)' }}
+                  >
+                    <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        用户点击“开通 VIP”时看到的实时收款卡片：
+                      </Text>
+                    </div>
+
+                    <div
+                      style={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 14,
+                        padding: 16,
+                        background: '#f8fafc',
+                      }}
+                    >
+                      {/* 套餐标签预览 */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+                        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 4px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>月卡</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: '#b45309' }}>
+                            ¥{vipConfigForm.getFieldValue('monthlyPrice') ?? '2.9'}
+                          </div>
+                        </div>
+                        <div style={{ background: '#fffbeb', border: '2px solid #d97706', borderRadius: 8, padding: '8px 4px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 11, color: '#b45309', fontWeight: 650 }}>季卡 (推荐)</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: '#b45309' }}>
+                            ¥{vipConfigForm.getFieldValue('quarterlyPrice') ?? '6.9'}
+                          </div>
+                        </div>
+                        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 4px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>年卡</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: '#b45309' }}>
+                            ¥{vipConfigForm.getFieldValue('yearlyPrice') ?? '19.9'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 二维码预览 */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                        <div style={{ textAlign: 'center', background: '#f0fdf4', padding: 10, borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#166534', marginBottom: 6 }}>
+                            <WechatOutlined style={{ color: '#16a34a', marginRight: 4 }} /> 微信收款码
+                          </div>
+                          <div style={{ width: 110, height: 110, margin: '0 auto', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {wechatQrPreview ? (
+                              <img src={wechatQrPreview} alt="微信收款码" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            ) : (
+                              <Text type="secondary" style={{ fontSize: 11 }}>未上传微信码</Text>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: 'center', background: '#f0f9ff', padding: 10, borderRadius: 10, border: '1px solid #bae6fd' }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#075985', marginBottom: 6 }}>
+                            <AlipayCircleOutlined style={{ color: '#0284c7', marginRight: 4 }} /> 支付宝收款码
+                          </div>
+                          <div style={{ width: 110, height: 110, margin: '0 auto', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                            {alipayQrPreview ? (
+                              <img src={alipayQrPreview} alt="支付宝收款码" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            ) : (
+                              <Text type="secondary" style={{ fontSize: 11 }}>未上传支付宝码</Text>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 12, background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 8, padding: '8px 10px', fontSize: 11, color: '#92400e' }}>
+                        <div><b>收款人:</b> {vipConfigForm.getFieldValue('payeeName') || '管理员'}</div>
+                        <div style={{ marginTop: 2 }}><b>提示:</b> {vipConfigForm.getFieldValue('paymentTip') || '付款请务必备注用户名'}</div>
+                      </div>
+                    </div>
                   </Card>
                 </Col>
               </Row>

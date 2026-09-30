@@ -1,14 +1,16 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Button, Layout, Typography, Spin, Tag } from 'antd'
+import { Button, Layout, Typography, Spin, Tag, Segmented } from 'antd'
 import { LogoutOutlined, LineChartOutlined, UserOutlined, CustomerServiceOutlined } from '@ant-design/icons'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import { ContactModal } from './components/ContactModal'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // 全路由懒加载: 各模块独立按需割离，登录页不加载自选表/图表，首屏提速 80%
 const AuthPage = lazy(() => import('./pages/AuthPage'))
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'))
+const PortfolioPage = lazy(() => import('./pages/PortfolioPage'))
 const FundDetailPage = lazy(() => import('./pages/FundDetailPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 
@@ -18,6 +20,7 @@ const { Text } = Typography
 function LayoutShell() {
   const { token, username, isVip, isAdmin, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [contactOpen, setContactOpen] = useState(false)
 
@@ -67,7 +70,7 @@ function LayoutShell() {
         }}
       >
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
           onClick={() => navigate(isAdmin ? '/admin' : '/')}
         >
           <div
@@ -75,6 +78,7 @@ function LayoutShell() {
               width: 30,
               height: 30,
               borderRadius: 8,
+              flexShrink: 0,
               background: isAdmin
                 ? 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)'
                 : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -92,9 +96,10 @@ function LayoutShell() {
             strong
             style={{
               color: '#0f172a',
-              fontSize: isMobile ? 16 : 17,
+              fontSize: isMobile ? 15 : 17,
               fontWeight: 650,
               letterSpacing: -0.2,
+              whiteSpace: 'nowrap',
             }}
           >
             {isAdmin ? '基金估值管理后台' : '基金实时估值'}
@@ -106,7 +111,34 @@ function LayoutShell() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, lineHeight: 1 }}>
+        {/* PC端顶部主导航 Tab: 自选 vs 持仓 */}
+        {!isMobile && !isAdmin && (
+          <Segmented
+            size="middle"
+            value={location.pathname === '/portfolio' ? '/portfolio' : '/'}
+            onChange={(path) => navigate(path as string)}
+            options={[
+              { label: '自选基金', value: '/' },
+              {
+                label: (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    持仓估值
+                    <span style={{ color: '#d97706', fontSize: 12, fontWeight: 700 }}>👑</span>
+                  </span>
+                ),
+                value: '/portfolio',
+              },
+            ]}
+            style={{
+              background: '#f1f5f9',
+              padding: 3,
+              borderRadius: 10,
+              fontWeight: 600,
+            }}
+          />
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 10, lineHeight: 1, flexShrink: 0 }}>
           {/* 用户区域 - 与浅色界面融合的轻量质感，VIP 仅以柔和金色点缀 */}
           {isVip && !isAdmin ? (
             <div
@@ -227,22 +259,71 @@ function LayoutShell() {
         </div>
       </Header>
 
-      <Content style={{ width: '100%', overflowX: 'hidden' }}>
-        <Suspense
-          fallback={
-            <div style={{ textAlign: 'center', padding: '60px 0' }}>
-              <Spin size="large" />
-            </div>
-          }
+      {/* 移动端专属二级吸顶导航栏: 绝不挤压顶栏标题与图标 */}
+      {isMobile && !isAdmin && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '6px 16px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            borderBottom: '1px solid #f1f5f9',
+            position: 'sticky',
+            top: 56,
+            zIndex: 90,
+          }}
         >
-          <Routes>
-            <Route path="/" element={isAdmin ? <Navigate to="/admin" replace /> : <WatchlistPage />} />
-            <Route path="/fund/:code" element={<FundDetailPage />} />
-            <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" replace />} />
-            <Route path="/login" element={<Navigate to={isAdmin ? '/admin' : '/'} replace />} />
-            <Route path="*" element={<Navigate to={isAdmin ? '/admin' : '/'} replace />} />
-          </Routes>
-        </Suspense>
+          <Segmented
+            block
+            size="middle"
+            value={location.pathname === '/portfolio' ? '/portfolio' : '/'}
+            onChange={(path) => navigate(path as string)}
+            options={[
+              { label: '自选基金', value: '/' },
+              {
+                label: (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    持仓估值
+                    <span style={{ color: '#d97706', fontSize: 12, fontWeight: 700 }}>👑</span>
+                  </span>
+                ),
+                value: '/portfolio',
+              },
+            ]}
+            style={{
+              width: '100%',
+              maxWidth: 340,
+              background: '#f1f5f9',
+              padding: 3,
+              borderRadius: 10,
+              fontWeight: 600,
+            }}
+          />
+        </div>
+      )}
+
+      <Content style={{ width: '100%', overflowX: 'hidden' }}>
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                <Spin size="large" />
+              </div>
+            }
+          >
+            <Routes>
+              <Route path="/" element={isAdmin ? <Navigate to="/admin" replace /> : <WatchlistPage />} />
+              <Route path="/portfolio" element={isAdmin ? <Navigate to="/admin" replace /> : <PortfolioPage />} />
+              <Route path="/fund/:code" element={<FundDetailPage />} />
+              <Route path="/admin" element={isAdmin ? <AdminPage /> : <Navigate to="/" replace />} />
+              <Route path="/login" element={<Navigate to={isAdmin ? '/admin' : '/'} replace />} />
+              <Route path="*" element={<Navigate to={isAdmin ? '/admin' : '/'} replace />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </Content>
 
       {/* 联系管理员弹窗 */}

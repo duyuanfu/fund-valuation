@@ -56,6 +56,23 @@ CREATE TABLE IF NOT EXISTS user_fund (
     UNIQUE KEY uk_user_fund (user_id, fund_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户自选基金';
 
+CREATE TABLE IF NOT EXISTS user_position (
+    id                  BIGINT        NOT NULL AUTO_INCREMENT,
+    user_id             VARCHAR(64)   NOT NULL COMMENT '用户ID',
+    fund_code           VARCHAR(10)   NOT NULL COMMENT '基金代码',
+    holding_amount      DECIMAL(14,2) NOT NULL COMMENT '持仓总金额/资产现值(元)',
+    yesterday_income    DECIMAL(14,2) NULL     DEFAULT 0 COMMENT '昨日收益(元, 选填)',
+    holding_profit      DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '持有收益/累计收益(元)',
+    holding_profit_rate DECIMAL(8,4)  NULL     COMMENT '持有收益率(%)',
+    cost_amount         DECIMAL(14,2) NOT NULL DEFAULT 0 COMMENT '持仓成本(元)',
+    holding_shares      DECIMAL(14,4) NULL     COMMENT '折算持有份额',
+    cost_price          DECIMAL(10,4) NULL     COMMENT '折算成本净值',
+    created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_position (user_id, fund_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户持仓基金';
+
 CREATE TABLE IF NOT EXISTS quote_cache (
     id       BIGINT        NOT NULL AUTO_INCREMENT,
     secid    VARCHAR(20)   NOT NULL COMMENT '行情secid',
@@ -111,3 +128,18 @@ CREATE TABLE IF NOT EXISTS sys_notice (
     updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统通知公告配置';
+
+CREATE TABLE IF NOT EXISTS sys_vip_config (
+    id                   BIGINT       NOT NULL AUTO_INCREMENT,
+    monthly_price        DECIMAL(8,2) NOT NULL DEFAULT 2.90 COMMENT '月度会员价格',
+    quarterly_price      DECIMAL(8,2) NOT NULL DEFAULT 6.90 COMMENT '季度会员价格',
+    quarterly_orig_price DECIMAL(8,2) NULL     DEFAULT 8.70 COMMENT '季度会员原价',
+    yearly_price         DECIMAL(8,2) NOT NULL DEFAULT 19.90 COMMENT '年度会员价格',
+    yearly_orig_price    DECIMAL(8,2) NULL     DEFAULT 34.80 COMMENT '年度会员原价',
+    wechat_qr_url        MEDIUMTEXT   NULL     COMMENT '微信收款二维码图片地址或base64',
+    alipay_qr_url        MEDIUMTEXT   NULL     COMMENT '支付宝收款二维码图片地址或base64',
+    payee_name           VARCHAR(64)  NULL     DEFAULT '管理员' COMMENT '收款人显示名称',
+    payment_tip          VARCHAR(255) NULL     DEFAULT '付款请务必备注用户名' COMMENT '付款备注提示',
+    updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='VIP会员价格与收款配置';

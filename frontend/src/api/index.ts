@@ -7,6 +7,9 @@ import type {
   SystemStats,
   FundView,
   AddFundResult,
+  PortfolioView,
+  PositionSaveRequest,
+  VipConfigView,
 } from './types'
 import {
   TOKEN_KEY,
@@ -94,6 +97,20 @@ export const api = {
   fundDetail: (code: string) =>
     request<FundDetailView>(`/api/fund/${encodeURIComponent(code)}`),
 
+  // 持仓估值与收益预估 (VIP专享)
+  getPortfolio: () => request<PortfolioView>('/api/portfolio'),
+
+  savePosition: (data: PositionSaveRequest) =>
+    request<{ success: boolean; id: number; fundCode: string }>('/api/portfolio', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  removePosition: (fundCode: string) =>
+    request<unknown>(`/api/portfolio/${encodeURIComponent(fundCode)}`, {
+      method: 'DELETE',
+    }),
+
   getNotice: () => request<NoticeView | null>('/api/notice'),
 
   // 管理员后台接口
@@ -164,6 +181,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ fundCode, reportQt, duration }),
     }),
+
+  // VIP配置 (Admin)
+  getAdminVipConfig: () => request<VipConfigView>('/api/admin/vip-config'),
+
+  setAdminVipConfig: (data: VipConfigView) =>
+    request<VipConfigView>('/api/admin/vip-config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // 前台获取VIP价格与收款配置
+  getVipConfig: () => request<VipConfigView>('/api/portfolio/vip-config'),
 }
 
 export function sseUrl(): string {
