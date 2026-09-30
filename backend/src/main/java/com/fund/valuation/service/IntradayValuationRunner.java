@@ -31,6 +31,7 @@ public class IntradayValuationRunner {
     private final WatchlistService watchlistService;
     private final SseService sseService;
     private final FundMapper fundMapper;
+    private final FundHoldingService fundHoldingService;
     private final com.fund.valuation.mapper.QuoteCacheMapper quoteCacheMapper;
 
     /** 互斥锁:防止定时任务与 admin 手动触发并发执行,避免历史重复写入。 */
@@ -91,6 +92,7 @@ public class IntradayValuationRunner {
 
         Set<String> required = new HashSet<>();
         for (Fund f : funds) {
+            fundHoldingService.ensureHoldings(f);
             required.addAll(valuationEngine.collectRequiredSecids(f));
         }
         if (required.isEmpty()) {

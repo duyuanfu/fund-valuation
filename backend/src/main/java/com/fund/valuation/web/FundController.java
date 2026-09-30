@@ -52,7 +52,7 @@ public class FundController {
         java.util.Set<String> required = valuationEngine.collectRequiredSecids(fund);
         quoteService.ensureFreshQuotes(required);
         EstimateResult estimate = valuationEngine.estimate(fund);
-        List<FundHolding> holdings = holdingService.getHoldings(code);
+        List<FundHolding> holdings = holdingService.ensureHoldings(fund);
         String reportQt = holdingService.latestReportQt(code);
         List<HoldingView> holdingViews = holdings.stream().map(h -> {
             String secid = SecCodeConverter.toSecid(h.getStockCode());

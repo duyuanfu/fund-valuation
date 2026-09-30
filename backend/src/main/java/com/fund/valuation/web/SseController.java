@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RestController
@@ -25,18 +26,20 @@ public class SseController {
     private final WatchlistService watchlistService;
 
     /**
-     * SSE 实时估值流:连接时推当前快照,盘中推增量。身份来自 JWT(token 查询参数)。
+     * SSE 实时估值流:连接建立后立即返回 Emitter，后台异步推送当前快照，盘中推增量。身份来自 JWT(token 查询参数)。
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(HttpServletRequest request) {
         String userId = (String) request.getAttribute(JwtAuthFilter.ATTR_USERNAME);
         SseEmitter emitter = sseService.register(userId);
-        try {
-            List<EstimateResult> snapshot = watchlistService.estimates(userId);
-            sseService.push(userId, snapshot);
-        } catch (Exception e) {
-            log.debug("initial sse snapshot push skipped (client may have aborted): {}", e.getMessage());
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                List<EstimateResult> snapshot = watchlistService.estimates(userId);
+                sseService.push(userId, snapshot);
+            } catch (Exception e) {
+                log.debug("initial sse snapshot push skipped for {}: {}", userId, e.getMessage());
+            }
+        });
         return emitter;
     }
 }

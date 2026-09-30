@@ -122,6 +122,30 @@ public class FundHoldingService {
                 .orderByDesc(FundHolding::getWeight));
     }
 
+    /**
+     * 获取基金持仓，如果持仓为空且属于依赖持仓的场外基金，则触发一次懒加载补齐。
+     */
+    public List<FundHolding> ensureHoldings(Fund fund) {
+        if (fund == null) {
+            return List.of();
+        }
+        List<FundHolding> holdings = getHoldings(fund.getCode());
+        if (holdings.isEmpty() && !com.fund.valuation.common.SecCodeConverter.isOnMarket(fund.getCode(), fund.getName())) {
+            String type = fund.getType();
+            if (com.fund.valuation.common.FundType.ACTIVE.getCode().equals(type)
+                    || com.fund.valuation.common.FundType.MIXED.getCode().equals(type)
+                    || com.fund.valuation.common.FundType.ENHANCED.getCode().equals(type)) {
+                try {
+                    refreshOne(fund);
+                    holdings = getHoldings(fund.getCode());
+                } catch (Exception e) {
+                    log.warn("lazy load holdings failed for {}: {}", fund.getCode(), e.getMessage());
+                }
+            }
+        }
+        return holdings;
+    }
+
     public FundAssetAlloc latestAlloc(String fundCode) {
         return allocMapper.selectOne(new LambdaQueryWrapper<FundAssetAlloc>()
                 .eq(FundAssetAlloc::getFundCode, fundCode)

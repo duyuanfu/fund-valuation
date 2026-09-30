@@ -36,14 +36,29 @@ public class SseService {
             } catch (Exception ignored) {
             }
         }
-        emitter.onCompletion(() -> emitters.remove(userId, emitter));
-        emitter.onTimeout(() -> emitters.remove(userId, emitter));
-        emitter.onError(e -> emitters.remove(userId, emitter));
+
+        Runnable cleanup = () -> emitters.remove(userId, emitter);
+
+        emitter.onCompletion(cleanup);
+        emitter.onTimeout(() -> {
+            cleanup.run();
+            try {
+                emitter.complete();
+            } catch (Exception ignored) {
+            }
+        });
+        emitter.onError(e -> {
+            cleanup.run();
+            try {
+                emitter.completeWithError(e);
+            } catch (Exception ignored) {
+            }
+        });
         return emitter;
     }
 
     /**
-     * 向用户推送估值列表。发送失败则移除该连接。
+     * 向用户推送估值列表。发送失败则移除并彻底关闭该连接。
      */
     public void push(String userId, List<EstimateResult> estimates) {
         SseEmitter emitter = emitters.get(userId);
@@ -54,9 +69,13 @@ public class SseService {
             emitter.send(SseEmitter.event()
                     .name("estimate")
                     .data(objectMapper.writeValueAsString(estimates)));
-        } catch (IOException | IllegalStateException e) {
+        } catch (Exception e) {
             emitters.remove(userId, emitter);
-            log.debug("sse push to {} failed, removed: {}", userId, e.getMessage());
+            try {
+                emitter.completeWithError(e);
+            } catch (Exception ignored) {
+            }
+            log.debug("sse push to {} failed, closed and removed: {}", userId, e.getMessage());
         }
     }
 }

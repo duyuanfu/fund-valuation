@@ -2,6 +2,7 @@ package com.fund.valuation.config;
 
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
@@ -9,12 +10,19 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
 import java.io.IOException;
 
 /**
- * SPA (单页面应用) HTML5 History 路由转发支持:
- * 当浏览器刷新 /login、/fund/110022 等非真实静态文件与非 /api 路由时，
- * 自动统一 fallback 转发至 index.html，由 React Router 接管前端路由，彻底杜绝 404 与“内部错误”。
+ * SPA (单页面应用) HTML5 History 路由转发与全局 Web MVC 配置:
+ * 1. 当浏览器刷新 /login、/fund/110022 等非真实静态文件与非 /api 路由时，
+ *    自动统一 fallback 转发至 index.html，由 React Router 接管前端路由，彻底杜绝 404 与“内部错误”。
+ * 2. 配置异步长连接 (SSE) 默认超时时间，保持与 SseEmitter 30分钟长连接一致，防止底层连接提前中断引发 Tomcat 回收异常。
  */
 @Component
 public class SpaWebMvcConfig implements WebMvcConfigurer {
+
+    @Override
+    public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
+        // 设置 Spring MVC 异步处理默认超时为 30 分钟 (1,800,000 ms)
+        configurer.setDefaultTimeout(30 * 60 * 1000L);
+    }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

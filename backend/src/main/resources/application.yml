@@ -1,6 +1,9 @@
 spring:
   application:
     name: fund-valuation
+  mvc:
+    async:
+      request-timeout: 1800000
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:fund_valuation}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${MYSQL_USER:root}

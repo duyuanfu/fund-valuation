@@ -48,5 +48,7 @@ class SecCodeConverterTest {
         org.junit.jupiter.api.Assertions.assertFalse(SecCodeConverter.isOnMarket("001594", "天弘中证500ETF联接A"));
         org.junit.jupiter.api.Assertions.assertFalse(SecCodeConverter.isOnMarket("110022", "易方达消费行业股票"));
         org.junit.jupiter.api.Assertions.assertFalse(SecCodeConverter.isOnMarket("008559", "永赢邦利债券C"));
+        org.junit.jupiter.api.Assertions.assertFalse(SecCodeConverter.isOnMarket("519644", "银河智联主题灵活配置混合A"));
+        org.junit.jupiter.api.Assertions.assertFalse(SecCodeConverter.isOnMarket("519674", "银河创新成长混合A"));
     }
 }

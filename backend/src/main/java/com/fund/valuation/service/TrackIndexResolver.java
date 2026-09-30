@@ -64,6 +64,9 @@ public class TrackIndexResolver {
         KEYWORD_INDEX.put("军工", "1.512660");
         KEYWORD_INDEX.put("国防", "1.512660");
         KEYWORD_INDEX.put("有色", "1.512400");
+        KEYWORD_INDEX.put("畜牧养殖", "0.159865");
+        KEYWORD_INDEX.put("畜牧", "0.159865");
+        KEYWORD_INDEX.put("养殖", "0.159865");
     }
 
     /**

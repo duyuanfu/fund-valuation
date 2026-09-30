@@ -52,9 +52,11 @@ public final class SecCodeConverter {
                 return false;
             }
         }
-        return code.startsWith("51") || code.startsWith("56") || code.startsWith("58")
-                || code.startsWith("50") || code.startsWith("52")
-                || code.startsWith("159") || code.startsWith("16") || code.startsWith("18");
+        // 沪市 519xxx 为场外契约型公募基金号段，绝非场内交易标的
+        boolean isShMarket = (code.startsWith("51") && !code.startsWith("519"))
+                || code.startsWith("56") || code.startsWith("58")
+                || code.startsWith("50") || code.startsWith("52");
+        return isShMarket || code.startsWith("159") || code.startsWith("16") || code.startsWith("18");
     }
 
     /**

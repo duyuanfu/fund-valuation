@@ -177,6 +177,7 @@ public class WatchlistService {
         for (String code : fundCodes) {
             Fund f = fundCatalogService.get(code);
             if (f != null) {
+                fundHoldingService.ensureHoldings(f);
                 funds.add(f);
             }
         }
