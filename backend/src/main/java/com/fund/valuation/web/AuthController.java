@@ -18,8 +18,16 @@ public class AuthController {
 
     @PostMapping("/register")
     public RegisterResponse register(@RequestBody RegisterRequest req) {
-        authService.register(req.username(), req.password(), req.referralSource());
-        return new RegisterResponse("PENDING", req.username(), "注册申请已提交成功！新账号需经管理员审核授权后方可登录，请等待管理员开通。");
+        AuthService.RegisterResult res = authService.register(req.username(), req.password(), req.referralSource());
+        return new RegisterResponse(
+                res.status(),
+                res.username(),
+                res.message(),
+                res.needApproval(),
+                res.token(),
+                res.role(),
+                res.isVip()
+        );
     }
 
     @PostMapping("/login")
@@ -37,6 +45,14 @@ public class AuthController {
     public record LoginResponse(String token, String username, String role, boolean isVip) {
     }
 
-    public record RegisterResponse(String status, String username, String message) {
+    public record RegisterResponse(
+            String status,
+            String username,
+            String message,
+            boolean needApproval,
+            String token,
+            String role,
+            boolean isVip
+    ) {
     }
 }

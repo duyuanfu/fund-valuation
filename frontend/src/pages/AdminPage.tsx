@@ -439,6 +439,38 @@ export default function AdminPage() {
     return false
   }
 
+  /* ---------------- 7. 新用户注册审批开关 ---------------- */
+  const [requireApproval, setRequireApproval] = useState<boolean>(true)
+  const [loadingApproval, setLoadingApproval] = useState<boolean>(false)
+
+  const loadRegistrationApproval = async () => {
+    try {
+      const res = await api.getRegistrationApproval()
+      if (res && res.requireApproval !== undefined) {
+        setRequireApproval(res.requireApproval)
+      }
+    } catch {
+      // 容错
+    }
+  }
+
+  const handleToggleApproval = async (checked: boolean) => {
+    setLoadingApproval(true)
+    try {
+      await api.setRegistrationApproval(checked)
+      setRequireApproval(checked)
+      message.success(
+        checked
+          ? '已开启注册审核：新用户提交注册后需管理员手动审核通过方可登录'
+          : '已关闭注册审核：新用户注册后无需审批，直接生成账号并自动登录！'
+      )
+    } catch (e: any) {
+      message.error(e?.error || e?.message || '设置失败')
+    } finally {
+      setLoadingApproval(false)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
     const init = async () => {
@@ -465,6 +497,7 @@ export default function AdminPage() {
         }
         if (s.status === 'fulfilled') setStats(s.value)
         loadVipConfig()
+        loadRegistrationApproval()
       } catch (e) {
         message.error((e as Error).message)
       }
@@ -547,6 +580,43 @@ export default function AdminPage() {
                     style={{ marginBottom: 14, borderRadius: 10 }}
                   />
                 )}
+
+                {/* 新用户注册审批流程开关栏 */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 14px',
+                    background: requireApproval ? '#fffdf7' : '#f0fdf4',
+                    border: `1px solid ${requireApproval ? '#fde68a' : '#bbf7d0'}`,
+                    borderRadius: 10,
+                    marginBottom: 14,
+                    flexWrap: 'wrap',
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                      新用户注册审批流程：
+                    </span>
+                    <Switch
+                      checked={requireApproval}
+                      loading={loadingApproval}
+                      onChange={handleToggleApproval}
+                      checkedChildren="开启审核"
+                      unCheckedChildren="直接放行"
+                    />
+                    <Tag color={requireApproval ? 'warning' : 'success'} style={{ margin: 0, fontWeight: 600 }}>
+                      {requireApproval ? '开启中 (注册后需管理员手动授权通过)' : '已关闭 (免审直接注册成功并自动登录)'}
+                    </Tag>
+                  </div>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {requireApproval
+                      ? '开启时：新用户注册后账号为待授权状态，需在下方列表点击【通过授权】'
+                      : '关闭时：已开放自由注册，用户提交后直接生成正常账号并自动登录系统'}
+                  </Text>
+                </div>
 
                 {/* 用户搜索与多维状态筛选工具栏 */}
                 <div

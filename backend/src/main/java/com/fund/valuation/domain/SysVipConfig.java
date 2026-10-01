@@ -35,5 +35,10 @@ public class SysVipConfig {
 
     private String paymentTip;
 
+    /**
+     * 新用户注册是否需要管理员审批: true需要 / false免审直接登录
+     */
+    private Boolean requireApproval;
+
     private LocalDateTime updatedAt;
 }

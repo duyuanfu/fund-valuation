@@ -23,6 +23,9 @@ class AuthServiceTest {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private SysVipConfigService sysVipConfigService;
+
     @BeforeEach
     void cleanDb() {
         userMapper.delete(null);
@@ -88,5 +91,24 @@ class AuthServiceTest {
     void wrongPasswordRejected() {
         authService.register("dave", "password123");
         assertThrows(IllegalArgumentException.class, () -> authService.login("dave", "wrong"));
+    }
+
+    @Test
+    void registerDirectlyWhenApprovalDisabled() {
+        sysVipConfigService.updateRequireApproval(false);
+        try {
+            AuthService.RegisterResult reg = authService.register("frank", "password123");
+            assertEquals("frank", reg.username());
+            assertEquals(User.STATUS_NORMAL, reg.status());
+            assertEquals(false, reg.needApproval());
+            assertNotNull(reg.token());
+
+            // 免审模式下可直接登录成功
+            AuthService.LoginResult loginRes = authService.login("frank", "password123");
+            assertEquals("frank", loginRes.username());
+            assertNotNull(loginRes.token());
+        } finally {
+            sysVipConfigService.updateRequireApproval(true);
+        }
     }
 }

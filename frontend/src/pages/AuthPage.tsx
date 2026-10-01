@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button, Card, Form, Input, Tabs, Typography, message, Modal, Select } from 'antd'
 import { LineChartOutlined, LockOutlined, UserOutlined, CustomerServiceOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +14,17 @@ export default function AuthPage() {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [submitting, setSubmitting] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
+  const [requireApproval, setRequireApproval] = useState<boolean>(true)
+
+  useEffect(() => {
+    api.getVipConfig()
+      .then((cfg) => {
+        if (cfg && cfg.requireApproval !== undefined && cfg.requireApproval !== null) {
+          setRequireApproval(cfg.requireApproval)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const submit = async (values: { username: string; password: string; referralSource?: string }) => {
     setSubmitting(true)
@@ -29,21 +40,31 @@ export default function AuthPage() {
         }
       } else {
         const regRes = await api.register(values.username, values.password, values.referralSource)
-        Modal.success({
-          title: '注册申请已提交',
-          content: (
-            <div style={{ marginTop: 8 }}>
-              <p style={{ margin: '0 0 8px 0', color: '#334155', fontSize: 14 }}>
-                账号 <b>{regRes.username}</b> 注册申请已成功发送！
-              </p>
-              <p style={{ margin: 0, color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
-                为了系统安全与合规，新注册用户需等待管理员审核授权后方可登录使用。请联系管理员完成授权审核。
-              </p>
-            </div>
-          ),
-          okText: '我知道了，去登录',
-          onOk: () => setMode('login'),
-        })
+        if (regRes.needApproval === false && regRes.token) {
+          login(regRes.token, regRes.username, regRes.role ?? 'USER', regRes.isVip ?? false)
+          message.success('注册成功，已为您自动登录！')
+          if (regRes.role === 'ADMIN') {
+            navigate('/admin', { replace: true })
+          } else {
+            navigate('/', { replace: true })
+          }
+        } else {
+          Modal.success({
+            title: '注册申请已提交',
+            content: (
+              <div style={{ marginTop: 8 }}>
+                <p style={{ margin: '0 0 8px 0', color: '#334155', fontSize: 14 }}>
+                  账号 <b>{regRes.username}</b> 注册申请已成功发送！
+                </p>
+                <p style={{ margin: 0, color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+                  为了系统安全与合规，新注册用户需等待管理员审核授权后方可登录使用。请联系管理员完成授权审核。
+                </p>
+              </div>
+            ),
+            okText: '我知道了，去登录',
+            onOk: () => setMode('login'),
+          })
+        }
       }
     } catch (e) {
       message.error((e as Error).message)
@@ -170,7 +191,8 @@ export default function AuthPage() {
           />
 
           {mode === 'register' ? (
-            <div
+            requireApproval ? (
+              <div
               style={{
                 marginTop: 12,
                 marginBottom: 18,
@@ -194,6 +216,11 @@ export default function AuthPage() {
                 </a>
               </div>
             </div>
+            ) : (
+              <div style={{ marginTop: 12, marginBottom: 18, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#166534', lineHeight: 1.5 }}>
+                <div><b>免审直接登录：</b>当前注册免审核，提交后直接创建账号并自动登录！</div>
+              </div>
+            )
           ) : (
             <div
               style={{
@@ -291,7 +318,7 @@ export default function AuthPage() {
                 boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
               }}
             >
-              {mode === 'login' ? '立即登录' : '提交注册申请'}
+              {mode === 'login' ? '立即登录' : (requireApproval ? '提交注册申请' : '立即注册并登录')}
             </Button>
           </Form>
 

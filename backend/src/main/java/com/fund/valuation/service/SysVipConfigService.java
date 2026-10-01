@@ -30,7 +30,8 @@ public class SysVipConfigService {
             "/wechat-pay.png",
             "/alipay.jpg",
             "管理员",
-            "付款请务必备注用户名"
+            "付款请务必备注用户名",
+            true
     );
 
     @Autowired
@@ -56,7 +57,8 @@ public class SysVipConfigService {
                             persistent.getWechatQrUrl(),
                             persistent.getAlipayQrUrl(),
                             persistent.getPayeeName() != null ? persistent.getPayeeName() : DEFAULT_CONFIG.payeeName(),
-                            persistent.getPaymentTip() != null ? persistent.getPaymentTip() : DEFAULT_CONFIG.paymentTip()
+                            persistent.getPaymentTip() != null ? persistent.getPaymentTip() : DEFAULT_CONFIG.paymentTip(),
+                            persistent.getRequireApproval() != null ? persistent.getRequireApproval() : DEFAULT_CONFIG.requireApproval()
                     ));
                     log.info("loaded persistent sys_vip_config from database");
                 }
@@ -82,7 +84,8 @@ public class SysVipConfigService {
                 req.wechatQrUrl(),
                 req.alipayQrUrl(),
                 req.payeeName() != null && !req.payeeName().isBlank() ? req.payeeName() : DEFAULT_CONFIG.payeeName(),
-                req.paymentTip() != null && !req.paymentTip().isBlank() ? req.paymentTip() : DEFAULT_CONFIG.paymentTip()
+                req.paymentTip() != null && !req.paymentTip().isBlank() ? req.paymentTip() : DEFAULT_CONFIG.paymentTip(),
+                req.requireApproval() != null ? req.requireApproval() : getVipConfig().requireApproval()
         );
 
         if (vipConfigMapper != null) {
@@ -98,6 +101,7 @@ public class SysVipConfigService {
                 entity.setAlipayQrUrl(view.alipayQrUrl());
                 entity.setPayeeName(view.payeeName());
                 entity.setPaymentTip(view.paymentTip());
+                entity.setRequireApproval(view.requireApproval());
                 entity.setUpdatedAt(LocalDateTime.now());
                 vipConfigMapper.insert(entity);
                 log.info("persisted sys_vip_config to database");
@@ -108,5 +112,29 @@ public class SysVipConfigService {
 
         currentConfig.set(view);
         return view;
+    }
+
+    public boolean isRequireApproval() {
+        VipConfigView cfg = getVipConfig();
+        return cfg.requireApproval() == null || Boolean.TRUE.equals(cfg.requireApproval());
+    }
+
+    @Transactional
+    public void updateRequireApproval(boolean requireApproval) {
+        VipConfigView current = getVipConfig();
+        VipConfigView updated = new VipConfigView(
+                current.monthlyPrice(),
+                current.quarterlyPrice(),
+                current.quarterlyOrigPrice(),
+                current.yearlyPrice(),
+                current.yearlyOrigPrice(),
+                current.wechatQrUrl(),
+                current.alipayQrUrl(),
+                current.payeeName(),
+                current.paymentTip(),
+                requireApproval
+        );
+        updateVipConfig(updated);
+        log.info("user registration requireApproval updated to {}", requireApproval);
     }
 }

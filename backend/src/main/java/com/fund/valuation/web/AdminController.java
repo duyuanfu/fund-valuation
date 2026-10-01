@@ -248,6 +248,19 @@ public class AdminController {
         return ResponseEntity.ok(sysVipConfigService.updateVipConfig(req));
     }
 
+    @GetMapping("/registration-approval")
+    public Map<String, Boolean> getRegistrationApproval() {
+        return Map.of("requireApproval", sysVipConfigService.isRequireApproval());
+    }
+
+    @PostMapping("/registration-approval")
+    public Map<String, Object> setRegistrationApproval(@RequestBody Map<String, Boolean> req) {
+        Boolean flag = req.get("requireApproval");
+        boolean requireApproval = flag != null && flag;
+        sysVipConfigService.updateRequireApproval(requireApproval);
+        return Map.of("success", true, "requireApproval", requireApproval);
+    }
+
     public record DurationRequest(String fundCode, String reportQt, double duration) {
     }
 

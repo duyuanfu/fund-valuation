@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS sys_vip_config (
     alipay_qr_url        MEDIUMTEXT   NULL     COMMENT '支付宝收款二维码图片地址或base64',
     payee_name           VARCHAR(64)  NULL     DEFAULT '管理员' COMMENT '收款人显示名称',
     payment_tip          VARCHAR(255) NULL     DEFAULT '付款请务必备注用户名' COMMENT '付款备注提示',
+    require_approval     TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '用户注册是否需要管理员审批: 1需要/0免审直接登录',
     updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='VIP会员价格与收款配置';

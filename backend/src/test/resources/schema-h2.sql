@@ -125,5 +125,6 @@ CREATE TABLE IF NOT EXISTS sys_vip_config (
     alipay_qr_url        CLOB         NULL,
     payee_name           VARCHAR(64)  DEFAULT '管理员',
     payment_tip          VARCHAR(255) DEFAULT '付款请务必备注用户名',
+    require_approval     BOOLEAN      DEFAULT TRUE,
     updated_at           TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );

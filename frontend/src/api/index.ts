@@ -10,6 +10,7 @@ import type {
   PortfolioView,
   PositionSaveRequest,
   VipConfigView,
+  RegisterResponse,
 } from './types'
 import {
   TOKEN_KEY,
@@ -72,7 +73,7 @@ export const api = {
     }),
 
   register: (username: string, password: string, referralSource?: string) =>
-    request<{ status: string; username: string; message: string }>('/api/auth/register', {
+    request<RegisterResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ username, password, referralSource }),
     }),
@@ -189,6 +190,15 @@ export const api = {
     request<VipConfigView>('/api/admin/vip-config', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  // 注册审批开关 (Admin)
+  getRegistrationApproval: () => request<{ requireApproval: boolean }>('/api/admin/registration-approval'),
+
+  setRegistrationApproval: (requireApproval: boolean) =>
+    request<{ success: boolean; requireApproval: boolean }>('/api/admin/registration-approval', {
+      method: 'POST',
+      body: JSON.stringify({ requireApproval }),
     }),
 
   // 前台获取VIP价格与收款配置

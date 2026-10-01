@@ -11,6 +11,7 @@ public record VipConfigView(
         String wechatQrUrl,
         String alipayQrUrl,
         String payeeName,
-        String paymentTip
+        String paymentTip,
+        Boolean requireApproval
 ) {
 }

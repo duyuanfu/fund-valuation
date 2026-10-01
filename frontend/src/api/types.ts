@@ -181,6 +181,17 @@ export interface VipConfigView {
   alipayQrUrl?: string | null
   payeeName?: string | null
   paymentTip?: string | null
+  requireApproval?: boolean | null
+}
+
+export interface RegisterResponse {
+  status: string
+  username: string
+  message: string
+  needApproval?: boolean
+  token?: string | null
+  role?: string | null
+  isVip?: boolean
 }
 
 
