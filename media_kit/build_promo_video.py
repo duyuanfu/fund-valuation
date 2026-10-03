@@ -781,7 +781,7 @@ async def build_pipeline():
 各位小伙伴大家好！感谢大家观看本期视频 🚀
 
 📌 系统体验与相关地址：
-👉 在线体验地址：http://daydayfund.dpdns.org/ （或您的部署域名）
+👉 在线体验地址：http://trythis.pw
 👉 项目 GitHub 源码：https://github.com/duyuanfu/fund-valuation
 
 欢迎在评论区留下您常看的基金代码或功能建议，有问必答！觉得项目不错请务必一键三连支持一下，感谢大家！
