@@ -38,6 +38,7 @@ public class AuthService {
         boolean isAdmin = "admin".equalsIgnoreCase(username);
         boolean needApproval = !isAdmin && sysVipConfigService.isRequireApproval();
 
+        LocalDateTime now = LocalDateTime.now();
         if (isAdmin) {
             // 安全防护: 仅当数据库中不存在任何超级管理员账号时，才允许首个 admin 初始化注册
             Long adminCount = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getRole, User.ROLE_ADMIN));
@@ -46,30 +47,36 @@ public class AuthService {
             }
             u.setRole(User.ROLE_ADMIN);
             u.setStatus(User.STATUS_NORMAL);
+            u.setIsVip(true);
+            u.setVipExpireAt(null);
         } else if (needApproval) {
             u.setRole(User.ROLE_USER);
             u.setStatus(User.STATUS_PENDING);
+            // 新注册用户赠送 7 天 VIP 会员体验
+            u.setIsVip(true);
+            u.setVipExpireAt(now.plusDays(7));
         } else {
-            // 开关关闭: 免审核直接正常开通
+            // 开关关闭: 免审核直接正常开通，并赠送 7 天 VIP 会员体验
             u.setRole(User.ROLE_USER);
             u.setStatus(User.STATUS_NORMAL);
+            u.setIsVip(true);
+            u.setVipExpireAt(now.plusDays(7));
         }
-        u.setIsVip(false);
         u.setReferralSource((referralSource != null && !referralSource.isBlank()) ? referralSource.trim() : "自己搜索");
         u.setLastLoginAt(null);
         u.setLoginCount(0);
-        u.setCreatedAt(LocalDateTime.now());
+        u.setCreatedAt(now);
         userMapper.insert(u);
 
         if (needApproval) {
             return new RegisterResult(
                     u.getStatus(),
                     u.getUsername(),
-                    "注册申请已提交，请等待管理员审核授权",
+                    "注册申请已提交，已为您预设 7 天 VIP 会员！请等待管理员审核授权",
                     true,
                     null,
                     u.getRole(),
-                    false
+                    true
             );
         } else {
             // 免审直接登录: 生成 JWT Token 返回
@@ -77,11 +84,11 @@ public class AuthService {
             return new RegisterResult(
                     u.getStatus(),
                     u.getUsername(),
-                    "注册成功，已自动开通账号",
+                    "注册成功，已赠送您 7 天 VIP 会员体验！",
                     false,
                     token,
                     u.getRole(),
-                    u.isVipEffective()
+                    true
             );
         }
     }

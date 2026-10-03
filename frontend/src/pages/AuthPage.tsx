@@ -41,8 +41,8 @@ export default function AuthPage() {
       } else {
         const regRes = await api.register(values.username, values.password, values.referralSource)
         if (regRes.needApproval === false && regRes.token) {
-          login(regRes.token, regRes.username, regRes.role ?? 'USER', regRes.isVip ?? false)
-          message.success('注册成功，已为您自动登录！')
+          login(regRes.token, regRes.username, regRes.role ?? 'USER', regRes.isVip ?? true)
+          message.success('注册成功，已赠送您 7 天 VIP 体验会员！')
           if (regRes.role === 'ADMIN') {
             navigate('/admin', { replace: true })
           } else {
@@ -54,10 +54,10 @@ export default function AuthPage() {
             content: (
               <div style={{ marginTop: 8 }}>
                 <p style={{ margin: '0 0 8px 0', color: '#334155', fontSize: 14 }}>
-                  账号 <b>{regRes.username}</b> 注册申请已成功发送！
+                  账号 <b>{regRes.username}</b> 注册申请已成功发送，已预设 <b>7 天 VIP 会员</b>！
                 </p>
                 <p style={{ margin: 0, color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
-                  为了系统安全与合规，新注册用户需等待管理员审核授权后方可登录使用。请联系管理员完成授权审核。
+                  为了系统安全与合规，新注册用户需等待管理员审核授权，审核通过后即可立即享受 7 天 VIP 体验权益。请联系管理员完成授权。
                 </p>
               </div>
             ),
@@ -218,7 +218,7 @@ export default function AuthPage() {
             </div>
             ) : (
               <div style={{ marginTop: 12, marginBottom: 18, backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 12px', fontSize: 12, color: '#166534', lineHeight: 1.5 }}>
-                <div><b>免审直接登录：</b>当前注册免审核，提交后直接创建账号并自动登录！</div>
+                <div><b>🎁 新人福利：</b>新注册用户即送 <b>7 天 VIP 体验会员</b>！免审通道已开启，提交后自动开通并直接登录！</div>
               </div>
             )
           ) : (

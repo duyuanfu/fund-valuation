@@ -46,12 +46,14 @@ class AuthServiceTest {
         u.setStatus(User.STATUS_NORMAL);
         userMapper.updateById(u);
 
-        // 审核通过后可正常登录
+        // 审核通过后可正常登录，且享有新用户赠送的7天VIP体验特权
         AuthService.LoginResult res = authService.login("alice", "password123");
         assertNotNull(res.token());
         assertEquals("alice", res.username());
         assertEquals(User.ROLE_USER, res.role());
-        assertEquals(false, res.isVip());
+        assertTrue(res.isVip()); // 享有7天VIP
+        assertNotNull(u.getVipExpireAt());
+        assertTrue(u.getVipExpireAt().isAfter(java.time.LocalDateTime.now().plusDays(6)));
         assertEquals("alice", authService.resolveUsername(res.token()));
         assertTrue(new BCryptPasswordEncoder().matches("password123", u.getPasswordHash()));
     }

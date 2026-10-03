@@ -114,6 +114,13 @@ public class UserManagementService {
         if (u == null) {
             throw new IllegalArgumentException("用户不存在: " + username);
         }
+        // 若用户由待审核状态审核通过为正常状态，从通过时刻重新起算满7天VIP体验时间
+        if (User.STATUS_PENDING.equalsIgnoreCase(u.getStatus()) && User.STATUS_NORMAL.equalsIgnoreCase(status)) {
+            if (Boolean.TRUE.equals(u.getIsVip()) && u.getVipExpireAt() != null) {
+                u.setVipExpireAt(LocalDateTime.now().plusDays(7));
+                log.info("user {} approved, reset 7-day VIP trial expiration to {}", username, u.getVipExpireAt());
+            }
+        }
         u.setStatus(status.toUpperCase());
         userMapper.updateById(u);
         log.info("user {} status updated to {}", username, status);
