@@ -148,51 +148,109 @@ def get_audio_duration(file_path: Path) -> float:
     return float(res.stdout.strip())
 
 # -------------------------------------------------------------
-# 2. 生成清爽科技 Lo-Fi 背景音乐
+# 2. 生成欢快舒适的轻量科技 Lo-Fi / 电子 BGM (多音轨立体声合成)
 # -------------------------------------------------------------
 def generate_lofi_bgm(output_wav: Path, total_seconds: float):
-    print(f"🎵 正在生成高品质轻科技 Lo-Fi 背景音乐 ({total_seconds:.1f} 秒)...")
+    print(f"🎵 正在生成欢快舒适的轻量科技 Lo-Fi / 电子 BGM ({total_seconds:.1f} 秒)...")
     total_samples = int(total_seconds * SAMPLE_RATE)
-    chords = [
-        [261.63, 329.63, 392.00, 493.88],  # Cmaj7
-        [220.00, 261.63, 329.63, 392.00],  # Am7
-        [174.61, 220.00, 261.63, 329.63],  # Fmaj7
-        [196.00, 246.94, 293.66, 349.23],  # G7
+    
+    bpm = 112.0
+    beat_dur = 60.0 / bpm
+    sixteenth = beat_dur / 4.0
+    bar_dur = beat_dur * 4.0  # 4拍一个小节和弦
+
+    # 4小节现代极具阳光活力与科技感的和弦进行 (Fmaj7 - G - Em7 - Am7)
+    chord_prog = [
+        {"root": 174.61, "notes": [174.61, 261.63, 329.63, 440.00]},  # Fmaj7
+        {"root": 196.00, "notes": [196.00, 293.66, 392.00, 493.88]},  # G
+        {"root": 164.81, "notes": [164.81, 246.94, 293.66, 392.00]},  # Em7
+        {"root": 220.00, "notes": [220.00, 261.63, 329.63, 392.00]},  # Am7
     ]
-    chord_len = 2.5
+
+    # 科技感明快16分音符五声琶音音阶
+    arp_scale = [
+        523.25, 587.33, 659.25, 783.99, 880.00,
+        1046.50, 1174.66, 1318.51, 1567.98, 1760.00
+    ]
+    num_sixteenths = int(total_seconds / sixteenth) + 16
+    pattern = [0, 2, 4, 7, 5, 3, 6, 8, 7, 5, 4, 2, 3, 5, 7, 9]
+    arp_notes = [arp_scale[pattern[step % len(pattern)] % len(arp_scale)] for step in range(num_sixteenths)]
+
+    noise_seed = 123456789
+    def get_noise():
+        nonlocal noise_seed
+        noise_seed = (noise_seed * 1103515245 + 12345) & 0x7fffffff
+        return (noise_seed / 0x3fffffff) - 1.0
+
+    frames = bytearray()
+    for i in range(total_samples):
+        t = i / SAMPLE_RATE
+
+        # 1. 和弦电钢琴层 (Warm Electric Piano Plucks)
+        chord_idx = int((t / bar_dur) % len(chord_prog))
+        cur_chord = chord_prog[chord_idx]
+        chord_beat_phase = (t / beat_dur) % 1.0
+        chord_env = math.exp(-chord_beat_phase * 4.0) * 0.7 + 0.3 * math.exp(-chord_beat_phase * 1.2)
+        chord_sig = 0.0
+        for freq in cur_chord["notes"]:
+            chord_sig += math.sin(2 * math.pi * freq * t) * 0.06
+            chord_sig += math.sin(4 * math.pi * freq * t) * 0.015
+            chord_sig += math.sin(6 * math.pi * freq * t) * 0.005
+        chord_sig *= chord_env
+
+        # 2. 欢快科技感清脆琶音 (16th-note Marimba / Synth Arp)
+        sixteenth_step = int(t / sixteenth)
+        sixteenth_phase = (t % sixteenth) / sixteenth
+        arp_freq = arp_notes[sixteenth_step % len(arp_notes)]
+        arp_env = math.exp(-sixteenth_phase * 12.0)
+        arp_sig = (math.sin(2 * math.pi * arp_freq * t) * 0.08 + math.sin(6 * math.pi * arp_freq * t) * 0.02) * arp_env
+
+        # 3. 活跃弹跳贝斯 (Bouncy Synth Bass)
+        bass_step = int(t / (beat_dur / 2.0))
+        bass_phase = (t % (beat_dur / 2.0)) / (beat_dur / 2.0)
+        bass_env = math.exp(-bass_phase * 6.0)
+        root_f = cur_chord["root"] / 2.0
+        if (bass_step % 4) == 2:
+            root_f *= 2.0
+        bass_sig = (math.sin(2 * math.pi * root_f * t) * 0.16 + math.sin(4 * math.pi * root_f * t) * 0.05) * bass_env
+
+        # 4. 轻快舒适鼓组 (Lo-Fi Drums: Kick, Snare, Hi-hat)
+        beat_idx = int((t / beat_dur) % 4)
+        beat_time = (t % beat_dur)
+        kick_env = 0.0
+        if beat_time < 0.25 and (beat_idx == 0 or beat_idx == 2):
+            k_t = beat_time
+            k_freq = 110.0 * math.exp(-k_t * 30.0) + 42.0
+            kick_env = math.sin(2 * math.pi * k_freq * k_t) * math.exp(-k_t * 18.0) * 0.26
+        elif beat_idx == 2 and beat_time > beat_dur * 0.5:
+            k_t = beat_time - beat_dur * 0.5
+            if k_t < 0.2:
+                k_freq = 100.0 * math.exp(-k_t * 30.0) + 42.0
+                kick_env = math.sin(2 * math.pi * k_freq * k_t) * math.exp(-k_t * 20.0) * 0.18
+
+        snare_env = 0.0
+        if beat_time < 0.22 and (beat_idx == 1 or beat_idx == 3):
+            s_t = beat_time
+            snare_env = (get_noise() * 0.7 + math.sin(2 * math.pi * 185.0 * s_t) * 0.3) * math.exp(-s_t * 22.0) * 0.15
+
+        hh_phase = (t % (beat_dur / 2.0)) / (beat_dur / 2.0)
+        hh_env = get_noise() * math.exp(-hh_phase * 40.0) * 0.05
+        drums_sig = kick_env + snare_env + hh_env
+
+        # 5. 立体声总输出
+        mix_left = chord_sig * 0.85 + arp_sig * 1.1 + bass_sig * 0.95 + drums_sig * 0.9
+        mix_right = chord_sig * 0.95 + arp_sig * 0.85 + bass_sig * 0.95 + drums_sig * 0.9
+
+        val_l = max(-0.95, min(0.95, mix_left))
+        val_r = max(-0.95, min(0.95, mix_right))
+        frames.extend(struct.pack("<hh", int(val_l * 32767.0), int(val_r * 32767.0)))
 
     with wave.open(str(output_wav), "w") as wav:
         wav.setnchannels(2)
         wav.setsampwidth(2)
         wav.setframerate(SAMPLE_RATE)
-        frames = bytearray()
-        for i in range(total_samples):
-            t = i / SAMPLE_RATE
-            chord_idx = int((t / chord_len) % len(chords))
-            cur_chord = chords[chord_idx]
-            
-            beat_phase = (t * 85 / 60) % 1.0
-            envelope = math.exp(-beat_phase * 2.8) * 0.75 + 0.25
-            
-            chord_sample = 0.0
-            for freq in cur_chord:
-                chord_sample += math.sin(2 * math.pi * freq * t) * 0.09
-                chord_sample += math.sin(4 * math.pi * freq * t) * 0.02
-            chord_sample *= envelope
-
-            root_freq = cur_chord[0] / 2.0
-            bass_sample = math.sin(2 * math.pi * root_freq * t) * 0.12
-            
-            drum_phase = (t * 170 / 60) % 1.0
-            kick = math.sin(2 * math.pi * 50 * (1 - drum_phase * 0.8) * t) * math.exp(-drum_phase * 16) * 0.14
-
-            sample_val = chord_sample + bass_sample + kick
-            sample_val = max(-0.95, min(0.95, sample_val * 0.35))
-            int_val = int(sample_val * 32767.0)
-            frames.extend(struct.pack("<hh", int_val, int_val))
-            
         wav.writeframes(frames)
-    print("✅ 背景音乐合成完毕！")
+    print("✅ 欢快轻科技 Lo-Fi BGM 生成完毕！")
 
 # -------------------------------------------------------------
 # 3. 现代化视觉组件与动效渲染
@@ -617,7 +675,7 @@ async def build_pipeline():
         "ffmpeg", "-y",
         "-i", str(raw_voice_wav),
         "-i", str(bgm_wav),
-        "-filter_complex", "[0:a]volume=1.0[v];[1:a]volume=0.07[m];[v][m]amix=inputs=2:duration=first:dropout_transition=2[out]",
+        "-filter_complex", "[0:a]volume=1.0[v];[1:a]volume=0.075[m];[v][m]amix=inputs=2:duration=first:dropout_transition=2[out]",
         "-map", "[out]",
         "-c:a", "aac", "-b:a", "192k",
         str(mixed_audio_aac)
