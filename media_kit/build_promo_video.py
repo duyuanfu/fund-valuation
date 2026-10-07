@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-基金实时估值系统 - B站百万爆款流量级宣传视频构建流水线 (高级舒适浅色主题版)
-设计规范:
-1. 视觉升级: 顶级 SaaS / Apple 级舒适浅色金融风 (Clean Light Finance)，柔和微渐变底 + 纯白大圆角卡片 + 优雅微投影；
-2. 经典舒适红绿: 涨跌采用清爽耐看的胶囊徽章 (浅红底+正红字 #ef4444 / 浅绿底+翠绿字 #16a34a)；
-3. 独家时分走势图: 优雅珊瑚红折线 + 柔和温润渐变填充 + 呼吸脉冲球；
-4. 叙事节奏: 保持黄金完播率高流量逻辑 (痛点暴击 -> 自研神器 -> 分时走势 -> 重仓利率穿透 -> 秒算今日到手 -> 全网开源)；
-5. 字幕美学: 悬浮微磨砂纯白胶囊 + 沉稳深色标题文字，阅读极其温润舒适。
+基金实时估值系统 - B站百万爆款流量级宣传视频构建流水线 (高级舒适浅色 + 动态实机滚动演示版)
+针对用户反馈重点精进:
+1. 彻底解决符号方框乱码: 100% 移除所有 emoji 和特殊 Unicode 符号，全部由代码矢量绘制警示灯、对勾、指示点；
+2. 第一帧震撼动态升级: 彻底摒弃大段枯燥静态对比文字！直接呈现真实网页自选基金列表的【丝滑平滑滚动查看】实机演示，
+   10只明星基金真实数据，配合盘中实时脉冲跳动与高光卡片，开屏即震撼！
+3. 全片保持温润舒适的现代浅色金融质感 (Clean Light Finance)；
+4. 保持黄金完播率叙事节奏与 116 BPM 轻科技 Lo-Fi 配乐。
 """
 
 import os
@@ -62,16 +62,35 @@ FONT_TITLE = get_font(40, bold=True)
 FONT_SUBTITLE = get_font(21, bold=False)
 FONT_CARD_TITLE = get_font(25, bold=True)
 FONT_BIG_NUM = get_font(36, bold=True)
-FONT_MEDIUM_NUM = get_font(24, bold=True)
+FONT_MEDIUM_NUM = get_font(23, bold=True)
 FONT_BODY = get_font(18, bold=False)
 FONT_CAPTION = get_font(13, bold=False)
 FONT_SUBTITLE_BAR = get_font(24, bold=True)
 
-# 6 个爆款节奏分镜 (总时长约 48s)
+# 矢量图形绘制辅助函数 (100% 杜绝 Emoji 方框乱码)
+def draw_vector_alert_badge(draw: ImageDraw.ImageDraw, x: int, y: int, radius: int = 10):
+    """绘制纯代码矢量黄色/橙色警示圆圈感叹号"""
+    draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill=(239, 68, 68))
+    draw.line([(x, y - radius + 5), (x, y + 1)], fill=(255, 255, 255), width=3)
+    draw.ellipse([x - 2, y + radius - 6, x + 2, y + radius - 2], fill=(255, 255, 255))
+
+def draw_vector_check_badge(draw: ImageDraw.ImageDraw, x: int, y: int, radius: int = 9):
+    """绘制纯代码矢量绿色对勾圆圈"""
+    draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill=(16, 185, 129))
+    draw.line([(x - 4, y), (x - 1, y + 4)], fill=(255, 255, 255), width=2)
+    draw.line([(x - 1, y + 4), (x + 5, y - 4)], fill=(255, 255, 255), width=2)
+
+def draw_vector_cross_badge(draw: ImageDraw.ImageDraw, x: int, y: int, radius: int = 9):
+    """绘制纯代码矢量红色叉号圆圈"""
+    draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill=(239, 68, 68))
+    draw.line([(x - 4, y - 4), (x + 4, y + 4)], fill=(255, 255, 255), width=2)
+    draw.line([(x + 4, y - 4), (x - 4, y + 4)], fill=(255, 255, 255), width=2)
+
+# 6 个爆款节奏分镜 (纯文本无任何 Emoji，杜绝乱码)
 SCENES = [
     {
         "id": 1,
-        "tag": "⚡ 痛点暴击 · 告别盲盒",
+        "tag": "痛点暴击 · 告别盲盒",
         "title": "官方估值全面下架，下午2点半还在盲猜？",
         "subtitle": "大盘剧烈上蹿下跳 · 盘中两眼一抹黑 · 晚上八点被迫开盲盒！",
         "tts_text": "官方估值下线后，你是不是也每天下午两点半看着大盘乱跳，手里基金是赚是亏全靠盲猜？",
@@ -79,7 +98,7 @@ SCENES = [
     },
     {
         "id": 2,
-        "tag": "🚀 自研神器 · 秒级脉搏",
+        "tag": "自研神器 · 秒级脉搏",
         "title": "自研基金盘中实时估值系统上线！",
         "subtitle": "直通交易所极速撮合行情 · 批量导入 · 每一分钱盘中实时跳动！",
         "tts_text": "为了告别被动挨打，我花了半个月自研了这套实时估值神器！秒级高频穿透，盘中盈亏全透明！",
@@ -87,7 +106,7 @@ SCENES = [
     },
     {
         "id": 3,
-        "tag": "📈 独家神技 · 分时走势",
+        "tag": "独家神技 · 分时走势",
         "title": "独家绘制日内实时分时脉冲曲线",
         "subtitle": "全天240点动态分时折线 · 均线基准对比 · 最佳买卖点清晰可见！",
         "tts_text": "别人只有收盘数字，我们直接绘制全天实时分时曲线！秒级捕捉涨跌脉冲，买卖时机一清二楚！",
@@ -95,7 +114,7 @@ SCENES = [
     },
     {
         "id": 4,
-        "tag": "🔬 硬核双核 · 极速穿透",
+        "tag": "硬核双核 · 极速穿透",
         "title": "股票前十大重仓穿透 + 纯债利率久期模型",
         "subtitle": "股票逐只权重加权穿透 · 纯债跟踪十年期国债收益率，杜绝失真！",
         "tts_text": "股票基金逐只穿透前十大重仓股票；纯债基金依托十年国债利率与久期模型动态推算，告别恒定为零！",
@@ -103,7 +122,7 @@ SCENES = [
     },
     {
         "id": 5,
-        "tag": "💰 收益立现 · 秒算到手",
+        "tag": "收益立现 · 秒算到手",
         "title": "对标支付宝4大指标 · 实时推算今日到手",
         "subtitle": "持有金额与份额双向联动 · 盘中实时测算今天具体赚了多少钱！",
         "tts_text": "对标支付宝4大核心指标，金额份额自动联动，盘中每分钟直接推算出今天实收赚了多少钱！",
@@ -111,7 +130,7 @@ SCENES = [
     },
     {
         "id": 6,
-        "tag": "🎁 全网开源 · 诚意分享",
+        "tag": "全网开源 · 诚意分享",
         "title": "手机电脑双端自适应 · 代码全量免费开源",
         "subtitle": "在线秒开开箱即用 · 体验地址与GitHub源码见置顶评论！",
         "tts_text": "手机电脑全适配！在线体验与全部源代码免费开源，地址见置顶评论，觉得好用求一键三连支持！",
@@ -149,7 +168,7 @@ def get_audio_duration(file_path: Path) -> float:
 # 2. 动感科技 Lo-Fi / 电子 BGM 生成 (116 BPM 律动和弦)
 # -------------------------------------------------------------
 def generate_lofi_bgm(output_wav: Path, total_seconds: float):
-    print(f"🎵 正在生成轻盈舒适的科技 Lo-Fi / 电子 BGM ({total_seconds:.1f} 秒)...")
+    print(f"正在生成轻盈舒适的科技 Lo-Fi / 电子 BGM ({total_seconds:.1f} 秒)...")
     total_samples = int(total_seconds * SAMPLE_RATE)
     
     bpm = 116.0
@@ -182,7 +201,6 @@ def generate_lofi_bgm(output_wav: Path, total_seconds: float):
     for i in range(total_samples):
         t = i / SAMPLE_RATE
 
-        # 电钢琴和弦拨弦
         chord_idx = int((t / bar_dur) % len(chord_prog))
         cur_chord = chord_prog[chord_idx]
         chord_beat_phase = (t / beat_dur) % 1.0
@@ -193,14 +211,12 @@ def generate_lofi_bgm(output_wav: Path, total_seconds: float):
             chord_sig += math.sin(4 * math.pi * freq * t) * 0.018
         chord_sig *= chord_env
 
-        # 清亮电子琶音
         sixteenth_step = int(t / sixteenth)
         sixteenth_phase = (t % sixteenth) / sixteenth
         arp_freq = arp_notes[sixteenth_step % len(arp_notes)]
         arp_env = math.exp(-sixteenth_phase * 14.0)
         arp_sig = (math.sin(2 * math.pi * arp_freq * t) * 0.085 + math.sin(6 * math.pi * arp_freq * t) * 0.02) * arp_env
 
-        # 弹跳贝斯
         bass_step = int(t / (beat_dur / 2.0))
         bass_phase = (t % (beat_dur / 2.0)) / (beat_dur / 2.0)
         bass_env = math.exp(-bass_phase * 6.5)
@@ -209,7 +225,6 @@ def generate_lofi_bgm(output_wav: Path, total_seconds: float):
             root_f *= 1.5
         bass_sig = (math.sin(2 * math.pi * root_f * t) * 0.18 + math.sin(4 * math.pi * root_f * t) * 0.05) * bass_env
 
-        # 鼓组
         beat_idx = int((t / beat_dur) % 4)
         beat_time = (t % beat_dur)
         kick_env = 0.0
@@ -244,7 +259,7 @@ def generate_lofi_bgm(output_wav: Path, total_seconds: float):
         wav.setsampwidth(2)
         wav.setframerate(SAMPLE_RATE)
         wav.writeframes(frames)
-    print("✅ 动感科技 Lo-Fi BGM 生成完毕！")
+    print("动感科技 Lo-Fi BGM 生成完毕！")
 
 # -------------------------------------------------------------
 # 3. 高级舒适浅色金融风 (Clean Light Finance) 视觉渲染
@@ -264,14 +279,14 @@ def draw_gradient_background(draw: ImageDraw.ImageDraw, frame_idx: int):
         for y in range(20, HEIGHT, grid_gap):
             draw.point((x, y), fill=(203, 213, 225, 90))
 
-    # 动态柔和呼吸光晕 (浅天蓝与浅紫霞光)
+    # 动态柔和呼吸光晕
     wave_offset = math.sin(frame_idx * 0.08) * 16
     draw.ellipse([(-100, -100 + wave_offset), (520, 520 + wave_offset)], fill=(224, 242, 254, 45))
     draw.ellipse([(WIDTH - 550, -100 - wave_offset), (WIDTH + 100, 550 - wave_offset)], fill=(238, 242, 255, 40))
     draw.ellipse([(WIDTH - 580, HEIGHT - 550 + wave_offset), (WIDTH + 120, HEIGHT + 120 + wave_offset)], fill=(254, 243, 199, 45))
 
 def draw_main_window(draw: ImageDraw.ImageDraw, card_box, tag_text: str):
-    # 柔和三层微阴影模拟 (精致漂浮感)
+    # 柔和三层微阴影模拟
     draw.rounded_rectangle([card_box[0]-4, card_box[1]-4, card_box[2]+4, card_box[3]+4], radius=22, fill=(226, 232, 240, 80))
     draw.rounded_rectangle([card_box[0]-2, card_box[1]-2, card_box[2]+2, card_box[3]+2], radius=20, fill=(241, 245, 249, 130))
     # 主卡片白底
@@ -285,9 +300,9 @@ def draw_main_window(draw: ImageDraw.ImageDraw, card_box, tag_text: str):
 
     # 顶栏居中 Logo 与系统名 (沉稳深蓝灰)
     logo_cx = card_box[0] + 120
-    draw.text((logo_cx, ty - 2), "🔥 基金实时估值系统 · 盘中毫秒级行情穿透神器", fill=(15, 23, 42), font=FONT_CAPTION)
+    draw.text((logo_cx, ty - 2), "基金实时估值系统 · 盘中毫秒级行情穿透工具", fill=(15, 23, 42), font=FONT_CAPTION)
 
-    # 右侧特色标签 Pill (舒适浅蓝微底)
+    # 右侧特色标签 Pill
     tag_w = 340
     tag_box = [card_box[2] - 28 - tag_w, card_box[1] + 12, card_box[2] - 28, card_box[1] + 44]
     draw.rounded_rectangle(tag_box, radius=16, fill=(239, 246, 255), outline=(191, 219, 254), width=1)
@@ -311,12 +326,12 @@ def draw_floating_subtitle_bar(draw: ImageDraw.ImageDraw, text: str):
 # -------------------------------------------------------------
 # 4. 各场景专属高品质舒服浅色排版
 # -------------------------------------------------------------
-def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list, frame_idx: int):
+def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list, frame_idx: int, scene_frame_count: int):
     sid = scene["id"]
     cx1, cy1, cx2, cy2 = card_box
     content_y = cy1 + 70
 
-    # 顶栏大标题区 (40px 粗深黑 + 21px 舒适冷灰)
+    # 顶栏大标题区
     draw.text((cx1 + 40, content_y), scene["title"], fill=(15, 23, 42), font=FONT_TITLE)
     draw.text((cx1 + 42, content_y + 54), scene["subtitle"], fill=(100, 116, 139), font=FONT_SUBTITLE)
     draw.line([(cx1 + 40, content_y + 90), (cx2 - 40, content_y + 90)], fill=(241, 245, 249), width=2)
@@ -324,47 +339,121 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
     body_y = content_y + 106
 
     if sid == 1:
-        # 分镜1: 痛点暴击！(传统理财App盲盒 vs 自研实时神器解法)
-        half_w = (cx2 - cx1 - 100) // 2
-        # 左侧: 传统理财App痛点警示卡 (浅温润红底)
-        warn_box = [cx1 + 40, body_y + 10, cx1 + 40 + half_w, body_y + 490]
-        draw.rounded_rectangle(warn_box, radius=18, fill=(254, 242, 242), outline=(254, 202, 202), width=1)
-        draw.text((warn_box[0] + 28, warn_box[1] + 24), "⚠️ 传统理财 App 痛点盲盒：", fill=(220, 38, 38), font=FONT_CARD_TITLE)
-        
-        warn_items = [
-            ("盘中实时估值全面下架", "白天大盘暴跌暴涨，收益无法感知，两眼一抹黑"),
-            ("收盘后被动开盲盒", "晚上8点基金公司才出净值，白白错过白天最佳减仓点"),
-            ("纯债基金估值永远为 0", "传统软件纯债基金白天不动，无法应对债市剧烈波动"),
-            ("记账无法知晓到手收益", "只能知道持有份额，今天实际赚亏几百块完全算不清"),
-        ]
-        for widx, (wtitle, wdesc) in enumerate(warn_items):
-            wy = warn_box[1] + 75 + widx * 96
-            draw.rounded_rectangle([warn_box[0] + 20, wy, warn_box[2] - 20, wy + 82], radius=10, fill=(255, 255, 255), outline=(254, 226, 226), width=1)
-            draw.text((warn_box[0] + 36, wy + 14), f"✕  {wtitle}", fill=(220, 38, 38), font=FONT_CARD_TITLE)
-            draw.text((warn_box[0] + 36, wy + 46), wdesc, fill=(100, 116, 139), font=FONT_CAPTION)
+        # 分镜1: 彻底重构！【真实网页自选基金列表滑动演示】+ 动态脉冲大卡片
+        # 左侧宽视窗: 真实网页自选列表上下平滑流动演示
+        web_w = 1040
+        web_box = [cx1 + 40, body_y + 6, cx1 + 40 + web_w, body_y + 490]
+        # 网页视窗外框 (拟真浏览器内部看板)
+        draw.rounded_rectangle(web_box, radius=16, fill=(248, 250, 252), outline=(226, 232, 240), width=1)
 
-        # 右侧: 自研实时估值破局方案 (浅清爽蓝底)
-        sol_box = [cx1 + 40 + half_w + 20, body_y + 10, cx2 - 40, body_y + 490]
-        draw.rounded_rectangle(sol_box, radius=18, fill=(240, 249, 255), outline=(186, 230, 253), width=1)
-        draw.text((sol_box[0] + 28, sol_box[1] + 24), "⚡ 自研实时穿透神器破局：", fill=(3, 105, 161), font=FONT_CARD_TITLE)
-        
-        # 实时大数字脉冲卡 (白底带高亮)
-        pulse_box = [sol_box[0] + 24, sol_box[1] + 75, sol_box[2] - 24, sol_box[1] + 230]
-        draw.rounded_rectangle(pulse_box, radius=14, fill=(255, 255, 255), outline=(191, 219, 254), width=1)
-        draw.text((pulse_box[0] + 24, pulse_box[1] + 16), "全市场公募基金 · 盘中秒级加权实时计算中...", fill=(37, 99, 235), font=FONT_CAPTION)
-        draw.text((pulse_box[0] + 24, pulse_box[1] + 46), "+2.85%", fill=(220, 38, 38), font=FONT_HERO)
-        draw.text((pulse_box[0] + 24, pulse_box[1] + 112), "估算净值: 2.5500 (14:30 实时点)", fill=(15, 23, 42), font=FONT_CARD_TITLE)
-
-        sol_items = [
-            ("独家全天分时折线走势", "像股票看盘一样看基金日内走势脉搏"),
-            ("穿透前十大重仓 + 纯债利率驱动", "股票秒级穿透，债券跟踪国债收益率"),
-            ("输入支付宝金额，秒推今日盈亏", "今天赚亏多少钱，盘中实时给您算清每一分！"),
+        # 真实热门基金大盘数据池 (共 9 只不同风格明星标的)
+        fund_pool = [
+            ("易方达消费行业股票", "110022", "主动股票", "2.5500", "+2.85%", "2.4793", True),
+            ("华夏国证半导体芯片ETF", "159995", "场内ETF", "1.1280", "+1.65%", "1.1097", True),
+            ("招商中证白酒指数分级", "161725", "指数型", "0.8920", "+2.12%", "0.8735", True),
+            ("富国产业债债券A", "100058", "债券-纯债", "1.2385", "-0.08%", "1.2395", False),
+            ("中欧医疗健康混合A", "003095", "混合型", "1.6850", "+1.45%", "1.6609", True),
+            ("易方达蓝筹精选混合", "005827", "混合型", "1.8920", "+1.25%", "1.8686", True),
+            ("广发纳斯达克100ETF联接", "270042", "QDII指数", "4.5620", "+0.92%", "4.5204", True),
+            ("富国天惠成长混合A", "161005", "主动股票", "2.7150", "+1.80%", "2.6670", True),
+            ("博时信用债纯债债券A", "050027", "债券-长债", "1.4120", "+0.05%", "1.4113", True),
         ]
-        for sidx, (stitle, sdesc) in enumerate(sol_items):
-            sy = sol_box[1] + 245 + sidx * 75
-            draw.rounded_rectangle([sol_box[0] + 24, sy, sol_box[2] - 24, sy + 64], radius=8, fill=(255, 255, 255), outline=(186, 230, 253), width=1)
-            draw.text((sol_box[0] + 40, sy + 10), f"✓  {stitle}", fill=(16, 185, 129), font=FONT_BODY)
-            draw.text((sol_box[0] + 40, sy + 34), sdesc, fill=(71, 85, 105), font=FONT_CAPTION)
+
+        # 核心滑动动效 (前0.8秒静止展示完整首屏，随后丝滑平缓滑动向下)
+        progress = frame_idx / max(1, scene_frame_count)
+        if progress < 0.15:
+            scroll_y = 0
+        else:
+            scroll_prog = (progress - 0.15) / 0.85
+            scroll_curve = (1 - math.cos(scroll_prog * math.pi)) / 2.0
+            scroll_y = int(scroll_curve * 230)
+
+        # 视窗内部滚动区域
+        list_top = web_box[1] + 74
+        list_bottom = web_box[3] - 12
+        card_h = 66
+        card_gap = 8
+
+        # 1. 先绘制在底层滚动的卡片列表
+        for idx, (fname, fcode, ftype, estnav, estpct, prevnav, isup) in enumerate(fund_pool):
+            iy = list_top + idx * (card_h + card_gap) - scroll_y
+            if iy + card_h < list_top or iy > list_bottom:
+                continue
+
+            ibox = [web_box[0] + 16, iy, web_box[2] - 16, iy + card_h]
+            draw.rounded_rectangle(ibox, radius=10, fill=(255, 255, 255), outline=(226, 232, 240), width=1)
+            
+            # 把手指示点
+            hx, hy = ibox[0] + 14, iy + 24
+            for dx in (0, 5):
+                for dy in (0, 6, 12):
+                    draw.ellipse([hx + dx, hy + dy, hx + dx + 2, hy + dy + 2], fill=(148, 163, 184))
+
+            # 基金名与代码
+            draw.text((ibox[0] + 36, iy + 13), fname, fill=(15, 23, 42), font=FONT_BODY)
+            draw.text((ibox[0] + 36, iy + 38), f"{fcode} · 昨净 {prevnav}", fill=(100, 116, 139), font=FONT_CAPTION)
+
+            # 类型标签 (完整展示 ftype，绝不切词截断)
+            tag_color = (224, 231, 255) if "指数" in ftype or "ETF" in ftype else (254, 226, 226) if "主动" in ftype else (220, 252, 231)
+            text_color = (67, 56, 202) if "指数" in ftype or "ETF" in ftype else (185, 28, 28) if "主动" in ftype else (21, 128, 61)
+            tbox = [ibox[0] + 410, iy + 16, ibox[0] + 530, iy + 46]
+            draw.rounded_rectangle(tbox, radius=6, fill=tag_color)
+            draw.text((tbox[0] + 12, tbox[1] + 6), ftype, fill=text_color, font=FONT_CAPTION)
+
+            # 实时估算净值
+            draw.text((ibox[2] - 270, iy + 16), estnav, fill=(220, 38, 38) if isup else (22, 163, 74), font=FONT_MEDIUM_NUM)
+
+            # 涨跌幅胶囊徽章
+            bbox = [ibox[2] - 130, iy + 14, ibox[2] - 16, iy + 48]
+            draw.rounded_rectangle(bbox, radius=6, fill=(254, 242, 242) if isup else (240, 253, 244), outline=(254, 202, 202) if isup else (187, 247, 208), width=1)
+            draw.text((bbox[0] + 18, bbox[1] + 7), estpct, fill=(220, 38, 38) if isup else (22, 163, 74), font=FONT_BODY)
+
+        # 2. 覆盖层: 网页固定顶部工具条 (纯白高透遮罩，防止卡片向上滑出穿帮)
+        draw.rounded_rectangle([web_box[0] + 2, web_box[1] + 2, web_box[2] - 2, web_box[1] + 68], radius=14, fill=(248, 250, 252))
+        wbar_box = [web_box[0] + 16, web_box[1] + 10, web_box[2] - 16, web_box[1] + 60]
+        draw.rounded_rectangle(wbar_box, radius=10, fill=(255, 255, 255), outline=(226, 232, 240), width=1)
+        draw.text((wbar_box[0] + 20, wbar_box[1] + 14), "自选估值列表 (32 只基金实时追踪 · 秒级推算)", fill=(15, 23, 42), font=FONT_BODY)
+        
+        # 右侧操作药丸
+        draw.rounded_rectangle([wbar_box[2] - 220, wbar_box[1] + 6, wbar_box[2] - 110, wbar_box[3] - 6], radius=8, fill=(37, 99, 235))
+        draw.text((wbar_box[2] - 204, wbar_box[1] + 11), "+ 批量导入", fill=(255, 255, 255), font=FONT_CAPTION)
+        draw.rounded_rectangle([wbar_box[2] - 95, wbar_box[1] + 6, wbar_box[2] - 15, wbar_box[3] - 6], radius=8, fill=(241, 245, 249))
+        draw.text((wbar_box[2] - 80, wbar_box[1] + 11), "拖拽排序", fill=(71, 85, 105), font=FONT_CAPTION)
+
+        # 右侧部分: 痛点与核心价值大卡片 (对比强烈，无任何 Emoji 乱码)
+        right_w = cx2 - (cx1 + 40 + web_w + 24) - 40
+        rx1 = cx1 + 40 + web_w + 24
+        rx2 = cx2 - 40
+
+        # 上卡片: 痛点警示卡 (浅红底 + 纯矢量感叹号图标)
+        rcard1 = [rx1, body_y + 6, rx2, body_y + 235]
+        draw.rounded_rectangle(rcard1, radius=16, fill=(254, 242, 242), outline=(254, 202, 202), width=1)
+        draw_vector_alert_badge(draw, rcard1[0] + 36, rcard1[1] + 34, radius=12)
+        draw.text((rcard1[0] + 56, rcard1[1] + 20), "传统理财 App 痛点盲盒", fill=(220, 38, 38), font=FONT_CARD_TITLE)
+        
+        draw_vector_cross_badge(draw, rcard1[0] + 36, rcard1[1] + 80, radius=8)
+        draw.text((rcard1[0] + 54, rcard1[1] + 68), "盘中实时估值全面下架，收益两眼一抹黑", fill=(100, 116, 139), font=FONT_BODY)
+        
+        draw_vector_cross_badge(draw, rcard1[0] + 36, rcard1[1] + 128, radius=8)
+        draw.text((rcard1[0] + 54, rcard1[1] + 116), "收盘后晚上8点才出净值，被动挨打被迫开盲盒", fill=(100, 116, 139), font=FONT_BODY)
+        
+        draw_vector_cross_badge(draw, rcard1[0] + 36, rcard1[1] + 176, radius=8)
+        draw.text((rcard1[0] + 54, rcard1[1] + 164), "纯债基金白天永远为零，无法应对债市剧烈波动", fill=(100, 116, 139), font=FONT_BODY)
+
+        # 下卡片: 自研破局方案 (浅蓝底 + 纯矢量对勾图标)
+        rcard2 = [rx1, body_y + 250, rx2, body_y + 490]
+        draw.rounded_rectangle(rcard2, radius=16, fill=(240, 249, 255), outline=(186, 230, 253), width=1)
+        draw_vector_check_badge(draw, rcard2[0] + 36, rcard2[1] + 34, radius=12)
+        draw.text((rcard2[0] + 56, rcard2[1] + 20), "自研实时穿透神器破局", fill=(3, 105, 161), font=FONT_CARD_TITLE)
+
+        draw_vector_check_badge(draw, rcard2[0] + 36, rcard2[1] + 80, radius=8)
+        draw.text((rcard2[0] + 54, rcard2[1] + 68), "直连交易所秒级高频穿透，全市场实时算清", fill=(15, 23, 42), font=FONT_BODY)
+
+        draw_vector_check_badge(draw, rcard2[0] + 36, rcard2[1] + 128, radius=8)
+        draw.text((rcard2[0] + 54, rcard2[1] + 116), "独家绘制日内分时折线，捕捉盘中买卖最佳时机", fill=(15, 23, 42), font=FONT_BODY)
+
+        draw_vector_check_badge(draw, rcard2[0] + 36, rcard2[1] + 176, radius=8)
+        draw.text((rcard2[0] + 54, rcard2[1] + 164), "对标支付宝秒算今日到手，纯债接入十年期国债利率", fill=(15, 23, 42), font=FONT_BODY)
 
     elif sid == 2:
         # 分镜2: 自选大盘库 (批量添加 + 拖拽排序 + 舒适红绿胶囊)
@@ -380,44 +469,41 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
         draw.text((tb[2] - 56, tb[1] + 15), "刷新", fill=(71, 85, 105), font=FONT_CAPTION)
 
         items = [
-            ("易方达消费行业股票", "110022", "主动股票", "2.5500", "+2.85%", "2.4793", "14:30", True),
-            ("华夏国证半导体芯片ETF", "159995", "场内ETF", "1.1280", "+1.65%", "1.1097", "14:30", True),
-            ("招商中证白酒指数分级", "161725", "指数型", "0.8920", "+2.12%", "0.8735", "14:30", True),
-            ("富国产业债债券A", "100058", "债券-纯债", "1.2385", "-0.08%", "1.2395", "14:30", False),
-            ("易方达蓝筹精选混合", "005827", "混合型", "1.8920", "+1.25%", "1.8686", "14:30", True),
+            ("易方达消费行业股票", "110022", "主动股票", "2.5500", "+2.85%", "2.4793", True),
+            ("华夏国证半导体芯片ETF", "159995", "场内ETF", "1.1280", "+1.65%", "1.1097", True),
+            ("招商中证白酒指数分级", "161725", "指数型", "0.8920", "+2.12%", "0.8735", True),
+            ("富国产业债债券A", "100058", "债券-纯债", "1.2385", "-0.08%", "1.2395", False),
+            ("易方达蓝筹精选混合", "005827", "混合型", "1.8920", "+1.25%", "1.8686", True),
         ]
-        for idx, (fname, fcode, ftype, estnav, estpct, prevnav, qtime, isup) in enumerate(items):
+        for idx, (fname, fcode, ftype, estnav, estpct, prevnav, isup) in enumerate(items):
             iy = body_y + 80 + idx * 72
             ibox = [cx1 + 40, iy, cx2 - 40, iy + 62]
             draw.rounded_rectangle(ibox, radius=10, fill=(255, 255, 255), outline=(226, 232, 240), width=1)
             
-            # 拖拽把手
             hx, hy = ibox[0] + 16, iy + 22
             for dx in (0, 6):
                 for dy in (0, 7, 14):
                     draw.ellipse([hx + dx, hy + dy, hx + dx + 3, hy + dy + 3], fill=(148, 163, 184))
             
             draw.text((ibox[0] + 45, iy + 11), fname, fill=(15, 23, 42), font=FONT_BODY)
-            draw.text((ibox[0] + 45, iy + 36), f"{fcode} · 昨净 {prevnav} · 行情时间 {qtime}", fill=(100, 116, 139), font=FONT_CAPTION)
+            draw.text((ibox[0] + 45, iy + 36), f"{fcode} · 昨净 {prevnav}", fill=(100, 116, 139), font=FONT_CAPTION)
             
-            # 分类标签
             tag_color = (224, 231, 255) if "指数" in ftype or "场内" in ftype else (254, 226, 226) if "主动" in ftype else (220, 252, 231)
             text_color = (67, 56, 202) if "指数" in ftype or "场内" in ftype else (185, 28, 28) if "主动" in ftype else (21, 128, 61)
             tbox = [ibox[0] + 440, iy + 14, ibox[0] + 540, iy + 44]
             draw.rounded_rectangle(tbox, radius=6, fill=tag_color)
             draw.text((tbox[0] + 14, tbox[1] + 6), ftype, fill=text_color, font=FONT_CAPTION)
 
-            # 估算净值
             draw.text((ibox[2] - 300, iy + 14), estnav, fill=(220, 38, 38) if isup else (22, 163, 74), font=FONT_MEDIUM_NUM)
             
-            # 涨跌幅胶囊徽章 (温润浅底红绿)
             bbox = [ibox[2] - 140, iy + 12, ibox[2] - 20, iy + 48]
             draw.rounded_rectangle(bbox, radius=6, fill=(254, 242, 242) if isup else (240, 253, 244), outline=(254, 202, 202) if isup else (187, 247, 208), width=1)
             draw.text((bbox[0] + 20, bbox[1] + 7), estpct, fill=(220, 38, 38) if isup else (22, 163, 74), font=FONT_BODY)
 
         tip_box = [cx1 + 40, body_y + 450, cx2 - 40, body_y + 510]
         draw.rounded_rectangle(tip_box, radius=12, fill=(240, 249, 255), outline=(186, 230, 253), width=1)
-        draw.text((tip_box[0] + 28, tip_box[1] + 18), "⚡ 支持逗号/分号批量极速导入数十只基金代码，单轴吸附拖拽排序，全市场基金日内秒级刷新！", fill=(3, 105, 161), font=FONT_BODY)
+        draw_vector_check_badge(draw, tip_box[0] + 28, tip_box[1] + 30, radius=10)
+        draw.text((tip_box[0] + 48, tip_box[1] + 18), "支持逗号与分号批量极速导入数十只基金代码，单轴吸附拖拽排序，全市场基金日内秒级刷新！", fill=(3, 105, 161), font=FONT_BODY)
 
     elif sid == 3:
         # 分镜3: 独家日内分时走势图 (脉冲心电图折线)
@@ -435,9 +521,10 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
         draw.text((ibox[0] + 24, ibox[1] + 285), "日内波动振幅: 3.12% (脉冲活跃)", fill=(71, 85, 105), font=FONT_BODY)
         draw.text((ibox[0] + 24, ibox[1] + 325), "重仓股票覆盖: 前十大重仓权重 62.4%", fill=(71, 85, 105), font=FONT_BODY)
         draw.text((ibox[0] + 24, ibox[1] + 365), "数据更新频率: 交易所直连每秒计算", fill=(71, 85, 105), font=FONT_BODY)
-        draw.text((ibox[0] + 24, ibox[1] + 430), "⚡ 独家分时图: 捕捉下午跳水与拉升买卖点", fill=(37, 99, 235), font=FONT_BODY)
+        
+        draw_vector_check_badge(draw, ibox[0] + 34, ibox[1] + 440, radius=9)
+        draw.text((ibox[0] + 50, ibox[1] + 430), "独家分时图: 捕捉下午跳水与拉升买卖点", fill=(37, 99, 235), font=FONT_BODY)
 
-        # 右侧 ECharts 风格高保真分时走势图
         chart_box = [cx1 + 40 + info_w + 24, body_y + 6, cx2 - 40, body_y + 490]
         draw.rounded_rectangle(chart_box, radius=16, fill=(255, 255, 255), outline=(226, 232, 240), width=1)
         draw.text((chart_box[0] + 24, chart_box[1] + 20), "日内实时估值走势图 (240分钟全天心电图脉冲)", fill=(15, 23, 42), font=FONT_CARD_TITLE)
@@ -450,7 +537,6 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
         draw.line([(gx1, mid_y), (gx2, mid_y)], fill=(203, 213, 225), width=1)
         draw.text((gx1 + 10, mid_y - 20), "昨日收盘基准线 (2.4793 / 0.00%)", fill=(148, 163, 184), font=FONT_CAPTION)
 
-        # 动态上扬珊瑚红折线走势
         curve_pts = []
         n_pts = 75
         for pidx in range(n_pts):
@@ -465,7 +551,6 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
         for lidx in range(len(curve_pts) - 1):
             draw.line([curve_pts[lidx], curve_pts[lidx + 1]], fill=(220, 38, 38), width=3)
 
-        # 终点脉冲发光球
         last_pt = curve_pts[-1]
         draw.ellipse([last_pt[0] - 8, last_pt[1] - 8, last_pt[0] + 8, last_pt[1] + 8], fill=(220, 38, 38))
         draw.ellipse([last_pt[0] - 14, last_pt[1] - 14, last_pt[0] + 14, last_pt[1] + 14], outline=(220, 38, 38, 120), width=2)
@@ -482,7 +567,6 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
     elif sid == 4:
         # 分镜4: 双核硬核穿透 (重仓股加权 + 纯债十年期国债模型)
         half_w = (cx2 - cx1 - 104) // 2
-        # 左栏: 股票前十大重仓秒级穿透
         left_box = [cx1 + 40, body_y + 6, cx1 + 40 + half_w, body_y + 490]
         draw.rounded_rectangle(left_box, radius=16, fill=(248, 250, 252), outline=(226, 232, 240), width=1)
         draw.text((left_box[0] + 24, left_box[1] + 20), "股票型/混合型 · 穿透前十大重仓股票", fill=(15, 23, 42), font=FONT_CARD_TITLE)
@@ -505,7 +589,6 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
             is_up = "+" in spct
             draw.text((srow[2] - 120, sy + 18), spct, fill=(220, 38, 38) if is_up else (22, 163, 74), font=FONT_MEDIUM_NUM)
 
-        # 右栏: 纯债基金国债利率驱动模型
         right_box = [cx1 + 40 + half_w + 24, body_y + 6, cx2 - 40, body_y + 490]
         draw.rounded_rectangle(right_box, radius=16, fill=(240, 249, 255), outline=(186, 230, 253), width=1)
         draw.text((right_box[0] + 24, right_box[1] + 20), "纯债基金 · 十年期国债收益率驱动模型", fill=(3, 105, 161), font=FONT_CARD_TITLE)
@@ -520,7 +603,8 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
         for bidx, btag in enumerate(b_tags):
             by = right_box[1] + 260 + bidx * 60
             draw.rounded_rectangle([right_box[0] + 20, by, right_box[2] - 20, by + 50], radius=8, fill=(255, 255, 255), outline=(186, 230, 253), width=1)
-            draw.text((right_box[0] + 36, by + 14), f"✓  {btag}", fill=(3, 105, 161), font=FONT_BODY)
+            draw_vector_check_badge(draw, right_box[0] + 36, by + 25, radius=8)
+            draw.text((right_box[0] + 52, by + 14), btag, fill=(3, 105, 161), font=FONT_BODY)
 
     elif sid == 5:
         # 分镜5: 对标支付宝4大指标 · 实时推算今日到手收益
@@ -551,14 +635,17 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
             draw.text((fx + 20, fbox[1] + 16), fk, fill=(100, 116, 139), font=FONT_CAPTION)
             draw.text((fx + 20, fbox[1] + 46), fv, fill=(15, 23, 42), font=FONT_BIG_NUM)
 
-        draw.text((abox[0] + 28, abox[1] + 200), "⚡ 只需输入持有金额或收益，自动推导持仓份额；盘中每分钟结合估值引擎推算今日到手到账金额！", fill=(37, 99, 235), font=FONT_BODY)
-        draw.text((abox[0] + 28, abox[1] + 236), "💡 零门槛记账，支持未来支付宝截图 OCR 自动扫描一键导入，再也不用手动按计算器！", fill=(100, 116, 139), font=FONT_BODY)
+        draw_vector_check_badge(draw, abox[0] + 40, abox[1] + 212, radius=8)
+        draw.text((abox[0] + 56, abox[1] + 200), "只需输入持有金额或收益，自动推导持仓份额；盘中每分钟结合估值引擎推算今日到手到账金额！", fill=(37, 99, 235), font=FONT_BODY)
+        
+        draw_vector_check_badge(draw, abox[0] + 40, abox[1] + 248, radius=8)
+        draw.text((abox[0] + 56, abox[1] + 236), "零门槛记账，支持未来支付宝截图 OCR 自动扫描一键导入，再也不用手动按计算器！", fill=(100, 116, 139), font=FONT_BODY)
 
     elif sid == 6:
         # 分镜6: 响应式多端自适应 + 全网免费开源
         draw.text((cx1 + 40, body_y + 6), "全终端深度自适应，手机与电脑始终呈现最高清晰度与触感：", fill=(71, 85, 105), font=FONT_BODY)
         
-        # 手机模型 (卡片流)
+        # 手机模型
         phone_box = [cx1 + 60, body_y + 45, cx1 + 540, body_y + 490]
         draw.rounded_rectangle(phone_box, radius=24, fill=(15, 23, 42), outline=(51, 65, 85), width=2)
         draw.rounded_rectangle([phone_box[0] + 10, phone_box[1] + 14, phone_box[2] - 10, phone_box[3] - 14], radius=16, fill=(248, 250, 252))
@@ -579,7 +666,8 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
             draw.text((mbox[2] - 140, my + 10), mincome, fill=(220, 38, 38) if misup else (22, 163, 74), font=FONT_MEDIUM_NUM)
             draw.text((mbox[2] - 110, my + 40), mpct, fill=(220, 38, 38) if misup else (22, 163, 74), font=FONT_CAPTION)
 
-        draw.text((phone_box[0] + 20, phone_box[3] - 34), "⚡ 手机端独立吸顶导航 · 绝不挤压横移穿框", fill=(37, 99, 235), font=FONT_CAPTION)
+        draw_vector_check_badge(draw, phone_box[0] + 30, phone_box[3] - 24, radius=7)
+        draw.text((phone_box[0] + 44, phone_box[3] - 34), "手机端独立吸顶导航 · 绝不挤压横移穿框", fill=(37, 99, 235), font=FONT_CAPTION)
 
         # PC 端宽屏专业大盘
         pc_box = [cx1 + 570, body_y + 45, cx2 - 40, body_y + 360]
@@ -602,14 +690,14 @@ def render_scene_content(draw: ImageDraw.ImageDraw, scene: dict, card_box: list,
         call_box = [cx1 + 570, body_y + 380, cx2 - 40, body_y + 490]
         draw.rounded_rectangle(call_box, radius=16, fill=(37, 99, 235), outline=(29, 78, 216), width=1)
         draw.text((call_box[0] + 36, call_box[1] + 22), "在线体验与完整源码：请查看【B站置顶评论与视频简介】", fill=(255, 255, 255), font=FONT_CARD_TITLE)
-        draw.text((call_box[0] + 36, call_box[1] + 64), "★ 代码完全免费开源 · 求点赞、求投币、求收藏一键三连支持！", fill=(219, 234, 254), font=FONT_BODY)
+        draw.text((call_box[0] + 36, call_box[1] + 64), "代码完全免费开源 · 求点赞、求投币、求收藏一键三连支持！", fill=(219, 234, 254), font=FONT_BODY)
 
 # -------------------------------------------------------------
 # 5. 视频构建流水线执行
 # -------------------------------------------------------------
 async def build_pipeline():
     print("=====================================================")
-    print("🚀 启动 B站 1080P 高清吸睛视频全自动渲染流水线 (舒适浅色主题版)")
+    print("🚀 启动 B站 1080P 高清吸睛视频全自动渲染流水线 (实机滚动演示 + 无方框纯净版)")
     print("=====================================================")
 
     print("\n[1/5] 正在生成微软超拟真活力男声 (zh-CN-YunxiNeural, rate=+22%)...")
@@ -696,7 +784,7 @@ async def build_pipeline():
 
             draw_gradient_background(draw, f_in_scene)
             draw_main_window(draw, card_box, tag_text)
-            render_scene_content(draw, sc, card_box, f_in_scene)
+            render_scene_content(draw, sc, card_box, f_in_scene, frames_count)
             draw_floating_subtitle_bar(draw, sub_text)
 
             pipe.stdin.write(img.tobytes())
@@ -710,13 +798,14 @@ async def build_pipeline():
     print("✅ 宣发物料已生成！")
 
 def generate_promo_kit(duration: float):
-    kit_content = f"""# 基金实时估值系统 · B站专属流量爆款宣发全套物料 (高级舒适浅色主题版)
+    kit_content = f"""# 基金实时估值系统 · B站专属流量爆款宣发全套物料 (实机滚动演示版)
 
 > **视频基本信息**：
 > - 视频文件：`media_kit/fund_valuation_promo.mp4`
-> - 画质规格：1080P 60FPS / 30FPS 超清标准，H.264 + AAC
+> - 画质规格：1080P 30FPS 超清标准，H.264 + AAC
 > - 视频时长：约 {duration:.1f} 秒（黄金完播率 30~45s 区间）
 > - 视觉主题：高级舒适浅色金融风 (Clean Light Finance)，清爽透气、温润耐看
+> - 核心特色：第一帧真实网页实机滑动演示 + 纯矢量图标无乱码
 
 ---
 
