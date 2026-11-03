@@ -1,7 +1,7 @@
 # ==========================================
-# 阶段 1: 前端编译 (Node 18+ Alpine)
+# 阶段 1: 前端编译 (Node 22 LTS Alpine，支持 Vite 8 与 Rolldown)
 # ==========================================
-FROM node:18-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 WORKDIR /build/frontend
 
 # 使用国内 npm 镜像加速构建
