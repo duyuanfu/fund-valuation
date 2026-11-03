@@ -1,0 +1,51 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fund-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-YourSecurePassword123!}
+      MYSQL_DATABASE: fund_valuation
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    command:
+      - --innodb_buffer_pool_size=128M
+      - --max_connections=50
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-YourSecurePassword123!}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fund-app
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      # 仅绑定宿主机 127.0.0.1 回环地址，由宿主机 Nginx 独占代理，杜绝外部明文直连 8888 绕过 HTTPS
+      - "127.0.0.1:8888:8080"
+    environment:
+      - TZ=Asia/Shanghai
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/fund_valuation?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-YourSecurePassword123!}
+    deploy:
+      resources:
+        limits:
+          memory: 750M
+
+volumes:
+  mysql-data:
