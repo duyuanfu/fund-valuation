@@ -187,18 +187,51 @@ export default function FundDetailPage() {
 
     const dates = navPoints.map((p) => p.date)
     const returns = navPoints.map((p) => Number(p.accumReturnPct ?? 0))
-    const totalReturn = Number(performanceData.totalReturnPct ?? 0)
-    const isUp = totalReturn >= 0
-    const lineColor = isUp ? '#cf1322' : '#389e0d'
-    const areaColor = isUp ? 'rgba(207, 19, 34, 0.08)' : 'rgba(56, 158, 13, 0.08)'
+    const baseNav = Number(navPoints[0]?.nav ?? 1)
 
     const accuracyMap = new Map(
       (performanceData.accuracy?.points ?? []).map((pt) => [pt.date, pt])
     )
 
+    // 构建预估累计收益率对照曲线数据点 (有预估点映射为收益率数值，无预估点置为 null)
+    const estReturns: Array<number | null> = navPoints.map((p, i) => {
+      const acc = accuracyMap.get(p.date)
+      if (!acc) return null
+      if (acc.estAccumReturnPct != null) {
+        return Number(acc.estAccumReturnPct)
+      }
+      // 兼容兜底: 动态根据前一日净值和预估日涨跌计算区间累计收益
+      const prevNav = i > 0 ? Number(navPoints[i - 1]?.nav ?? baseNav) : baseNav
+      if (prevNav > 0 && baseNav > 0) {
+        const estNav = prevNav * (1 + Number(acc.estPct) / 100)
+        return Number((((estNav - baseNav) / baseNav) * 100).toFixed(2))
+      }
+      return null
+    })
+
+    const hasEstimates = (performanceData.accuracy?.sampleCount ?? 0) > 0
+
     renderPerfChart(perfChartRef.current, {
+      legend: {
+        show: true,
+        top: 2,
+        right: 12,
+        itemWidth: 16,
+        itemHeight: 8,
+        itemGap: 16,
+        textStyle: { color: '#64748b', fontSize: 12 },
+        data: [
+          { name: '官方实际走势', icon: 'roundRect', itemStyle: { color: '#1677ff' } },
+          { name: '模型预估对照', icon: 'roundRect', itemStyle: { color: '#fa8c16' } },
+        ],
+      },
       tooltip: {
         trigger: 'axis',
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+        padding: [10, 12],
+        extraCssText: 'box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08); border-radius: 10px;',
         formatter: (params: unknown) => {
           const arr = params as Array<{ dataIndex: number }>
           if (!arr || !arr.length) return ''
@@ -212,20 +245,52 @@ export default function FundDetailPage() {
           const retColor = ret >= 0 ? '#cf1322' : '#389e0d'
           const dailyColor = daily >= 0 ? '#cf1322' : '#389e0d'
 
-          let html = `<div style="font-size:12px;min-width:170px;line-height:1.7;">`
-          html += `<div style="font-weight:700;color:#0f172a;margin-bottom:4px;border-bottom:1px solid #e2e8f0;padding-bottom:3px;">${point.date}</div>`
-          html += `<div>区间收益: <b style="color:${retColor}">${fmtPct(ret)}</b></div>`
-          html += `<div>当日涨跌: <b style="color:${dailyColor}">${fmtPct(daily)}</b></div>`
-          html += `<div>单位净值: <b>${fmtNav(point.nav)}</b></div>`
+          const estRet = estReturns[idx]
+          const estRetColor = (estRet ?? 0) >= 0 ? '#cf1322' : '#389e0d'
 
+          let html = `<div style="font-size:12px;min-width:185px;line-height:1.7;color:#1e293b;">`
+          html += `<div style="font-weight:700;color:#0f172a;margin-bottom:6px;border-bottom:1px solid #f1f5f9;padding-bottom:4px;display:flex;justify-content:space-between;align-items:center;">`
+          html += `<span>${point.date}</span>`
+          html += `<span style="font-size:11px;font-weight:normal;color:#94a3b8">收盘确认</span>`
+          html += `</div>`
+
+          // 官方实际走势
+          html += `<div style="margin-bottom:4px;">`
+          html += `<div style="display:flex;align-items:center;justify-content:space-between;">`
+          html += `<span style="color:#475569"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#1677ff;margin-right:6px;"></span>实际累计收益:</span>`
+          html += `<b style="color:${retColor};font-size:13px">${fmtPct(ret)}</b>`
+          html += `</div>`
+          html += `<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#64748b;padding-left:14px;">`
+          html += `<span>当日实际 / 净值:</span>`
+          html += `<span><b style="color:${dailyColor}">${fmtPct(daily)}</b> / ${fmtNav(point.nav)}</span>`
+          html += `</div>`
+          html += `</div>`
+
+          // 模型预估对照
           if (acc) {
-            const dirText = acc.directionMatched ? '✓ 吻合' : '✗ 偏离'
+            const dirText = acc.directionMatched ? '✓ 同向吻合' : '✗ 偏离'
             const dirColor = acc.directionMatched ? '#16a34a' : '#dc2626'
-            html += `<div style="margin-top:6px;padding-top:5px;border-top:1px dashed #cbd5e1;background:#f8fafc;padding:4px 6px;border-radius:4px;">`
-            html += `<div style="font-weight:600;color:#475569;margin-bottom:2px;">盘中模型预估对照:</div>`
-            html += `<div>盘中最终预估: <b style="color:#0f172a">${fmtPct(acc.estPct)}</b></div>`
-            html += `<div>预估偏差绝对值: <b style="color:#d97706">${fmtPct(acc.diffPct)}</b></div>`
-            html += `<div>预测方向: <b style="color:${dirColor}">${dirText}</b></div>`
+            html += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #fed7aa;background:#fffaf0;margin-left:-6px;margin-right:-6px;padding:6px 8px;border-radius:6px;">`
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;">`
+            html += `<span style="color:#b45309;font-weight:600;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fa8c16;margin-right:6px;"></span>模型预估累计:</span>`
+            html += `<b style="color:${estRetColor};font-size:13px">${fmtPct(estRet)}</b>`
+            html += `</div>`
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#92400e;padding-left:14px;margin-top:2px;">`
+            html += `<span>盘中最终预估:</span>`
+            html += `<b>${fmtPct(acc.estPct)}</b>`
+            html += `</div>`
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#92400e;padding-left:14px;">`
+            html += `<span>预估绝对偏差:</span>`
+            html += `<b style="color:#d97706">${fmtPct(acc.diffPct)}</b>`
+            html += `</div>`
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;padding-left:14px;margin-top:2px;">`
+            html += `<span>预测方向判定:</span>`
+            html += `<b style="color:${dirColor}">${dirText}</b>`
+            html += `</div>`
+            html += `</div>`
+          } else {
+            html += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #f1f5f9;font-size:11px;color:#94a3b8;display:flex;align-items:center;">`
+            html += `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#cbd5e1;margin-right:6px;"></span>当日无盘中估算快照打点`
             html += `</div>`
           }
 
@@ -233,13 +298,14 @@ export default function FundDetailPage() {
           return html
         },
       },
-      grid: { left: 52, right: 20, top: 25, bottom: 25 },
+      grid: { left: 48, right: 18, top: 36, bottom: 25 },
       xAxis: {
         type: 'category',
         data: dates,
-        axisLine: { lineStyle: { color: '#cbd5e1' } },
+        axisLine: { lineStyle: { color: '#e2e8f0' } },
+        axisTick: { show: false },
         axisLabel: {
-          color: '#64748b',
+          color: '#94a3b8',
           fontSize: 11,
           formatter: (val: string) => {
             if (val && val.length >= 10) {
@@ -252,26 +318,71 @@ export default function FundDetailPage() {
       yAxis: {
         type: 'value',
         scale: true,
-        splitLine: { lineStyle: { color: '#f1f5f9' } },
+        splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+        axisLine: { show: false },
+        axisTick: { show: false },
         axisLabel: {
-          color: '#64748b',
+          color: '#94a3b8',
           fontSize: 11,
-          formatter: (v: number) => `${v.toFixed(1)}%`,
+          formatter: (v: number) => `${Number(v).toFixed(1)}%`,
         },
       },
       series: [
         {
+          name: '官方实际走势',
           type: 'line',
           data: returns,
-          smooth: true,
-          symbol: 'none',
-          lineStyle: { color: lineColor, width: 2 },
-          areaStyle: { color: areaColor },
+          smooth: 0.2,
+          symbol: 'circle',
+          showSymbol: false,
+          symbolSize: 6,
+          itemStyle: { color: '#1677ff' },
+          lineStyle: { color: '#1677ff', width: 2.2 },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(22, 119, 255, 0.14)' },
+                { offset: 1, color: 'rgba(22, 119, 255, 0.00)' },
+              ],
+              global: false,
+            },
+          },
           markLine: {
             silent: true,
             symbol: 'none',
             lineStyle: { color: '#cbd5e1', type: 'dashed' },
             data: [{ yAxis: 0 }],
+            label: {
+              formatter: '0.00%',
+              position: 'end',
+              color: '#94a3b8',
+              fontSize: 10,
+            },
+          },
+        },
+        {
+          name: '模型预估对照',
+          type: 'line',
+          data: estReturns,
+          connectNulls: true,
+          smooth: 0.2,
+          symbol: 'circle',
+          showSymbol: hasEstimates,
+          symbolSize: (value: unknown) => (value != null ? 5 : 0),
+          itemStyle: {
+            color: '#fa8c16',
+            borderColor: '#ffffff',
+            borderWidth: 1.5,
+          },
+          lineStyle: {
+            color: '#fa8c16',
+            width: 2,
+            type: [5, 4],
           },
         },
       ],
@@ -600,21 +711,24 @@ export default function FundDetailPage() {
                 ]}
               />
 
-              {chartView === 'performance' && (
+              {chartView === 'performance' && performanceData?.totalReturnPct !== undefined && performanceData?.totalReturnPct !== null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {performanceData?.totalReturnPct !== undefined && performanceData?.totalReturnPct !== null && (
-                    <Tag
-                      color={Number(performanceData.totalReturnPct) >= 0 ? 'red' : 'green'}
-                      style={{ fontSize: 13, padding: '2px 8px', fontWeight: 600 }}
-                    >
-                      区间收益: {fmtPct(performanceData.totalReturnPct)}
+                  <Tag
+                    color={Number(performanceData.totalReturnPct) >= 0 ? 'red' : 'green'}
+                    style={{ fontSize: 13, padding: '2px 8px', fontWeight: 600, borderRadius: 6 }}
+                  >
+                    区间收益: {fmtPct(performanceData.totalReturnPct)}
+                  </Tag>
+                  {performanceData.accuracy?.hasData && (
+                    <Tag color="orange" style={{ fontSize: 12, borderRadius: 6, margin: 0 }}>
+                      双曲线已对齐 {performanceData.accuracy.sampleCount} 天
                     </Tag>
                   )}
                 </div>
               )}
             </div>
 
-            {/* 历史业绩视图下的 7 档时间周期切换 */}
+            {/* 支付宝风格 7 档时间周期切换 Pill 条 */}
             {chartView === 'performance' && (
               <div
                 style={{
@@ -622,8 +736,9 @@ export default function FundDetailPage() {
                   alignItems: 'center',
                   justifyContent: 'flex-start',
                   overflowX: 'auto',
-                  paddingBottom: 8,
-                  marginBottom: 10,
+                  paddingBottom: 6,
+                  marginBottom: 12,
+                  scrollbarWidth: 'none',
                 }}
               >
                 <Segmented
@@ -631,6 +746,11 @@ export default function FundDetailPage() {
                   value={selectedRange}
                   onChange={(val) => setSelectedRange(val as PerformanceRange)}
                   options={RANGE_OPTIONS}
+                  style={{
+                    backgroundColor: '#f1f5f9',
+                    padding: 3,
+                    borderRadius: 8,
+                  }}
                 />
               </div>
             )}
@@ -654,8 +774,48 @@ export default function FundDetailPage() {
                 </>
               )
             ) : (
-              /* 历史业绩与预估对照视图 */
+              /* 历史业绩与预估对照视图 (支付宝体验) */
               <Spin spinning={perfLoading}>
+                {performanceData && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                      padding: '2px 0 8px 0',
+                      borderBottom: '1px solid #f1f5f9',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontSize: 13, color: '#64748b' }}>区间收益率:</span>
+                      <span
+                        style={{
+                          fontSize: 22,
+                          fontWeight: 700,
+                          color: Number(performanceData.totalReturnPct ?? 0) >= 0 ? '#cf1322' : '#389e0d',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {fmtPct(performanceData.totalReturnPct)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: '#64748b' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ display: 'inline-block', width: 14, height: 3, backgroundColor: '#1677ff', borderRadius: 2 }} />
+                        官方实际
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ display: 'inline-block', width: 14, height: 0, borderTop: '2px dashed #fa8c16' }} />
+                        模型预估
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={perfChartRef} style={{ height: isMobile ? 280 : 340, width: '100%' }} />
                 {!perfLoading && (performanceData?.navPoints?.length ?? 0) === 0 && (
                   <div style={{ textAlign: 'center', padding: '32px 0' }}>
@@ -663,105 +823,192 @@ export default function FundDetailPage() {
                   </div>
                 )}
 
-                {/* 预估准确性分析看板 */}
+                {/* 支付宝风格：模型估值准确性分析看板 */}
                 {performanceData && (
                   <div
                     style={{
-                      marginTop: 16,
-                      padding: '12px 14px',
-                      backgroundColor: '#f8fafc',
-                      borderRadius: 10,
+                      marginTop: 18,
+                      padding: '14px 16px',
+                      background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
+                      borderRadius: 12,
                       border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 6px rgba(15, 23, 42, 0.02)',
                     }}
                   >
+                    {/* 看板头部 */}
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginBottom: 8,
+                        marginBottom: 12,
                       }}
                     >
-                      <Space>
-                        <CompassOutlined style={{ color: '#1677ff' }} />
-                        <span style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
-                          模型估值准确性分析
-                        </span>
+                      <Space size={8}>
+                        <div
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 6,
+                            backgroundColor: 'rgba(22, 119, 255, 0.08)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#1677ff',
+                          }}
+                        >
+                          <CompassOutlined style={{ fontSize: 15 }} />
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 14 }}>
+                            模型估值准确性分析
+                          </span>
+                          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 8 }}>
+                            盘中估算 vs 官方净值
+                          </span>
+                        </div>
                       </Space>
 
                       {performanceData.accuracy?.hasData && (
-                        <Tag color="processing" icon={<CheckCircleOutlined />}>
-                          样本: {performanceData.accuracy.sampleCount} 个交易日
+                        <Tag
+                          color="processing"
+                          icon={<CheckCircleOutlined />}
+                          style={{ borderRadius: 6, margin: 0, fontWeight: 500 }}
+                        >
+                          比对样本: {performanceData.accuracy.sampleCount} 个交易日
                         </Tag>
                       )}
                     </div>
 
                     {performanceData.accuracy?.hasData ? (
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                          gap: 12,
-                          marginTop: 6,
-                        }}
-                      >
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            涨跌方向预测吻合率
-                          </Text>
-                          <div
-                            style={{
-                              fontSize: 18,
-                              fontWeight: 700,
-                              color:
-                                Number(performanceData.accuracy.directionMatchRate ?? 0) >= 80
-                                  ? '#16a34a'
-                                  : '#d97706',
-                              marginTop: 2,
-                            }}
-                          >
-                            {performanceData.accuracy.directionMatchRate != null
-                              ? `${Number(performanceData.accuracy.directionMatchRate).toFixed(1)}%`
-                              : '--'}
-                          </div>
-                        </div>
-
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            平均绝对偏差 (MAE)
-                          </Text>
-                          <div
-                            style={{
-                              fontSize: 18,
-                              fontWeight: 700,
-                              color: '#0f172a',
-                              marginTop: 2,
-                            }}
-                          >
-                            {performanceData.accuracy.mae != null
-                              ? `±${Number(performanceData.accuracy.mae).toFixed(2)}%`
-                              : '--'}
-                          </div>
-                        </div>
-
-                        {!isMobile && (
+                      <>
+                        {/* 核心指标三列网格 */}
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                            gap: 12,
+                            padding: '10px 0',
+                            borderTop: '1px solid #f1f5f9',
+                            borderBottom: '1px solid #f1f5f9',
+                          }}
+                        >
                           <div>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                              评估结论
+                              涨跌方向预测吻合率
                             </Text>
-                            <div style={{ marginTop: 4 }}>
-                              {(performanceData.accuracy.directionMatchRate ?? 0) >= 85 ? (
-                                <Tag color="success">高参考价值</Tag>
-                              ) : (
-                                <Tag color="warning">正常参考级</Tag>
-                              )}
+                            <div
+                              style={{
+                                fontSize: 20,
+                                fontWeight: 700,
+                                color:
+                                  Number(performanceData.accuracy.directionMatchRate ?? 0) >= 80
+                                    ? '#16a34a'
+                                    : '#d97706',
+                                marginTop: 2,
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {performanceData.accuracy.directionMatchRate != null
+                                ? `${Number(performanceData.accuracy.directionMatchRate).toFixed(1)}%`
+                                : '--'}
+                            </div>
+                            <Progress
+                              percent={Math.min(Number(performanceData.accuracy.directionMatchRate ?? 0), 100)}
+                              showInfo={false}
+                              size="small"
+                              strokeColor={
+                                Number(performanceData.accuracy.directionMatchRate ?? 0) >= 80
+                                  ? '#16a34a'
+                                  : '#d97706'
+                              }
+                              style={{ marginTop: 2 }}
+                            />
+                            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                              同涨同跌方向预测度
                             </div>
                           </div>
-                        )}
-                      </div>
+
+                          <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              平均绝对偏差 (MAE)
+                            </Text>
+                            <div
+                              style={{
+                                fontSize: 20,
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                marginTop: 2,
+                                fontVariantNumeric: 'tabular-nums',
+                              }}
+                            >
+                              {performanceData.accuracy.mae != null
+                                ? `±${Number(performanceData.accuracy.mae).toFixed(2)}%`
+                                : '--'}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+                              收盘预估偏离官方净值均值
+                            </div>
+                          </div>
+
+                          {!isMobile && (
+                            <div>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                评估结论与参考级
+                              </Text>
+                              <div style={{ marginTop: 4 }}>
+                                {Number(performanceData.accuracy.directionMatchRate ?? 0) >= 85 ? (
+                                  <Tag color="success" style={{ borderRadius: 6, fontWeight: 600 }}>高参考价值</Tag>
+                                ) : Number(performanceData.accuracy.directionMatchRate ?? 0) >= 75 ? (
+                                  <Tag color="processing" style={{ borderRadius: 6, fontWeight: 600 }}>良好参考级</Tag>
+                                ) : (
+                                  <Tag color="warning" style={{ borderRadius: 6, fontWeight: 600 }}>观察磨合级</Tag>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+                                具备较强盘中调仓参考性
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 支付宝风格底部提示 */}
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: '8px 10px',
+                            backgroundColor: '#eff6ff',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            color: '#1e40af',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <InfoCircleOutlined style={{ color: '#3b82f6' }} />
+                          <span>
+                            图中<b>橙色虚线</b>为各交易日收盘预估对照走势，偏离越小表明模型对持仓还原度越高，可用于盘中波段与定投决策。
+                          </span>
+                        </div>
+                      </>
                     ) : (
-                      <div style={{ fontSize: 12, color: '#64748b', padding: '4px 0' }}>
-                        提示: 该区间内暂无本地历史盘中预估打点记录（通常为新添加自选或冷启动基金），系统将在每个交易日收盘后自动积累对齐数据并展示拟合度。
+                      <div
+                        style={{
+                          padding: '12px 10px',
+                          backgroundColor: '#f8fafc',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          color: '#64748b',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <InfoCircleOutlined style={{ color: '#94a3b8', fontSize: 14 }} />
+                        <span>
+                          该区间内暂无本地历史盘中预估打点记录（新添加自选或系统冷启动基金）。系统将在每个交易日收盘后自动积累对齐数据，并在此绘制橙色预估虚线。
+                        </span>
                       </div>
                     )}
                   </div>

@@ -64,6 +64,7 @@ export interface AccuracyPointView {
   estPct: number
   diffPct: number
   directionMatched: boolean
+  estAccumReturnPct?: number | null
 }
 
 export interface ValuationAccuracyView {

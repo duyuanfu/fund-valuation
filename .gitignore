@@ -54,3 +54,8 @@ Thumbs.db
 
 # Pi agent
 .pi/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class

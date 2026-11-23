@@ -122,7 +122,12 @@ public class FundPerformanceService {
         BigDecimal sumAbsDiff = BigDecimal.ZERO;
         int matchCount = 0;
 
-        for (NavPointView navPoint : navPoints) {
+        BigDecimal baseNav = (!navPoints.isEmpty() && navPoints.get(0).nav() != null)
+                ? navPoints.get(0).nav()
+                : null;
+
+        for (int i = 0; i < navPoints.size(); i++) {
+            NavPointView navPoint = navPoints.get(i);
             String dateStr = navPoint.date();
             if (dailyClosingEst.containsKey(dateStr)) {
                 BigDecimal actualPct = navPoint.dailyGrowthPct() != null ? navPoint.dailyGrowthPct() : BigDecimal.ZERO;
@@ -136,7 +141,23 @@ public class FundPerformanceService {
                 }
                 sumAbsDiff = sumAbsDiff.add(diffPct.abs());
 
-                points.add(new AccuracyPointView(dateStr, actualPct, estPct, diffPct, directionMatched));
+                // 计算对应的预估区间累计收益率
+                BigDecimal estAccumReturnPct = null;
+                if (baseNav != null && baseNav.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal prevNav = (i > 0 && navPoints.get(i - 1).nav() != null)
+                            ? navPoints.get(i - 1).nav()
+                            : navPoint.nav();
+                    if (prevNav != null) {
+                        BigDecimal factor = BigDecimal.ONE.add(estPct.divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP));
+                        BigDecimal estNav = prevNav.multiply(factor);
+                        estAccumReturnPct = estNav.subtract(baseNav)
+                                .divide(baseNav, 4, RoundingMode.HALF_UP)
+                                .multiply(BigDecimal.valueOf(100))
+                                .setScale(2, RoundingMode.HALF_UP);
+                    }
+                }
+
+                points.add(new AccuracyPointView(dateStr, actualPct, estPct, diffPct, directionMatched, estAccumReturnPct));
             }
         }
 

@@ -90,6 +90,11 @@ class FundPerformanceServiceTest {
 
         // 方向吻合 2/3 = 66.67%
         assertEquals(new BigDecimal("66.67"), accuracy.directionMatchRate());
+
+        // 验证预估区间累计收益率
+        assertEquals(new BigDecimal("1.10"), accuracy.points().get(0).estAccumReturnPct());
+        assertEquals(new BigDecimal("0.80"), accuracy.points().get(1).estAccumReturnPct());
+        assertEquals(new BigDecimal("1.51"), accuracy.points().get(2).estAccumReturnPct());
     }
 
     @Test
