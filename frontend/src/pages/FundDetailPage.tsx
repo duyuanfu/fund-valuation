@@ -71,7 +71,8 @@ export default function FundDetailPage() {
 
   const intradayChartRef = useRef<HTMLDivElement | null>(null)
   const perfChartRef = useRef<HTMLDivElement | null>(null)
-  const { renderChart } = useECharts()
+  const { renderChart: renderIntradayChart } = useECharts()
+  const { renderChart: renderPerfChart } = useECharts()
 
   // 1. 获取基本详情
   useEffect(() => {
@@ -138,7 +139,7 @@ export default function FundDetailPage() {
     const lineColor = isUp ? '#cf1322' : '#389e0d'
     const areaColor = isUp ? 'rgba(207, 19, 34, 0.08)' : 'rgba(56, 158, 13, 0.08)'
 
-    renderChart(intradayChartRef.current, {
+    renderIntradayChart(intradayChartRef.current, {
       tooltip: {
         trigger: 'axis',
         formatter: (params: unknown) => {
@@ -176,7 +177,7 @@ export default function FundDetailPage() {
         },
       ],
     })
-  }, [loading, detail, isBond, estimate, chartView, renderChart])
+  }, [loading, detail, isBond, estimate, chartView, renderIntradayChart])
 
   // 4. 渲染历史业绩走势与预估准确度图表
   useEffect(() => {
@@ -185,8 +186,8 @@ export default function FundDetailPage() {
     if (!navPoints.length) return
 
     const dates = navPoints.map((p) => p.date)
-    const returns = navPoints.map((p) => p.accumReturnPct)
-    const totalReturn = performanceData.totalReturnPct ?? 0
+    const returns = navPoints.map((p) => Number(p.accumReturnPct ?? 0))
+    const totalReturn = Number(performanceData.totalReturnPct ?? 0)
     const isUp = totalReturn >= 0
     const lineColor = isUp ? '#cf1322' : '#389e0d'
     const areaColor = isUp ? 'rgba(207, 19, 34, 0.08)' : 'rgba(56, 158, 13, 0.08)'
@@ -195,7 +196,7 @@ export default function FundDetailPage() {
       (performanceData.accuracy?.points ?? []).map((pt) => [pt.date, pt])
     )
 
-    renderChart(perfChartRef.current, {
+    renderPerfChart(perfChartRef.current, {
       tooltip: {
         trigger: 'axis',
         formatter: (params: unknown) => {
@@ -206,25 +207,24 @@ export default function FundDetailPage() {
           if (!point) return ''
 
           const acc = accuracyMap.get(point.date)
-          const retSign = point.accumReturnPct > 0 ? '+' : ''
-          const retColor = point.accumReturnPct >= 0 ? '#cf1322' : '#389e0d'
-          const dailySign = point.dailyGrowthPct > 0 ? '+' : ''
-          const dailyColor = point.dailyGrowthPct >= 0 ? '#cf1322' : '#389e0d'
+          const ret = Number(point.accumReturnPct ?? 0)
+          const daily = Number(point.dailyGrowthPct ?? 0)
+          const retColor = ret >= 0 ? '#cf1322' : '#389e0d'
+          const dailyColor = daily >= 0 ? '#cf1322' : '#389e0d'
 
           let html = `<div style="font-size:12px;min-width:170px;line-height:1.7;">`
           html += `<div style="font-weight:700;color:#0f172a;margin-bottom:4px;border-bottom:1px solid #e2e8f0;padding-bottom:3px;">${point.date}</div>`
-          html += `<div>区间收益: <b style="color:${retColor}">${retSign}${point.accumReturnPct.toFixed(2)}%</b></div>`
-          html += `<div>当日涨跌: <b style="color:${dailyColor}">${dailySign}${point.dailyGrowthPct.toFixed(2)}%</b></div>`
-          html += `<div>单位净值: <b>${point.nav != null ? point.nav.toFixed(4) : '--'}</b></div>`
+          html += `<div>区间收益: <b style="color:${retColor}">${fmtPct(ret)}</b></div>`
+          html += `<div>当日涨跌: <b style="color:${dailyColor}">${fmtPct(daily)}</b></div>`
+          html += `<div>单位净值: <b>${fmtNav(point.nav)}</b></div>`
 
           if (acc) {
-            const diffSign = acc.diffPct > 0 ? '+' : ''
             const dirText = acc.directionMatched ? '✓ 吻合' : '✗ 偏离'
             const dirColor = acc.directionMatched ? '#16a34a' : '#dc2626'
             html += `<div style="margin-top:6px;padding-top:5px;border-top:1px dashed #cbd5e1;background:#f8fafc;padding:4px 6px;border-radius:4px;">`
             html += `<div style="font-weight:600;color:#475569;margin-bottom:2px;">盘中模型预估对照:</div>`
-            html += `<div>盘中最终预估: <b style="color:#0f172a">${acc.estPct > 0 ? '+' : ''}${acc.estPct.toFixed(2)}%</b></div>`
-            html += `<div>预估偏差绝对值: <b style="color:#d97706">${diffSign}${acc.diffPct.toFixed(2)}%</b></div>`
+            html += `<div>盘中最终预估: <b style="color:#0f172a">${fmtPct(acc.estPct)}</b></div>`
+            html += `<div>预估偏差绝对值: <b style="color:#d97706">${fmtPct(acc.diffPct)}</b></div>`
             html += `<div>预测方向: <b style="color:${dirColor}">${dirText}</b></div>`
             html += `</div>`
           }
@@ -276,7 +276,7 @@ export default function FundDetailPage() {
         },
       ],
     })
-  }, [chartView, perfLoading, performanceData, renderChart])
+  }, [chartView, perfLoading, performanceData, renderPerfChart])
 
   const holdingColumns: ColumnsType<HoldingView> = [
     {
@@ -602,13 +602,12 @@ export default function FundDetailPage() {
 
               {chartView === 'performance' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {performanceData?.totalReturnPct !== undefined && (
+                  {performanceData?.totalReturnPct !== undefined && performanceData?.totalReturnPct !== null && (
                     <Tag
-                      color={performanceData.totalReturnPct >= 0 ? 'red' : 'green'}
+                      color={Number(performanceData.totalReturnPct) >= 0 ? 'red' : 'green'}
                       style={{ fontSize: 13, padding: '2px 8px', fontWeight: 600 }}
                     >
-                      区间收益: {performanceData.totalReturnPct > 0 ? '+' : ''}
-                      {performanceData.totalReturnPct.toFixed(2)}%
+                      区间收益: {fmtPct(performanceData.totalReturnPct)}
                     </Tag>
                   )}
                 </div>
@@ -715,13 +714,15 @@ export default function FundDetailPage() {
                               fontSize: 18,
                               fontWeight: 700,
                               color:
-                                (performanceData.accuracy.directionMatchRate ?? 0) >= 80
+                                Number(performanceData.accuracy.directionMatchRate ?? 0) >= 80
                                   ? '#16a34a'
                                   : '#d97706',
                               marginTop: 2,
                             }}
                           >
-                            {performanceData.accuracy.directionMatchRate?.toFixed(1)}%
+                            {performanceData.accuracy.directionMatchRate != null
+                              ? `${Number(performanceData.accuracy.directionMatchRate).toFixed(1)}%`
+                              : '--'}
                           </div>
                         </div>
 
@@ -737,7 +738,9 @@ export default function FundDetailPage() {
                               marginTop: 2,
                             }}
                           >
-                            ±{performanceData.accuracy.mae?.toFixed(2)}%
+                            {performanceData.accuracy.mae != null
+                              ? `±${Number(performanceData.accuracy.mae).toFixed(2)}%`
+                              : '--'}
                           </div>
                         </div>
 
