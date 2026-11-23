@@ -92,6 +92,18 @@ export default function FundDetailPage() {
     }
   }, [code])
 
+  const estimate: EstimateResult | null = detail?.estimate ?? null
+  const isBond = estimate?.fundType === 'bond'
+  const hasIntraday = !isBond
+  const activeChartView = hasIntraday ? chartView : 'performance'
+
+  // 若为纯债基金等无日内分时估值的产品，自动且强制聚焦到“业绩走势与预估对照”
+  useEffect(() => {
+    if (isBond && chartView !== 'performance') {
+      setChartView('performance')
+    }
+  }, [isBond, chartView])
+
   // 2. 获取历史业绩与预估对比数据
   const fetchPerformance = useCallback(
     (targetRange: PerformanceRange) => {
@@ -113,17 +125,14 @@ export default function FundDetailPage() {
   )
 
   useEffect(() => {
-    if (chartView === 'performance') {
+    if (activeChartView === 'performance') {
       fetchPerformance(selectedRange)
     }
-  }, [chartView, selectedRange, fetchPerformance])
-
-  const estimate: EstimateResult | null = detail?.estimate ?? null
-  const isBond = estimate?.fundType === 'bond'
+  }, [activeChartView, selectedRange, fetchPerformance])
 
   // 3. 渲染日内分时走势图
   useEffect(() => {
-    if (loading || !detail || isBond || chartView !== 'intraday' || !intradayChartRef.current) return
+    if (loading || !detail || !hasIntraday || activeChartView !== 'intraday' || !intradayChartRef.current) return
     const history = detail.history ?? []
     if (!history.length) return
 
@@ -177,11 +186,11 @@ export default function FundDetailPage() {
         },
       ],
     })
-  }, [loading, detail, isBond, estimate, chartView, renderIntradayChart])
+  }, [loading, detail, hasIntraday, activeChartView, estimate, renderIntradayChart])
 
   // 4. 渲染历史业绩走势与预估准确度图表
   useEffect(() => {
-    if (chartView !== 'performance' || perfLoading || !performanceData || !perfChartRef.current) return
+    if (activeChartView !== 'performance' || perfLoading || !performanceData || !perfChartRef.current) return
     const navPoints = performanceData.navPoints ?? []
     if (!navPoints.length) return
 
@@ -686,32 +695,56 @@ export default function FundDetailPage() {
                 borderBottom: '1px solid #f1f5f9',
               }}
             >
-              <Segmented
-                value={chartView}
-                onChange={(val) => setChartView(val as 'intraday' | 'performance')}
-                options={[
-                  {
-                    label: (
-                      <span style={{ padding: '0 4px' }}>
-                        <LineChartOutlined style={{ marginRight: 6 }} />
-                        日内分时估值
-                      </span>
-                    ),
-                    value: 'intraday',
-                  },
-                  {
-                    label: (
-                      <span style={{ padding: '0 4px' }}>
-                        <HistoryOutlined style={{ marginRight: 6 }} />
-                        业绩走势与预估对照
-                      </span>
-                    ),
-                    value: 'performance',
-                  },
-                ]}
-              />
+              {hasIntraday ? (
+                <Segmented
+                  value={chartView}
+                  onChange={(val) => setChartView(val as 'intraday' | 'performance')}
+                  options={[
+                    {
+                      label: (
+                        <span style={{ padding: '0 4px' }}>
+                          <LineChartOutlined style={{ marginRight: 6 }} />
+                          日内分时估值
+                        </span>
+                      ),
+                      value: 'intraday',
+                    },
+                    {
+                      label: (
+                        <span style={{ padding: '0 4px' }}>
+                          <HistoryOutlined style={{ marginRight: 6 }} />
+                          业绩走势与预估对照
+                        </span>
+                      ),
+                      value: 'performance',
+                    },
+                  ]}
+                />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '5px 12px',
+                      backgroundColor: '#eff6ff',
+                      borderRadius: 8,
+                      color: '#1d4ed8',
+                      fontWeight: 600,
+                      fontSize: 13,
+                    }}
+                  >
+                    <HistoryOutlined style={{ color: '#2563eb' }} />
+                    <span>业绩走势与预估对照</span>
+                  </div>
+                  <Tag color="cyan" style={{ borderRadius: 6, margin: 0, fontSize: 11, padding: '1px 8px' }}>
+                    纯债型 · 净值对照
+                  </Tag>
+                </div>
+              )}
 
-              {chartView === 'performance' && performanceData?.totalReturnPct !== undefined && performanceData?.totalReturnPct !== null && (
+              {activeChartView === 'performance' && performanceData?.totalReturnPct !== undefined && performanceData?.totalReturnPct !== null && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Tag
                     color={Number(performanceData.totalReturnPct) >= 0 ? 'red' : 'green'}
@@ -729,7 +762,7 @@ export default function FundDetailPage() {
             </div>
 
             {/* 支付宝风格 7 档时间周期切换 Pill 条 */}
-            {chartView === 'performance' && (
+            {activeChartView === 'performance' && (
               <div
                 style={{
                   display: 'flex',
@@ -756,23 +789,15 @@ export default function FundDetailPage() {
             )}
 
             {/* 图表主区域 */}
-            {chartView === 'intraday' ? (
-              isBond ? (
-                <div style={{ textAlign: 'center', padding: '36px 0', color: '#64748b' }}>
-                  <Text type="secondary">
-                    纯债基金日内无交易所撮合分时脉冲，请切换至【业绩走势与预估对照】查看中长期净值增长与估值误差分析。
-                  </Text>
-                </div>
-              ) : (
-                <>
-                  <div ref={intradayChartRef} style={{ height: isMobile ? 260 : 320, width: '100%' }} />
-                  {(detail.history?.length ?? 0) === 0 && (
-                    <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                      <Text type="secondary">盘中估值打点生成后将在此绘制实时脉搏</Text>
-                    </div>
-                  )}
-                </>
-              )
+            {activeChartView === 'intraday' ? (
+              <>
+                <div ref={intradayChartRef} style={{ height: isMobile ? 260 : 320, width: '100%' }} />
+                {(detail.history?.length ?? 0) === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <Text type="secondary">盘中估值打点生成后将在此绘制实时脉搏</Text>
+                  </div>
+                )}
+              </>
             ) : (
               /* 历史业绩与预估对照视图 (支付宝体验) */
               <Spin spinning={perfLoading}>
