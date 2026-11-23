@@ -60,8 +60,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             request.setAttribute(ATTR_USERNAME, username);
         }
 
-        // 2. 自选列表、个人持仓及个人数据管控 (放行 /api/portfolio/vip-config 公共价格与收款配置)
-        if (path.startsWith("/api/watchlist") || (path.startsWith("/api/portfolio") && !path.equals("/api/portfolio/vip-config"))) {
+        // 2. 自选列表、个人持仓、当前用户自身状态管控 (放行 /api/portfolio/vip-config 公共价格与收款配置)
+        if (path.startsWith("/api/watchlist")
+                || (path.startsWith("/api/portfolio") && !path.equals("/api/portfolio/vip-config"))
+                || path.equals("/api/auth/me")) {
             String token = extractToken(request);
             String username = token == null ? null : authService.resolveUsername(token);
             if (username == null) {

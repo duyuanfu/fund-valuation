@@ -31,7 +31,8 @@ public class SysVipConfigService {
             "/alipay.jpg",
             "管理员",
             "付款请务必备注用户名",
-            true
+            true,
+            null
     );
 
     @Autowired
@@ -58,7 +59,8 @@ public class SysVipConfigService {
                             persistent.getAlipayQrUrl(),
                             persistent.getPayeeName() != null ? persistent.getPayeeName() : DEFAULT_CONFIG.payeeName(),
                             persistent.getPaymentTip() != null ? persistent.getPaymentTip() : DEFAULT_CONFIG.paymentTip(),
-                            persistent.getRequireApproval() != null ? persistent.getRequireApproval() : DEFAULT_CONFIG.requireApproval()
+                            persistent.getRequireApproval() != null ? persistent.getRequireApproval() : DEFAULT_CONFIG.requireApproval(),
+                            persistent.getWebhookUrl()
                     ));
                     log.info("loaded persistent sys_vip_config from database");
                 }
@@ -85,7 +87,8 @@ public class SysVipConfigService {
                 req.alipayQrUrl(),
                 req.payeeName() != null && !req.payeeName().isBlank() ? req.payeeName() : DEFAULT_CONFIG.payeeName(),
                 req.paymentTip() != null && !req.paymentTip().isBlank() ? req.paymentTip() : DEFAULT_CONFIG.paymentTip(),
-                req.requireApproval() != null ? req.requireApproval() : getVipConfig().requireApproval()
+                req.requireApproval() != null ? req.requireApproval() : getVipConfig().requireApproval(),
+                req.webhookUrl() != null && !req.webhookUrl().isBlank() ? req.webhookUrl().trim() : null
         );
 
         if (vipConfigMapper != null) {
@@ -102,6 +105,7 @@ public class SysVipConfigService {
                 entity.setPayeeName(view.payeeName());
                 entity.setPaymentTip(view.paymentTip());
                 entity.setRequireApproval(view.requireApproval());
+                entity.setWebhookUrl(view.webhookUrl());
                 entity.setUpdatedAt(LocalDateTime.now());
                 vipConfigMapper.insert(entity);
                 log.info("persisted sys_vip_config to database");
@@ -132,7 +136,8 @@ public class SysVipConfigService {
                 current.alipayQrUrl(),
                 current.payeeName(),
                 current.paymentTip(),
-                requireApproval
+                requireApproval,
+                current.webhookUrl()
         );
         updateVipConfig(updated);
         log.info("user registration requireApproval updated to {}", requireApproval);

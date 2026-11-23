@@ -40,5 +40,10 @@ public class SysVipConfig {
      */
     private Boolean requireApproval;
 
+    /**
+     * 管理员接收VIP充值等消息的 Webhook 推送地址 (钉钉/企业微信/飞书/Server酱/Bark)
+     */
+    private String webhookUrl;
+
     private LocalDateTime updatedAt;
 }

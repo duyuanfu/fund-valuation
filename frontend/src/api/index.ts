@@ -12,6 +12,8 @@ import type {
   PositionSaveRequest,
   VipConfigView,
   RegisterResponse,
+  UserProfileView,
+  VipOrderView,
 } from './types'
 import {
   TOKEN_KEY,
@@ -207,8 +209,26 @@ export const api = {
       body: JSON.stringify({ requireApproval }),
     }),
 
+  // 登录用户信息动态同步
+  getMe: () => request<UserProfileView>('/api/auth/me'),
+
   // 前台获取VIP价格与收款配置
   getVipConfig: () => request<VipConfigView>('/api/portfolio/vip-config'),
+
+  // 前台提交VIP充值通知
+  notifyVipRecharge: (data: { planKey: string; planName: string; amount: number; payMethod: string }) =>
+    request<{ success: boolean; message: string }>('/api/portfolio/recharge-notify', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // 管理后台VIP充值订单列表与审批
+  listVipOrders: () => request<VipOrderView[]>('/api/admin/vip-orders'),
+
+  approveVipOrder: (id: number) =>
+    request<{ success: boolean; message: string }>(`/api/admin/vip-orders/${id}/approve`, {
+      method: 'POST',
+    }),
 }
 
 export function sseUrl(): string {

@@ -217,6 +217,27 @@ export interface VipConfigView {
   payeeName?: string | null
   paymentTip?: string | null
   requireApproval?: boolean | null
+  webhookUrl?: string | null
+}
+
+export interface VipOrderView {
+  id: number
+  username: string
+  planKey: string
+  planName: string
+  amount: number
+  payMethod: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | string
+  createdAt: string
+  processedAt: string | null
+}
+
+export interface UserProfileView {
+  username: string
+  role: string
+  status: string
+  isVip: boolean
+  vipExpireAt: string | null
 }
 
 export interface RegisterResponse {

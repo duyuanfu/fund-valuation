@@ -126,5 +126,18 @@ CREATE TABLE IF NOT EXISTS sys_vip_config (
     payee_name           VARCHAR(64)  DEFAULT '管理员',
     payment_tip          VARCHAR(255) DEFAULT '付款请务必备注用户名',
     require_approval     BOOLEAN      DEFAULT TRUE,
+    webhook_url          VARCHAR(500) NULL,
     updated_at           TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sys_vip_order (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username     VARCHAR(32)   NOT NULL,
+    plan_key     VARCHAR(32)   NOT NULL,
+    plan_name    VARCHAR(64)   NOT NULL,
+    amount       DECIMAL(8,2)  NOT NULL,
+    pay_method   VARCHAR(32)   NOT NULL,
+    status       VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    created_at   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP     NULL
 );

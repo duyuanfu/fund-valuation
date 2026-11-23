@@ -12,6 +12,22 @@ public record VipConfigView(
         String alipayQrUrl,
         String payeeName,
         String paymentTip,
-        Boolean requireApproval
+        Boolean requireApproval,
+        String webhookUrl
 ) {
+    public VipConfigView(
+            BigDecimal monthlyPrice,
+            BigDecimal quarterlyPrice,
+            BigDecimal quarterlyOrigPrice,
+            BigDecimal yearlyPrice,
+            BigDecimal yearlyOrigPrice,
+            String wechatQrUrl,
+            String alipayQrUrl,
+            String payeeName,
+            String paymentTip,
+            Boolean requireApproval
+    ) {
+        this(monthlyPrice, quarterlyPrice, quarterlyOrigPrice, yearlyPrice, yearlyOrigPrice,
+                wechatQrUrl, alipayQrUrl, payeeName, paymentTip, requireApproval, null);
+    }
 }

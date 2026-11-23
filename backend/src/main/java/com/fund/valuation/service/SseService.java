@@ -78,4 +78,30 @@ public class SseService {
             log.debug("sse push to {} failed, closed and removed: {}", userId, e.getMessage());
         }
     }
+
+    /**
+     * 向指定用户推送自定义 SSE 事件 (如 VIP 充值审批、系统通知等)。
+     */
+    public void pushEvent(String userId, String eventName, Object data) {
+        SseEmitter emitter = emitters.get(userId);
+        if (emitter == null) {
+            return;
+        }
+        try {
+            emitter.send(SseEmitter.event()
+                    .name(eventName)
+                    .data(objectMapper.writeValueAsString(data)));
+        } catch (Exception e) {
+            emitters.remove(userId, emitter);
+            try {
+                emitter.completeWithError(e);
+            } catch (Exception ignored) {
+            }
+            log.debug("sse event push to {} failed, closed and removed: {}", userId, e.getMessage());
+        }
+    }
+
+    public boolean isOnline(String userId) {
+        return emitters.containsKey(userId);
+    }
 }

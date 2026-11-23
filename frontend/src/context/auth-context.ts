@@ -14,6 +14,7 @@ export interface AuthContextValue {
   isAdmin: boolean
   login: (token: string, username: string, role?: string, isVip?: boolean) => void
   logout: () => void
+  refreshMe: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextValue>({
@@ -24,4 +25,5 @@ export const AuthContext = createContext<AuthContextValue>({
   isAdmin: false,
   login: () => {},
   logout: () => {},
+  refreshMe: async () => {},
 })

@@ -22,6 +22,7 @@ import {
   Divider,
   Alert,
   Upload,
+  notification,
 } from 'antd'
 import {
   UserOutlined,
@@ -47,13 +48,14 @@ import {
   WechatOutlined,
   AlipayCircleOutlined,
 } from '@ant-design/icons'
-import { api } from '../api'
+import { api, sseUrl } from '../api'
 import type {
   UserView,
   CalendarHolidayView,
   SystemStats,
   EstimateResult,
   FundView,
+  VipOrderView,
 } from '../api/types'
 import { FUND_TYPE_COLOR, FUND_TYPE_LABEL } from '../api/types'
 import { colorOf, fmtNav, fmtPct } from '../utils/format'
@@ -396,6 +398,7 @@ export default function AdminPage() {
           alipayQrUrl: cfg.alipayQrUrl,
           payeeName: cfg.payeeName,
           paymentTip: cfg.paymentTip,
+          webhookUrl: cfg.webhookUrl,
         })
         setWechatQrPreview(cfg.wechatQrUrl || '/wechat-pay.png')
         setAlipayQrPreview(cfg.alipayQrUrl || '/alipay.jpg')
@@ -471,6 +474,37 @@ export default function AdminPage() {
     }
   }
 
+  /* ---------------- 8. VIP 充值审批与订单状态 ---------------- */
+  const [vipOrders, setVipOrders] = useState<VipOrderView[]>([])
+  const [loadingVipOrders, setLoadingVipOrders] = useState(false)
+  const [approvingOrderId, setApprovingOrderId] = useState<number | null>(null)
+  const pendingVipOrdersCount = vipOrders.filter((o) => o.status === 'PENDING').length
+
+  const loadVipOrders = async () => {
+    setLoadingVipOrders(true)
+    try {
+      const orders = await api.listVipOrders()
+      setVipOrders(orders)
+    } catch {
+      // 容错静默
+    } finally {
+      setLoadingVipOrders(false)
+    }
+  }
+
+  const handleApproveVipOrder = async (orderId: number) => {
+    setApprovingOrderId(orderId)
+    try {
+      await api.approveVipOrder(orderId)
+      message.success('已成功开通该用户的 VIP 会员！')
+      await Promise.all([loadVipOrders(), loadUsers()])
+    } catch (e: any) {
+      message.error(e?.message || '开通失败')
+    } finally {
+      setApprovingOrderId(null)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
     const init = async () => {
@@ -498,13 +532,34 @@ export default function AdminPage() {
         if (s.status === 'fulfilled') setStats(s.value)
         loadVipConfig()
         loadRegistrationApproval()
+        loadVipOrders()
       } catch (e) {
         message.error((e as Error).message)
       }
     }
     init()
+
+    // 监听盘中/后台 VIP 充值推送 SSE 事件
+    let es: EventSource | null = null
+    try {
+      es = new EventSource(sseUrl())
+      es.addEventListener('vip_recharge', (event) => {
+        try {
+          const order: VipOrderView = JSON.parse(event.data)
+          notification.open({
+            message: '收到新的 VIP 充值申请',
+            description: `用户 [${order.username}] 刚刚提交了 ${order.planName} (¥${order.amount}) 充值通知，请核对并一键开通！`,
+            icon: <CrownOutlined style={{ color: '#d97706' }} />,
+            duration: 10,
+          })
+          loadVipOrders()
+        } catch {}
+      })
+    } catch {}
+
     return () => {
       cancelled = true
+      es?.close()
     }
   }, [])
 
@@ -1420,6 +1475,19 @@ export default function AdminPage() {
                         </Col>
                       </Row>
 
+                      <Divider style={{ margin: '14px 0 18px' }} />
+
+                      <Title level={5} style={{ fontSize: 14, marginBottom: 12, color: '#334155' }}>
+                        4. 充值推送通知机器人 Webhook (选填)
+                      </Title>
+                      <Form.Item
+                        name="webhookUrl"
+                        label="管理员接收推送 Webhook 地址"
+                        extra="支持钉钉机器人、企业微信群机器人、飞书机器人或 Bark 推送。用户在前台点击“我已完成支付”后，系统将自动向此地址推送充值通知。"
+                      >
+                        <Input placeholder="例如: https://oapi.dingtalk.com/robot/send?access_token=... 或企业微信/飞书/Bark" allowClear />
+                      </Form.Item>
+
                       <Form.Item style={{ marginTop: 16 }}>
                         <Button
                           type="primary"
@@ -1521,6 +1589,160 @@ export default function AdminPage() {
                   </Card>
                 </Col>
               </Row>
+            ),
+          },
+          {
+            key: 'vipOrders',
+            label: (
+              <span>
+                <NotificationOutlined style={{ color: '#10b981' }} /> VIP充值申请
+                {pendingVipOrdersCount > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      backgroundColor: '#ef4444',
+                      color: '#fff',
+                      borderRadius: 10,
+                      padding: '1px 6px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {pendingVipOrdersCount}
+                  </span>
+                )}
+              </span>
+            ),
+            children: (
+              <Card
+                title={
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <NotificationOutlined style={{ color: '#10b981' }} />
+                      <span style={{ fontWeight: 650 }}>VIP 充值通知与一键开通审批</span>
+                    </div>
+                    <Button icon={<ReloadOutlined />} onClick={loadVipOrders} loading={loadingVipOrders}>
+                      刷新订单
+                    </Button>
+                  </div>
+                }
+                bordered={false}
+                style={{ borderRadius: 14, boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)' }}
+              >
+                <Alert
+                  type="info"
+                  showIcon
+                  message="当用户在前台开通 VIP 并点击“我已完成支付”后，此处将实时展示用户的充值申请。核对收款后点击“一键开通 VIP”，系统将自动为用户激活/延长 VIP 会员并即时推送生效！"
+                  style={{ marginBottom: 16, borderRadius: 10 }}
+                />
+                <Table
+                  dataSource={vipOrders}
+                  rowKey="id"
+                  loading={loadingVipOrders}
+                  pagination={{ pageSize: 10, showTotal: (t) => `共 ${t} 条充值记录` }}
+                  columns={[
+                    {
+                      title: '订单ID',
+                      dataIndex: 'id',
+                      key: 'id',
+                      width: 80,
+                    },
+                    {
+                      title: '充值用户',
+                      dataIndex: 'username',
+                      key: 'username',
+                      render: (u: string) => <b style={{ color: '#0f172a' }}>{u}</b>,
+                    },
+                    {
+                      title: '充值套餐',
+                      dataIndex: 'planName',
+                      key: 'planName',
+                      render: (p: string) => <Tag color="gold">{p}</Tag>,
+                    },
+                    {
+                      title: '支付金额',
+                      dataIndex: 'amount',
+                      key: 'amount',
+                      render: (amt: number) => <span style={{ color: '#dc2626', fontWeight: 700 }}>¥{Number(amt).toFixed(2)}</span>,
+                    },
+                    {
+                      title: '支付渠道',
+                      dataIndex: 'payMethod',
+                      key: 'payMethod',
+                      render: (m: string) =>
+                        m === 'wechat' ? (
+                          <Tag icon={<WechatOutlined />} color="success">
+                            微信支付
+                          </Tag>
+                        ) : (
+                          <Tag icon={<AlipayCircleOutlined />} color="processing">
+                            支付宝
+                          </Tag>
+                        ),
+                    },
+                    {
+                      title: '当前状态',
+                      dataIndex: 'status',
+                      key: 'status',
+                      render: (s: string) =>
+                        s === 'APPROVED' ? (
+                          <Tag color="success" icon={<CheckCircleOutlined />}>
+                            已开通
+                          </Tag>
+                        ) : (
+                          <Tag color="error" icon={<ClockCircleOutlined />}>
+                            待审核开通
+                          </Tag>
+                        ),
+                    },
+                    {
+                      title: '提交时间',
+                      dataIndex: 'createdAt',
+                      key: 'createdAt',
+                      render: (t: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm:ss') : '-'),
+                    },
+                    {
+                      title: '审批时间',
+                      dataIndex: 'processedAt',
+                      key: 'processedAt',
+                      render: (t: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm:ss') : '-'),
+                    },
+                    {
+                      title: '操作',
+                      key: 'action',
+                      render: (_: any, record: VipOrderView) => (
+                        <Space>
+                          {record.status === 'PENDING' ? (
+                            <Popconfirm
+                              title="确认核对收款并开通 VIP？"
+                              description={`将为用户 ${record.username} 自动增加 ${record.planName} 对应的会员时长`}
+                              onConfirm={() => handleApproveVipOrder(record.id)}
+                              okText="确认开通"
+                              cancelText="取消"
+                            >
+                              <Button
+                                type="primary"
+                                size="small"
+                                icon={<CrownOutlined />}
+                                loading={approvingOrderId === record.id}
+                                style={{
+                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                  borderColor: '#059669',
+                                  borderRadius: 6,
+                                }}
+                              >
+                                一键开通 VIP
+                              </Button>
+                            </Popconfirm>
+                          ) : (
+                            <Tag color="default">已完成</Tag>
+                          )}
+                        </Space>
+                      ),
+                    },
+                  ]}
+                />
+              </Card>
             ),
           },
           {

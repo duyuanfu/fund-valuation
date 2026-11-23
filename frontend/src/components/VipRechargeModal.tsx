@@ -59,10 +59,11 @@ const DEFAULT_PLANS: PlanItem[] = [
 ]
 
 export function VipRechargeModal({ open, onClose, onContactCustomerService }: VipRechargeModalProps) {
-  const { username } = useAuth()
+  const { username, refreshMe } = useAuth()
   const [payMethod, setPayMethod] = useState<'wechat' | 'alipay'>('wechat')
   const [selectedPlan, setSelectedPlan] = useState<string>('quarter')
   const [vipConfig, setVipConfig] = useState<VipConfigView | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   // 打开时动态加载后台配置的 VIP 价格与收款码
   useEffect(() => {
@@ -103,6 +104,25 @@ export function VipRechargeModal({ open, onClose, onContactCustomerService }: Vi
   const currentPlan = plans.find((p) => p.key === selectedPlan) ?? plans[1]
   const payeeName = vipConfig?.payeeName || '管理员'
   const paymentTip = vipConfig?.paymentTip || '付款请务必备注用户名'
+
+  const handleDone = async () => {
+    setSubmitting(true)
+    try {
+      await api.notifyVipRecharge({
+        planKey: currentPlan.key,
+        planName: currentPlan.name,
+        amount: Number(currentPlan.price) || 0,
+        payMethod,
+      })
+      message.success('已向管理员发送充值申请与实时通知，管理员核对后将为您快速开通！')
+      onClose()
+      refreshMe?.()
+    } catch (e: any) {
+      message.error(e?.message || '通知发送失败，请直接联系管理员')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const copyText = (text: string, label: string) => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -169,10 +189,8 @@ export function VipRechargeModal({ open, onClose, onContactCustomerService }: Vi
         <Button
           key="done"
           type="primary"
-          onClick={() => {
-            message.success('支付后请联系管理员或稍候，系统将为您快速开通')
-            onClose()
-          }}
+          loading={submitting}
+          onClick={handleDone}
           style={{
             borderRadius: 8,
             background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',

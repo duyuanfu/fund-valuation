@@ -1,6 +1,7 @@
 package com.fund.valuation.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Getter;
@@ -34,9 +35,11 @@ public class User {
     private String status;
 
     /** 是否为 VIP */
+    @TableField("is_vip")
     private Boolean isVip;
 
     /** VIP 过期时间 (null 且 isVip 为 true 表示永久有效) */
+    @TableField("vip_expire_at")
     private LocalDateTime vipExpireAt;
 
     /** 最后登录时间 */

@@ -141,6 +141,22 @@ CREATE TABLE IF NOT EXISTS sys_vip_config (
     payee_name           VARCHAR(64)  NULL     DEFAULT '管理员' COMMENT '收款人显示名称',
     payment_tip          VARCHAR(255) NULL     DEFAULT '付款请务必备注用户名' COMMENT '付款备注提示',
     require_approval     TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '用户注册是否需要管理员审批: 1需要/0免审直接登录',
+    webhook_url          VARCHAR(500) NULL     COMMENT '管理员接收VIP充值等消息的 Webhook 推送地址',
     updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='VIP会员价格与收款配置';
+
+CREATE TABLE IF NOT EXISTS sys_vip_order (
+    id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    username     VARCHAR(32)  NOT NULL COMMENT '充值用户名',
+    plan_key     VARCHAR(32)  NOT NULL COMMENT '套餐key(month/quarter/year)',
+    plan_name    VARCHAR(64)  NOT NULL COMMENT '套餐名称',
+    amount       DECIMAL(8,2) NOT NULL COMMENT '支付金额(元)',
+    pay_method   VARCHAR(32)  NOT NULL COMMENT '支付渠道(wechat/alipay)',
+    status       VARCHAR(20)  NOT NULL DEFAULT 'PENDING' COMMENT '状态: PENDING/APPROVED/REJECTED',
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+    processed_at DATETIME     NULL COMMENT '管理员审批处理时间',
+    PRIMARY KEY (id),
+    KEY idx_vip_order_user (username),
+    KEY idx_vip_order_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='VIP充值订单与开通记录';

@@ -6,9 +6,11 @@ import com.fund.valuation.domain.UserPosition;
 import com.fund.valuation.dto.PortfolioView;
 import com.fund.valuation.dto.PositionSaveRequest;
 import com.fund.valuation.dto.VipConfigView;
+import com.fund.valuation.dto.VipOrderNotifyRequest;
 import com.fund.valuation.service.AuthService;
 import com.fund.valuation.service.PortfolioService;
 import com.fund.valuation.service.SysVipConfigService;
+import com.fund.valuation.service.VipOrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class PortfolioController {
     private final PortfolioService portfolioService;
     private final AuthService authService;
     private final SysVipConfigService sysVipConfigService;
+    private final VipOrderService vipOrderService;
 
     /**
      * 获取VIP充值与价格配置 (供前台充值弹窗展示，无需VIP权限)。
@@ -38,6 +41,19 @@ public class PortfolioController {
     @GetMapping("/vip-config")
     public ResponseEntity<VipConfigView> getVipConfig() {
         return ResponseEntity.ok(sysVipConfigService.getVipConfig());
+    }
+
+    /**
+     * 用户完成支付后提交充值通知，向管理员发送实时推送消息并生成待审批订单。
+     */
+    @PostMapping("/recharge-notify")
+    public ResponseEntity<?> notifyRecharge(HttpServletRequest request, @RequestBody VipOrderNotifyRequest req) {
+        String username = currentUser(request);
+        if (username == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "未登录"));
+        }
+        vipOrderService.submitOrder(username, req);
+        return ResponseEntity.ok(Map.of("success", true, "message", "充值申请已成功提交并通知管理员，请耐心等待开通！"));
     }
 
     /**

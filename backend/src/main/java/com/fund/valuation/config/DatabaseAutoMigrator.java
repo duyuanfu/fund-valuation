@@ -93,7 +93,39 @@ public class DatabaseAutoMigrator {
                     payee_name           VARCHAR(64)  DEFAULT '管理员',
                     payment_tip          VARCHAR(255) DEFAULT '付款请务必备注用户名',
                     require_approval     TINYINT(1)   DEFAULT 1,
+                    webhook_url          VARCHAR(500) NULL,
                     updated_at           TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
+            // 4. 补齐 sys_vip_config 历史遗留表缺失字段
+            addColumnIfNotExists(conn, "sys_vip_config", "quarterly_orig_price", "DECIMAL(8,2) DEFAULT 8.70");
+            addColumnIfNotExists(conn, "sys_vip_config", "yearly_orig_price", "DECIMAL(8,2) DEFAULT 34.80");
+            addColumnIfNotExists(conn, "sys_vip_config", "payee_name", "VARCHAR(64) DEFAULT '管理员'");
+            addColumnIfNotExists(conn, "sys_vip_config", "payment_tip", "VARCHAR(255) DEFAULT '付款请务必备注用户名'");
+            addColumnIfNotExists(conn, "sys_vip_config", "require_approval", isH2 ? "BOOLEAN DEFAULT TRUE" : "TINYINT(1) DEFAULT 1");
+            addColumnIfNotExists(conn, "sys_vip_config", "webhook_url", "VARCHAR(500) NULL");
+
+            // 补充兜底直接 ALTER (防止某些 MySQL 驱动 DatabaseMetaData 大小写敏感导致 exists 判断失效)
+            executeSqlQuietly(conn, "ALTER TABLE `sys_vip_config` ADD COLUMN `require_approval` " + (isH2 ? "BOOLEAN DEFAULT TRUE" : "TINYINT(1) DEFAULT 1"));
+            executeSqlQuietly(conn, "ALTER TABLE `sys_vip_config` ADD COLUMN `quarterly_orig_price` DECIMAL(8,2) DEFAULT 8.70");
+            executeSqlQuietly(conn, "ALTER TABLE `sys_vip_config` ADD COLUMN `yearly_orig_price` DECIMAL(8,2) DEFAULT 34.80");
+            executeSqlQuietly(conn, "ALTER TABLE `sys_vip_config` ADD COLUMN `payee_name` VARCHAR(64) DEFAULT '管理员'");
+            executeSqlQuietly(conn, "ALTER TABLE `sys_vip_config` ADD COLUMN `payment_tip` VARCHAR(255) DEFAULT '付款请务必备注用户名'");
+            executeSqlQuietly(conn, "ALTER TABLE `sys_vip_config` ADD COLUMN `webhook_url` VARCHAR(500) NULL");
+
+            // 5. 补齐 VIP 充值通知与审批记录表
+            executeSqlQuietly(conn, """
+                CREATE TABLE IF NOT EXISTS sys_vip_order (
+                    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    username     VARCHAR(32)   NOT NULL,
+                    plan_key     VARCHAR(32)   NOT NULL,
+                    plan_name    VARCHAR(64)   NOT NULL,
+                    amount       DECIMAL(8,2)  NOT NULL,
+                    pay_method   VARCHAR(32)   NOT NULL,
+                    status       VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+                    created_at   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+                    processed_at TIMESTAMP     NULL
                 )
             """);
 

@@ -5,6 +5,7 @@ import com.fund.valuation.common.TradingCalendar;
 import com.fund.valuation.domain.User;
 import com.fund.valuation.dto.NoticeView;
 import com.fund.valuation.dto.VipConfigView;
+import com.fund.valuation.dto.VipOrderView;
 import com.fund.valuation.mapper.FundMapper;
 import com.fund.valuation.mapper.UserFundMapper;
 import com.fund.valuation.mapper.UserMapper;
@@ -17,6 +18,7 @@ import com.fund.valuation.service.QuoteService;
 import com.fund.valuation.service.SysVipConfigService;
 import com.fund.valuation.service.SystemNoticeService;
 import com.fund.valuation.service.UserManagementService;
+import com.fund.valuation.service.VipOrderService;
 import com.fund.valuation.service.WatchlistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -55,6 +57,7 @@ public class AdminController {
     private final UserFundMapper userFundMapper;
     private final FundMapper fundMapper;
     private final SysVipConfigService sysVipConfigService;
+    private final VipOrderService vipOrderService;
 
     /* ---------------- 用户管理与自选调阅 ---------------- */
 
@@ -259,6 +262,19 @@ public class AdminController {
         boolean requireApproval = flag != null && flag;
         sysVipConfigService.updateRequireApproval(requireApproval);
         return Map.of("success", true, "requireApproval", requireApproval);
+    }
+
+    /* ---------------- VIP 充值审批与订单管理 ---------------- */
+
+    @GetMapping("/vip-orders")
+    public List<VipOrderView> listVipOrders() {
+        return vipOrderService.listOrders();
+    }
+
+    @PostMapping("/vip-orders/{id}/approve")
+    public Map<String, Object> approveVipOrder(@PathVariable Long id) {
+        vipOrderService.approveOrder(id);
+        return Map.of("success", true, "message", "已成功为用户开通 VIP 会员！");
     }
 
     public record DurationRequest(String fundCode, String reportQt, double duration) {
