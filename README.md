@@ -173,61 +173,33 @@ ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
 ```bash
 nano docker-compose.yml
 ```
-写入内容（带 MySQL 存活探针健康检查，防止初次启动时序冲突）：
+写入内容（连接公共共享 MySQL 与 Docker 共享网络）：
 ```yaml
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: fund-mysql
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: YourSecurePassword123!
-      MYSQL_DATABASE: fund_valuation
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
-    command:
-      - --innodb_buffer_pool_size=128M
-      - --max_connections=50
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pYourSecurePassword123!"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    deploy:
-      resources:
-        limits:
-          memory: 400M
-
   app:
     build: .
     container_name: fund-app
     restart: always
-    depends_on:
-      mysql:
-        condition: service_healthy
     ports:
-      - "8888:8080"
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
+      - "127.0.0.1:8888:8080"
     environment:
       - TZ=Asia/Shanghai
       - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/fund_valuation?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=YourSecurePassword123!
+      - SPRING_DATASOURCE_URL=jdbc:mysql://${SHARED_MYSQL_HOST:-shared-mysql}:${SHARED_MYSQL_PORT:-3306}/fund_valuation?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      - SPRING_DATASOURCE_USERNAME=${FUND_DB_USER:-fund_user}
+      - SPRING_DATASOURCE_PASSWORD=${FUND_DB_PASSWORD:-YourSecurePassword123!}
+    networks:
+      - shared-net
     deploy:
       resources:
         limits:
           memory: 750M
 
-volumes:
-  mysql-data:
+networks:
+  shared-net:
+    external: true
 ```
-*(注意：请将两处 `YourSecurePassword123!` 修改为你设定的数据库密码)*
+*(注意：请将 `YourSecurePassword123!` 修改为共享 MySQL 中为 `fund_valuation` 分配的数据库用户密码)*
 
 ---
 
