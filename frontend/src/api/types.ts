@@ -48,6 +48,40 @@ export interface FundDetailView {
   bondInfo?: BondInfo | null
 }
 
+export type PerformanceRange = '1m' | '3m' | '6m' | '1y' | '3y' | '5y' | 'all'
+
+export interface NavPointView {
+  date: string
+  nav: number | null
+  cumulativeNav: number | null
+  dailyGrowthPct: number
+  accumReturnPct: number
+}
+
+export interface AccuracyPointView {
+  date: string
+  actualPct: number
+  estPct: number
+  diffPct: number
+  directionMatched: boolean
+}
+
+export interface ValuationAccuracyView {
+  hasData: boolean
+  sampleCount: number
+  mae: number | null
+  directionMatchRate: number | null
+  points: AccuracyPointView[]
+}
+
+export interface FundPerformanceView {
+  fundCode: string
+  range: PerformanceRange
+  totalReturnPct: number
+  navPoints: NavPointView[]
+  accuracy: ValuationAccuracyView
+}
+
 export const FUND_TYPE_LABEL: Record<string, string> = {
   index: '指数型',
   enhanced: '指数增强',

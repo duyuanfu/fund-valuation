@@ -1,6 +1,7 @@
 import type {
   EstimateResult,
   FundDetailView,
+  FundPerformanceView,
   NoticeView,
   UserView,
   CalendarHolidaysResponse,
@@ -97,6 +98,11 @@ export const api = {
 
   fundDetail: (code: string) =>
     request<FundDetailView>(`/api/fund/${encodeURIComponent(code)}`),
+
+  fundPerformance: (code: string, range: string = '1m') =>
+    request<FundPerformanceView>(
+      `/api/fund/${encodeURIComponent(code)}/performance?range=${encodeURIComponent(range)}`
+    ),
 
   // 持仓估值与收益预估 (VIP专享)
   getPortfolio: () => request<PortfolioView>('/api/portfolio'),

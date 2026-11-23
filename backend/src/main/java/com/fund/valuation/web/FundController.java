@@ -9,12 +9,14 @@ import com.fund.valuation.domain.FundHolding;
 import com.fund.valuation.dto.BondInfo;
 import com.fund.valuation.dto.EstimatePointView;
 import com.fund.valuation.dto.FundDetailView;
+import com.fund.valuation.dto.FundPerformanceView;
 import com.fund.valuation.dto.HoldingView;
 import com.fund.valuation.service.BondDurationService;
 import com.fund.valuation.service.EstimateHistoryService;
 import com.fund.valuation.service.EstimateResult;
 import com.fund.valuation.service.FundCatalogService;
 import com.fund.valuation.service.FundHoldingService;
+import com.fund.valuation.service.FundPerformanceService;
 import com.fund.valuation.service.QuoteService;
 import com.fund.valuation.service.ValuationEngine;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -38,6 +41,7 @@ public class FundController {
     private final ValuationEngine valuationEngine;
     private final QuoteService quoteService;
     private final BondDurationService bondDurationService;
+    private final FundPerformanceService performanceService;
     private final AppProperties properties;
 
     /**
@@ -80,6 +84,21 @@ public class FundController {
         }
         BondInfo bondInfo = buildBondInfo(fund);
         return ResponseEntity.ok(new FundDetailView(estimate, holdingViews, history, bondInfo));
+    }
+
+    /**
+     * 单只基金历史业绩走势与估值准确度对比。
+     */
+    @GetMapping("/{code}/performance")
+    public ResponseEntity<FundPerformanceView> performance(
+            @PathVariable String code,
+            @RequestParam(required = false, defaultValue = "1m") String range) {
+        Fund fund = fundCatalogService.get(code);
+        if (fund == null) {
+            return ResponseEntity.notFound().build();
+        }
+        FundPerformanceView view = performanceService.getPerformanceTrend(code, range);
+        return ResponseEntity.ok(view);
     }
 
     private BondInfo buildBondInfo(Fund fund) {

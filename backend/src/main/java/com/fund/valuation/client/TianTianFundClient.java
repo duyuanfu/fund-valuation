@@ -3,6 +3,7 @@ package com.fund.valuation.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fund.valuation.common.RateLimiter;
+import com.fund.valuation.dto.NavPointView;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -11,6 +12,7 @@ import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ public class TianTianFundClient {
     private static final String MOBILE_ALLOC_URL = "https://fundmobapi.eastmoney.com/FundMNewApi/FundMNAssetAllocationNew";
     private static final String JJCC_URL = "https://fundf10.eastmoney.com/FundArchivesDatas.aspx";
     private static final String ZCPZ_PAGE_PREFIX = "https://fundf10.eastmoney.com/zcpz_";
+    private static final String NET_DIAGRAM_URL = "https://fundmobapi.eastmoney.com/FundMApi/FundNetDiagram.ashx";
     private static final String REFERER_F10 = "https://fundf10.eastmoney.com/";
     private static final int RATE_LIMIT_RETRIES = 4;
 
@@ -426,6 +429,92 @@ public class TianTianFundClient {
             rateLimiter.acquire();
         }
         throw new IllegalStateException("fund api unavailable after retries: " + url);
+    }
+
+    /**
+     * 拉取基金历史业绩走势数据。
+     *
+     * @param code     基金代码
+     * @param apiRange 范围参数: y(1月), 3y(3月), 6m(6月), n(1年), 3n(3年), 5n(5年), all(成立以来)
+     */
+    public List<NavPointView> fetchPerformanceTrend(String code, String apiRange) {
+        String rangeParam = (apiRange == null || apiRange.isBlank()) ? "y" : apiRange;
+        String url = HttpSupport.buildUrl(NET_DIAGRAM_URL, Map.of(
+                "FCODE", code,
+                "RANGE", rangeParam,
+                "deviceid", "Wap",
+                "plat", "Wap",
+                "product", "EFund",
+                "version", "2.0.0"
+        ));
+        try {
+            String body = fetchWithRateLimitRetry(url, null);
+            if (body == null || body.isBlank()) {
+                return List.of();
+            }
+            return parsePerformanceJson(body);
+        } catch (Exception e) {
+            log.warn("fetch performance trend failed for {}({}): {}", code, apiRange, e.getMessage());
+            return List.of();
+        }
+    }
+
+    public List<NavPointView> parsePerformanceJson(String json) {
+        if (json == null || json.isBlank()) {
+            return List.of();
+        }
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            JsonNode datas = root.path("Datas");
+            if (datas.isMissingNode() || !datas.isArray() || datas.isEmpty()) {
+                return List.of();
+            }
+            List<NavPointView> list = new ArrayList<>();
+            BigDecimal accumCompound = BigDecimal.ONE;
+            boolean isFirst = true;
+
+            for (JsonNode node : datas) {
+                String date = node.path("FSRQ").asText("").trim();
+                if (date.isBlank()) {
+                    continue;
+                }
+                BigDecimal nav = parseDecimal(node.path("DWJZ").asText(null));
+                BigDecimal cumNav = parseDecimal(node.path("LJJZ").asText(null));
+                BigDecimal dailyPct = parseDecimal(node.path("JZZZL").asText("0"));
+                if (dailyPct == null) {
+                    dailyPct = BigDecimal.ZERO;
+                }
+
+                BigDecimal accumReturnPct;
+                if (isFirst) {
+                    accumReturnPct = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+                    isFirst = false;
+                } else {
+                    BigDecimal factor = BigDecimal.ONE.add(dailyPct.divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP));
+                    accumCompound = accumCompound.multiply(factor);
+                    accumReturnPct = accumCompound.subtract(BigDecimal.ONE)
+                            .multiply(BigDecimal.valueOf(100))
+                            .setScale(2, RoundingMode.HALF_UP);
+                }
+
+                list.add(new NavPointView(date, nav, cumNav != null ? cumNav : nav, dailyPct, accumReturnPct));
+            }
+            return list;
+        } catch (Exception e) {
+            log.warn("parse performance json failed: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    private BigDecimal parseDecimal(String str) {
+        if (str == null || str.isBlank() || "--".equals(str)) {
+            return null;
+        }
+        try {
+            return new BigDecimal(str.trim());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void sleepBackoff(int attempt) {

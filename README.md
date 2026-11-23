@@ -76,6 +76,9 @@ npm run dev
 
 本方案针对各类云主机（腾讯云、阿里云、华为云、Azure 等，推荐配置 2C2G、2C4G 或 4C4G），采用**前端内嵌至 Spring Boot 单 Jar 包 + Docker 多服务隔离编排**架构。总内存开销克制在约 **800MB ~ 1GB**，给同机未来部署其他业务留出充沛空间。
 
+> [!TIP]
+> 如果您的云服务器上同时部署了多个 Docker 应用，为避免各应用自建独立 MySQL 导致内存爆满（OOM）与磁盘重复冗余，推荐采用**集中式公共 MySQL 架构**，完整操作与平滑迁移指南详见文档：[Docker 多服务共享 MySQL 部署与接入通用指南](file:///F:/Agent/Workspace/fund-valuation/docs/SHARED_MYSQL_GUIDE.md)。
+
 ### 第一步：本地一键联合打包
 
 在本地电脑终端（Windows PowerShell）执行：
