@@ -285,11 +285,11 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
                 buttonStyle="solid"
                 style={{ width: '100%' }}
               >
-                <Radio.Button value="wxpusher" style={{ width: '50%', textAlign: 'center' }}>
-                  <QrcodeOutlined /> WxPusher 微信扫码关注
-                </Radio.Button>
                 <Radio.Button value="webhook" style={{ width: '50%', textAlign: 'center' }}>
-                  <LinkOutlined /> 自定义 Webhook / 企微
+                  <LinkOutlined /> 微信免App直推 (PushPlus/企微)
+                </Radio.Button>
+                <Radio.Button value="wxpusher" style={{ width: '50%', textAlign: 'center' }}>
+                  <QrcodeOutlined /> WxPusher (需安装App)
                 </Radio.Button>
               </Radio.Group>
             </Form.Item>
@@ -297,9 +297,9 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
             {wechatType === 'wxpusher' ? (
               <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: 8, border: '1px solid #bbf7d0', marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.6 }}>
-                  <b>WxPusher 微信免公众号接收指南：</b><br />
-                  1. 关注 WxPusher 服务号，点击「我的」➔「我的 UID」复制 <code>UID_xxxx</code>；<br />
-                  2. <b>关键步骤：</b>请确保微信已扫描本应用（或您自建应用）专属关注二维码，否则 WxPusher 会因防骚扰机制拒绝发送；<br />
+                  <b>WxPusher 接收指南（官方已停止微信直接推送，需配合官方 App）：</b><br />
+                  1. 关注 WxPusher 服务号或下载 WxPusher 客户端，复制您的 <code>UID_xxxx</code>；<br />
+                  2. <b>关键步骤：</b>请确保微信已扫描本应用（或您自建应用）专属关注二维码；<br />
                   {channelData?.systemWxpusherQrUrl ? (
                     <div style={{ margin: '6px 0', padding: '6px 10px', background: '#dcfce7', borderRadius: 6 }}>
                       👉 <b>系统通知应用关注入口：</b>
@@ -308,7 +308,7 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
                       </a>
                     </div>
                   ) : null}
-                  3. 点击下方「发送测试微信」，手机微信将立即收到确认卡片！
+                  3. 点击下方「发送测试微信」，手机将立即收到确认卡片！
                 </div>
                 <Form.Item
                   name="wechatUid"
@@ -338,24 +338,33 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
                 </Form.Item>
               </div>
             ) : (
-              <Form.Item
-                name="wechatWebhookUrl"
-                label="自定义 Webhook 推送地址"
-                rules={[
-                  {
-                    validator: (_, val) => {
-                      const wechatEnabled = form.getFieldValue('wechatEnabled')
-                      if (wechatEnabled && wechatType === 'webhook' && (!val || !val.trim())) {
-                        return Promise.reject(new Error('开启自定义 Webhook 时请输入推送地址'))
-                      }
-                      return Promise.resolve()
+              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.6, marginBottom: 10 }}>
+                  <b style={{ color: '#0f172a' }}>微信直接接收（无需下载 App）推荐通道：</b><br />
+                  1. <b>PushPlus 推送加 (最推荐)</b>：微信扫码关注「pushplus推送加」公众号或登录 <a href="https://www.pushplus.plus" target="_blank" rel="noreferrer" style={{ fontWeight: 600, color: '#2563eb' }}>pushplus.plus</a>，在首页复制 <b>Token</b>（32位字符）直接填入下方即可！交易日 14:30 消息将由该公众号直接推送。<br />
+                  2. <b>企业微信群机器人</b>：在企微群添加机器人，将 Webhook 链接粘贴在下方，开启微信插件后，个人微信将实时接收弹窗。<br />
+                  3. <b>Server酱</b>：直接粘贴 <code>SCTxxxx</code> SendKey 即可。<br />
+                  4. <b>iOS 用户</b>：支持 Bark 推送链接直接通知手机。
+                </div>
+                <Form.Item
+                  name="wechatWebhookUrl"
+                  label="微信免App推送 Token 或 Webhook 地址"
+                  rules={[
+                    {
+                      validator: (_, val) => {
+                        const wechatEnabled = form.getFieldValue('wechatEnabled')
+                        if (wechatEnabled && wechatType === 'webhook' && (!val || !val.trim())) {
+                          return Promise.reject(new Error('开启微信免App通道时请输入 Token 或 Webhook 地址'))
+                        }
+                        return Promise.resolve()
+                      },
                     },
-                  },
-                ]}
-                extra="支持：1. 企业微信机器人 2. Server酱(直接输入 SCTxxxx 或完整地址) 3. PushPlus推送加(直接输入 token 或地址) 4. 钉钉/飞书/Bark"
-              >
-                <Input placeholder="例如: https://qyapi.weixin.qq.com/... 或 SCTxxxx 或 PushPlus Token" allowClear />
-              </Form.Item>
+                  ]}
+                  style={{ marginBottom: 0 }}
+                >
+                  <Input placeholder="输入 PushPlus Token(32位字符) 或 Server酱(SCTxxxx) 或 企业微信Webhook" allowClear />
+                </Form.Item>
+              </div>
             )}
 
             <div style={{ textAlign: 'right' }}>
