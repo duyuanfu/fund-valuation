@@ -35,10 +35,10 @@ public class EmailSenderService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
             String fromAddress = (cfg.senderAddress() != null && !cfg.senderAddress().isBlank())
-                    ? cfg.senderAddress()
-                    : cfg.smtpUsername();
+                    ? cfg.senderAddress().trim()
+                    : (cfg.smtpUsername() != null ? cfg.smtpUsername().trim() : "");
             String senderName = (cfg.senderName() != null && !cfg.senderName().isBlank())
-                    ? cfg.senderName()
+                    ? cfg.senderName().trim()
                     : "基金实时估值系统";
 
             helper.setFrom(new InternetAddress(fromAddress, senderName, "UTF-8"));

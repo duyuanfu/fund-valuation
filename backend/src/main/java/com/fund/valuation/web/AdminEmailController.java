@@ -40,8 +40,12 @@ public class AdminEmailController {
         if (to == null || to.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "请输入测试收件人邮箱"));
         }
-        emailSenderService.sendTestEmail(to.trim());
-        return ResponseEntity.ok(Map.of("success", true, "message", "测试邮件发送成功！"));
+        try {
+            emailSenderService.sendTestEmail(to.trim());
+            return ResponseEntity.ok(Map.of("success", true, "message", "测试邮件发送成功！请检查收件箱或垃圾邮件。"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage() != null ? e.getMessage() : "邮件发送异常"));
+        }
     }
 
     @PostMapping("/trigger-daily-reminder")

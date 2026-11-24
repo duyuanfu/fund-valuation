@@ -550,6 +550,20 @@ export default function AdminPage() {
     }
   }
 
+  const handleOpenTestEmailModal = async () => {
+    try {
+      const vals = await emailConfigForm.validateFields()
+      setSavingEmailConfig(true)
+      await api.setAdminEmailConfig(vals)
+      setTestEmailTarget(vals.smtpUsername || '')
+      setTestEmailModalOpen(true)
+    } catch (e: any) {
+      message.error(e?.message || '请先完善发信配置各项参数后再测试')
+    } finally {
+      setSavingEmailConfig(false)
+    }
+  }
+
   const handleTestSendAdminEmail = async () => {
     if (!testEmailTarget.trim()) {
       message.warning('请输入测试收件人邮箱')
@@ -558,7 +572,7 @@ export default function AdminPage() {
     setTestingEmail(true)
     try {
       const res = await api.testAdminEmail(testEmailTarget.trim())
-      message.success(res.message || '测试邮件已发送')
+      message.success(res.message || '测试邮件已发送，请检查收件箱或垃圾箱')
       setTestEmailModalOpen(false)
     } catch (e: any) {
       message.error(e?.message || '测试邮件发送失败，请检查 SMTP 配置及网络')
@@ -1879,7 +1893,7 @@ export default function AdminPage() {
                               label="SMTP 账号 (发信邮箱)"
                               rules={[{ required: true, message: '请输入邮箱账号' }]}
                             >
-                              <Input placeholder="your_account@163.com" style={{ borderRadius: 8 }} />
+                              <Input placeholder="your_account@163.com" style={{ borderRadius: 8 }} autoComplete="off" />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
@@ -1888,7 +1902,7 @@ export default function AdminPage() {
                               label="SMTP 授权码 / 密码"
                               rules={[{ required: true, message: '请输入授权码' }]}
                             >
-                              <Input.Password placeholder="邮箱后台生成的客户端授权码" style={{ borderRadius: 8 }} />
+                              <Input.Password placeholder="邮箱后台生成的客户端授权码" style={{ borderRadius: 8 }} autoComplete="new-password" />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1954,7 +1968,8 @@ export default function AdminPage() {
                             保存发件配置
                           </Button>
                           <Button
-                            onClick={() => setTestEmailModalOpen(true)}
+                            onClick={handleOpenTestEmailModal}
+                            loading={savingEmailConfig}
                             style={{ borderRadius: 8 }}
                           >
                             发送测试邮件

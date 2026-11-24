@@ -51,12 +51,12 @@ public class SysEmailConfigService {
                         .last("limit 1"));
                 if (persistent != null) {
                     EmailConfigView view = new EmailConfigView(
-                            persistent.getSmtpHost() != null ? persistent.getSmtpHost() : DEFAULT_CONFIG.smtpHost(),
+                            persistent.getSmtpHost() != null ? persistent.getSmtpHost().trim() : DEFAULT_CONFIG.smtpHost(),
                             persistent.getSmtpPort() != null ? persistent.getSmtpPort() : DEFAULT_CONFIG.smtpPort(),
-                            persistent.getSmtpUsername(),
-                            persistent.getSmtpPassword(),
-                            persistent.getSenderName() != null ? persistent.getSenderName() : DEFAULT_CONFIG.senderName(),
-                            persistent.getSenderAddress(),
+                            persistent.getSmtpUsername() != null ? persistent.getSmtpUsername().trim() : "",
+                            persistent.getSmtpPassword() != null ? persistent.getSmtpPassword().trim() : "",
+                            persistent.getSenderName() != null ? persistent.getSenderName().trim() : DEFAULT_CONFIG.senderName(),
+                            persistent.getSenderAddress() != null ? persistent.getSenderAddress().trim() : "",
                             persistent.getSslEnabled() != null ? persistent.getSslEnabled() : DEFAULT_CONFIG.sslEnabled(),
                             persistent.getWxpusherAppToken(),
                             persistent.getWxpusherQrUrl()
@@ -127,10 +127,10 @@ public class SysEmailConfigService {
         }
 
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
-        sender.setHost(view.smtpHost());
+        sender.setHost(view.smtpHost() != null ? view.smtpHost().trim() : "");
         sender.setPort(view.smtpPort() != null ? view.smtpPort() : 465);
-        sender.setUsername(view.smtpUsername());
-        sender.setPassword(view.smtpPassword());
+        sender.setUsername(view.smtpUsername() != null ? view.smtpUsername().trim() : "");
+        sender.setPassword(view.smtpPassword() != null ? view.smtpPassword().trim() : "");
         sender.setDefaultEncoding("UTF-8");
 
         Properties props = sender.getJavaMailProperties();
@@ -138,7 +138,9 @@ public class SysEmailConfigService {
         props.put("mail.smtp.auth", "true");
         if (Boolean.TRUE.equals(view.sslEnabled())) {
             props.put("mail.smtp.ssl.enable", "true");
+            props.put("mail.smtp.ssl.protocols", "TLSv1.2 TLSv1.3");
             props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
+            props.put("mail.smtp.socketFactory.port", String.valueOf(view.smtpPort() != null ? view.smtpPort() : 465));
         } else {
             props.put("mail.smtp.starttls.enable", "true");
         }
