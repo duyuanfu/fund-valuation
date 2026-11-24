@@ -30,6 +30,7 @@ public class AuthController {
             if (req.email() == null || req.email().isBlank() || !req.email().contains("@")) {
                 throw new IllegalArgumentException("电子邮箱不能为空且须为有效格式");
             }
+            channelService.checkEmailAvailable(req.email().trim(), null);
         }
         AuthService.RegisterResult res = authService.register(req.username(), req.password(), req.referralSource());
 

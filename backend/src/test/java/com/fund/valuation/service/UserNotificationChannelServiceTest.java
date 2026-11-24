@@ -103,6 +103,29 @@ class UserNotificationChannelServiceTest {
     }
 
     @Test
+    void testEmailUniquenessAndModification() {
+        channelService.bindEmail("user_a", "unique@example.com");
+
+        // 同一用户允许更新配置保持原邮箱
+        assertDoesNotThrow(() -> channelService.updateChannel("user_a", new NotificationChannelView(
+                "unique@example.com", true, "serverchan", "", "", false, true, "14:30", "ALL_WATCHLIST", false
+        )));
+
+        // 同一用户修改为新邮箱
+        assertDoesNotThrow(() -> channelService.bindEmail("user_a", "unique_new@example.com"));
+        assertEquals("unique_new@example.com", channelService.getChannel("user_a").email());
+
+        // 其他用户尝试绑定 user_a 已绑定的新邮箱，触发唯一性异常
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> channelService.bindEmail("user_b", "unique_new@example.com"));
+        assertTrue(ex.getMessage().contains("已被其他账号使用"));
+
+        // 原邮箱 unique@example.com 已被释放，user_b 可以绑定
+        assertDoesNotThrow(() -> channelService.bindEmail("user_b", "unique@example.com"));
+        assertEquals("unique@example.com", channelService.getChannel("user_b").email());
+    }
+
+    @Test
     void testInvalidEmailThrowsException() {
         NotificationChannelView invalid = new NotificationChannelView(
                 "invalid-email-format",

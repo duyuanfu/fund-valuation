@@ -60,43 +60,29 @@ export function EmailBindPromptModal({
     <Modal
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-              flexShrink: 0,
-            }}
-          >
-            <MailOutlined style={{ color: '#ffffff', fontSize: 16 }} />
-          </div>
-          <span style={{ fontWeight: 700, color: '#0f172a' }}>绑定邮箱 · 开启盘中估值提醒</span>
+          <MailOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+          <span style={{ fontWeight: 650, color: '#0f172a' }}>绑定电子邮箱</span>
         </div>
       }
       open={open}
       onCancel={handleDismiss}
-      width={460}
+      width={410}
       centered
       destroyOnClose
       footer={null}
     >
-      <div style={{ padding: '6px 0' }}>
-        <p style={{ margin: '0 0 12px 0', fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
-          检测到您尚未绑定电子邮箱。绑定后，系统将在每个 A 股交易日盘中（默认 <b>14:30</b>）准时向您发送<b>持仓盈亏总览</b>与<b>自选基金异动播报</b>，助您在 15:00 闭市前从容决策！
+      <div style={{ padding: '4px 0' }}>
+        <p style={{ margin: '0 0 14px 0', fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+          绑定后支持邮箱登录，并可在交易日盘中自动接收持仓估值与异动提醒。
         </p>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 14 }}>
           <Input
             size="large"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onPressEnter={handleBind}
-            placeholder="请输入您的电子邮箱 (例如: name@163.com)"
+            placeholder="请输入您的电子邮箱地址"
             prefix={<MailOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
             allowClear
             style={{ borderRadius: 10, fontSize: 14 }}
@@ -110,7 +96,7 @@ export function EmailBindPromptModal({
           loading={submitting}
           onClick={handleBind}
           style={{
-            height: 42,
+            height: 40,
             borderRadius: 10,
             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
             fontWeight: 650,
@@ -119,10 +105,10 @@ export function EmailBindPromptModal({
             marginBottom: 10,
           }}
         >
-          立即绑定并开启提醒
+          立即绑定
         </Button>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Button
             type="link"
             size="small"
@@ -130,7 +116,7 @@ export function EmailBindPromptModal({
             onClick={handleGoFullSettings}
             style={{ color: '#2563eb', padding: 0, fontSize: 12 }}
           >
-            使用微信(Server酱)或Bark推送 ↗
+            使用微信/Bark推送 ↗
           </Button>
 
           <Button

@@ -38,6 +38,26 @@ public class UserNotificationChannelService {
             false
     );
 
+    /**
+     * 校验电子邮箱唯一性 (排除指定用户 excludeUserId，支持当前用户修改保持原邮箱)
+     */
+    public void checkEmailAvailable(String email, String excludeUserId) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String clean = email.trim();
+        LambdaQueryWrapper<UserNotificationChannel> query = new LambdaQueryWrapper<UserNotificationChannel>()
+                .eq(UserNotificationChannel::getEmail, clean);
+        if (excludeUserId != null && !excludeUserId.isBlank()) {
+            query.ne(UserNotificationChannel::getUserId, excludeUserId);
+        }
+        query.last("LIMIT 1");
+        UserNotificationChannel existing = channelMapper.selectOne(query);
+        if (existing != null) {
+            throw new IllegalArgumentException("该电子邮箱已被其他账号使用，请更换邮箱");
+        }
+    }
+
     public NotificationChannelView getChannel(String userId) {
         if (userId == null || userId.isBlank()) {
             return DEFAULT_VIEW;
@@ -61,6 +81,7 @@ public class UserNotificationChannelService {
             if (!EMAIL_PATTERN.matcher(email).matches()) {
                 throw new IllegalArgumentException("电子邮箱格式不正确");
             }
+            checkEmailAvailable(email, userId);
         }
 
         UserNotificationChannel entity = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
@@ -105,6 +126,7 @@ public class UserNotificationChannelService {
         if (!EMAIL_PATTERN.matcher(cleanEmail).matches()) {
             throw new IllegalArgumentException("电子邮箱格式不正确");
         }
+        checkEmailAvailable(cleanEmail, userId);
         UserNotificationChannel entity = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
                 .eq(UserNotificationChannel::getUserId, userId));
         if (entity == null) {
@@ -143,6 +165,7 @@ public class UserNotificationChannelService {
             if (!EMAIL_PATTERN.matcher(emailToSend).matches()) {
                 throw new IllegalArgumentException("电子邮箱格式不正确");
             }
+            checkEmailAvailable(emailToSend, userId);
             if (entity == null) {
                 entity = new UserNotificationChannel();
                 entity.setUserId(userId);

@@ -112,7 +112,18 @@ function LayoutShell() {
             <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
               <MailOutlined style={{ color: channel?.email ? '#2563eb' : '#d97706', fontSize: 13 }} />
               {channel?.email ? (
-                <span style={{ color: '#334155', wordBreak: 'break-all' }}>{channel.email}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#334155', wordBreak: 'break-all' }}>{channel.email}</span>
+                  <a
+                    style={{ fontSize: 11, color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setNotificationModalOpen(true)
+                    }}
+                  >
+                    修改
+                  </a>
+                </div>
               ) : (
                 <span
                   style={{ color: '#d97706', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
@@ -390,6 +401,10 @@ function LayoutShell() {
         open={notificationModalOpen}
         onClose={() => {
           setNotificationModalOpen(false)
+          refreshChannel()
+        }}
+        onSuccess={(newEmail) => {
+          setChannel((prev) => (prev ? { ...prev, email: newEmail } : ({ email: newEmail } as any)))
           refreshChannel()
         }}
       />

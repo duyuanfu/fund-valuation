@@ -20,7 +20,6 @@ import {
   SendOutlined,
   SafetyOutlined,
   AppleOutlined,
-  ClockCircleOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { api } from '../api'
@@ -29,19 +28,16 @@ import type { NotificationChannelView } from '../api/types'
 interface NotificationChannelModalProps {
   open: boolean
   onClose: () => void
+  onSuccess?: (email: string) => void
 }
 
 const PRESET_TIMES = [
-  { label: '14:30 (🔥黄金决策)', value: '14:30' },
-  { label: '14:15 (中盘异动)', value: '14:15' },
-  { label: '14:45 (尾盘冲刺)', value: '14:45' },
-  { label: '14:00 (提前看盘)', value: '14:00' },
-  { label: '14:50 (最后10分)', value: '14:50' },
-  { label: '10:30 (早盘确认)', value: '10:30' },
-  { label: '11:15 (午盘前瞻)', value: '11:15' },
+  { label: '14:30 (推荐)', value: '14:30' },
+  { label: '14:15', value: '14:15' },
+  { label: '14:45', value: '14:45' },
 ]
 
-export function NotificationChannelModal({ open, onClose }: NotificationChannelModalProps) {
+export function NotificationChannelModal({ open, onClose, onSuccess }: NotificationChannelModalProps) {
   const [form] = Form.useForm<NotificationChannelView>()
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -126,6 +122,9 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
         remindTime: selectedTime,
       })
       message.success(`提醒设置已成功保存！交易日 ${selectedTime} 将准时为您推送。`)
+      if (onSuccess && values.email) {
+        onSuccess(values.email.trim())
+      }
       onClose()
     } catch (e: any) {
       if (e?.errorFields) {
@@ -204,38 +203,17 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
   return (
     <Modal
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16 }}>
-          <div
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
-              flexShrink: 0,
-            }}
-          >
-            <BellOutlined style={{ color: '#ffffff', fontSize: 16 }} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
-              盘中提醒设置
-              <Tag color="blue" style={{ marginLeft: 8, fontSize: 11, borderRadius: 6, fontWeight: 500 }}>
-                交易日自动推送
-              </Tag>
-            </div>
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400, marginTop: 2 }}>
-              支持邮箱、微信 (Server酱) 与 iOS Bark，精准把握闭市前决策黄金期
-            </div>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+          <BellOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+          <span style={{ fontWeight: 650, color: '#0f172a' }}>盘中提醒设置</span>
+          <Tag color="blue" style={{ marginLeft: 6, fontSize: 11, borderRadius: 4, fontWeight: 500 }}>
+            交易日自动推送
+          </Tag>
         </div>
       }
       open={open}
       onCancel={onClose}
-      width={580}
+      width={540}
       centered
       destroyOnClose
       footer={[
@@ -253,7 +231,7 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
             fontWeight: 600,
           }}
         >
-          保存提醒设置
+          保存设置
         </Button>,
       ]}
     >
@@ -265,17 +243,17 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
             style={{
               borderRadius: 12,
               background: '#f8fafc',
-              marginBottom: 14,
+              marginBottom: 12,
               border: '1px solid #e2e8f0',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div>
-                <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 14 }}>
+                <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 13 }}>
                   开启交易日盘中提醒
                 </div>
                 <div style={{ fontSize: 12, color: '#64748b' }}>
-                  法定休市日与节假日自动静默，不打扰休息
+                  法定休市日与节假日自动静默
                 </div>
               </div>
               <Form.Item name="remindEnabled" valuePropName="checked" noStyle>
@@ -283,19 +261,15 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
               </Form.Item>
             </div>
 
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#334155' }}>
-                  <ClockCircleOutlined style={{ color: '#2563eb' }} />
-                  <span>选择提醒送达时间</span>
-                </div>
-                <span style={{ fontSize: 11, color: '#059669', background: '#ecfdf5', padding: '1px 8px', borderRadius: 10, border: '1px solid #a7f3d0' }}>
-                  ⏰ 限制在开市时段 (09:30-11:30, 13:00-15:00)
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>选择提醒送达时间</span>
+                <span style={{ fontSize: 11, color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: 6 }}>
+                  开市时段 09:30-11:30, 13:00-15:00
                 </span>
               </div>
 
-              {/* 时间选择器 + 快捷预设按钮组 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <TimePicker
                   value={selectedTime ? dayjs(selectedTime, 'HH:mm') : dayjs('14:30', 'HH:mm')}
                   format="HH:mm"
@@ -307,50 +281,48 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
                     if (str) handleTimeChange(str as string)
                   }}
                   style={{
-                    width: 120,
+                    width: 110,
                     borderRadius: 8,
                     fontWeight: 650,
-                    fontSize: 14,
+                    fontSize: 13,
                     borderColor: '#2563eb',
                   }}
                 />
-                <span style={{ fontSize: 12, color: '#64748b' }}>或快捷选择预设时段：</span>
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {PRESET_TIMES.map((opt) => {
-                  const isSelected = selectedTime === opt.value
-                  return (
-                    <Button
-                      key={opt.value}
-                      size="small"
-                      type={isSelected ? 'primary' : 'default'}
-                      onClick={() => handleTimeChange(opt.value)}
-                      style={{
-                        borderRadius: 6,
-                        fontSize: 12,
-                        height: 28,
-                        fontWeight: isSelected ? 650 : 400,
-                        ...(isSelected
-                          ? { background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }
-                          : { borderColor: '#cbd5e1' }),
-                      }}
-                    >
-                      {opt.label}
-                    </Button>
-                  )
-                })}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {PRESET_TIMES.map((opt) => {
+                    const isSelected = selectedTime === opt.value
+                    return (
+                      <Button
+                        key={opt.value}
+                        size="small"
+                        type={isSelected ? 'primary' : 'default'}
+                        onClick={() => handleTimeChange(opt.value)}
+                        style={{
+                          borderRadius: 6,
+                          fontSize: 12,
+                          height: 28,
+                          fontWeight: isSelected ? 600 : 400,
+                          ...(isSelected
+                            ? { background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }
+                            : { borderColor: '#cbd5e1' }),
+                        }}
+                      >
+                        {opt.label}
+                      </Button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </Card>
 
-          {/* 渠道 1: 电子邮箱 */}
+          {/* 渠道 1: 电子邮箱 (我的绑定邮箱) */}
           <Card
             title={
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Space size={6}>
-                  <MailOutlined style={{ color: '#2563eb', fontSize: 15 }} />
-                  <span style={{ fontWeight: 650, fontSize: 14 }}>电子邮箱 (推荐 · 排版清晰精美)</span>
+                  <MailOutlined style={{ color: '#2563eb', fontSize: 14 }} />
+                  <span style={{ fontWeight: 650, fontSize: 13 }}>电子邮箱 (我的绑定邮箱)</span>
                 </Space>
                 <Form.Item name="emailEnabled" valuePropName="checked" noStyle>
                   <Switch size="small" checkedChildren="开启" unCheckedChildren="关闭" />
@@ -358,34 +330,31 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
               </div>
             }
             size="small"
-            style={{ borderRadius: 12, marginBottom: 14, border: '1px solid #f1f5f9' }}
+            style={{ borderRadius: 12, marginBottom: 12, border: '1px solid #f1f5f9' }}
           >
-            <Form.Item
-              name="email"
-              label={<span style={{ fontSize: 13, color: '#334155' }}>电子邮箱地址</span>}
-              rules={[
-                { type: 'email', message: '请输入有效的电子邮箱格式' },
-              ]}
-              extra="支持 QQ邮箱、网易163、Gmail、Outlook 等任何常用邮箱，邮件客户端将准时送达卡片。"
-              style={{ marginBottom: 10 }}
-            >
-              <Input
-                placeholder="例如: yourname@163.com (留空则不通过邮箱推送)"
-                allowClear
-                prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                style={{ borderRadius: 8 }}
-              />
-            </Form.Item>
-
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <Form.Item
+                name="email"
+                rules={[
+                  { type: 'email', message: '请输入有效的电子邮箱格式' },
+                ]}
+                style={{ flex: 1, marginBottom: 0 }}
+              >
+                <Input
+                  placeholder="请输入电子邮箱 (保存后将同步更新绑定邮箱)"
+                  allowClear
+                  prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
+                  style={{ borderRadius: 8 }}
+                />
+              </Form.Item>
               <Button
-                size="small"
+                size="middle"
                 icon={<SendOutlined />}
                 loading={testingEmail}
                 onClick={handleTestEmail}
-                style={{ borderRadius: 6 }}
+                style={{ borderRadius: 8, flexShrink: 0 }}
               >
-                发送测试邮件
+                发送测试
               </Button>
             </div>
           </Card>
