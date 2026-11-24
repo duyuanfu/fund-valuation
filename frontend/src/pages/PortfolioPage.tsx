@@ -57,7 +57,6 @@ export default function PortfolioPage() {
   const [data, setData] = useState<PortfolioView | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<string>('')
   const [vipConfig, setVipConfig] = useState<VipConfigView | null>(null)
 
   // 弹窗状态
@@ -92,7 +91,6 @@ export default function PortfolioPage() {
     try {
       const res = await api.getPortfolio()
       setData(res)
-      setLastUpdated(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }))
       if (isManual) message.success('持仓估值已刷新')
     } catch (e: any) {
       if (e?.error) {
@@ -559,13 +557,9 @@ export default function PortfolioPage() {
               共 {data?.items?.length ?? 0} 只持仓
             </span>
           </div>
-          <Text type="secondary" style={{ fontSize: 12, marginTop: 2, display: 'block', color: '#94a3b8' }}>
-            对标支付宝基金持仓4字段 · 结合实时高频估值自动测算
-            {lastUpdated && ` · ${lastUpdated} 更新`}
-          </Text>
         </div>
 
-        <Space size={8}>
+        <Space size={8} style={{ marginLeft: 'auto' }}>
           <Button
             size={isMobile ? 'small' : 'middle'}
             icon={<BellOutlined style={{ color: '#d97706' }} />}

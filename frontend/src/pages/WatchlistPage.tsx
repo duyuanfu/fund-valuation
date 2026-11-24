@@ -11,6 +11,7 @@ import {
   Typography,
   Card,
   message,
+  Space,
 } from 'antd'
 import {
   PlusOutlined,
@@ -24,12 +25,10 @@ import {
   HolderOutlined,
   SwapOutlined,
   SoundOutlined,
-  CustomerServiceOutlined,
   BellOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
-import { ContactModal } from '../components/ContactModal'
 import { NotificationChannelModal } from '../components/NotificationChannelModal'
 import {
   DndContext,
@@ -402,7 +401,6 @@ export default function WatchlistPage() {
 
   // 监听屏幕断点 (< 768px 为移动端视图)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
-  const [contactOpen, setContactOpen] = useState(false)
   const [notificationModalOpen, setNotificationModalOpen] = useState(false)
 
   useEffect(() => {
@@ -652,57 +650,46 @@ export default function WatchlistPage() {
         margin: '0 auto',
       }}
     >
-      {/* 顶部工具栏 (高端简雅金融看板标题) */}
+      {/* 顶部工具栏 (与持仓估值统一风格 · 靠右紧凑简短按钮) */}
       <div
         style={{
           display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: isMobile ? 'stretch' : 'center',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          gap: isMobile ? 12 : 16,
-          marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 10,
+          marginBottom: 14,
         }}
       >
         <div>
-          <Title
-            level={4}
-            style={{
-              margin: 0,
-              fontSize: isMobile ? 18 : 20,
-              color: '#0f172a',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontWeight: 700,
-              letterSpacing: -0.3,
-            }}
-          >
-            自选估值
-            <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Title
+              level={4}
               style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: '#475569',
-                background: '#f1f5f9',
-                borderRadius: 12,
-                padding: '2px 8px',
+                margin: 0,
+                fontSize: isMobile ? 18 : 20,
+                color: '#0f172a',
+                fontWeight: 650,
               }}
             >
-              {estimates.length} 只
+              自选估值
+            </Title>
+            <span style={{ fontSize: 12, color: '#64748b' }}>
+              共 {estimates.length} 只自选
             </span>
-          </Title>
+          </div>
         </div>
 
-        {/* 操作区：移动端单行等宽排布，杜绝换行错位 */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            flexWrap: 'nowrap',
-            width: isMobile ? '100%' : undefined,
-            alignItems: 'center',
-          }}
-        >
+        <Space size={8} style={{ marginLeft: 'auto' }}>
+          <Button
+            size={isMobile ? 'small' : 'middle'}
+            icon={<BellOutlined style={{ color: '#d97706' }} />}
+            onClick={() => setNotificationModalOpen(true)}
+            style={{ borderRadius: 8 }}
+          >
+            {isMobile ? '提醒' : '盘中提醒'}
+          </Button>
+
           {estimates.length > 1 && (
             <Button
               size={isMobile ? 'small' : 'middle'}
@@ -717,23 +704,17 @@ export default function WatchlistPage() {
               }
               type={pctSort !== 'default' ? 'primary' : 'default'}
               ghost={pctSort !== 'default'}
-              style={{ borderRadius: 8, flex: isMobile ? 1 : undefined }}
+              style={{ borderRadius: 8 }}
               onClick={() => {
                 if (isSorting) setIsSorting(false)
                 setPctSort((prev) => (prev === 'default' ? 'desc' : prev === 'desc' ? 'asc' : 'default'))
               }}
             >
               {pctSort === 'desc'
-                ? isMobile
-                  ? '降序'
-                  : '涨幅降序'
+                ? (isMobile ? '降序' : '涨幅降序')
                 : pctSort === 'asc'
-                ? isMobile
-                  ? '升序'
-                  : '涨幅升序'
-                : isMobile
-                ? '排序'
-                : '收益率排序'}
+                ? (isMobile ? '升序' : '涨幅升序')
+                : (isMobile ? '排序' : '收益率排序')}
             </Button>
           )}
 
@@ -742,10 +723,10 @@ export default function WatchlistPage() {
               size="small"
               icon={isSorting ? <CheckOutlined /> : <MenuOutlined />}
               type={isSorting ? 'primary' : 'default'}
-              style={{ borderRadius: 8, flex: 1 }}
+              style={{ borderRadius: 8 }}
               onClick={() => {
                 if (!isSorting) {
-                  setPctSort('default') // 开启拖拽模式时恢复为默认自选顺序
+                  setPctSort('default')
                 }
                 setIsSorting(!isSorting)
               }}
@@ -756,38 +737,19 @@ export default function WatchlistPage() {
 
           <Button
             type="primary"
-            icon={<PlusOutlined />}
             size={isMobile ? 'small' : 'middle'}
+            icon={<PlusOutlined />}
+            onClick={() => setAdding(true)}
             style={{
               borderRadius: 8,
-              flex: isMobile ? 1 : undefined,
               background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
               fontWeight: 550,
               boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
             }}
-            onClick={() => setAdding(true)}
           >
             {isMobile ? '添加' : '添加基金'}
           </Button>
-
-          <Button
-            size={isMobile ? 'small' : 'middle'}
-            icon={<BellOutlined style={{ color: '#d97706' }} />}
-            style={{ borderRadius: 8, flex: isMobile ? 1 : undefined, color: '#334155' }}
-            onClick={() => setNotificationModalOpen(true)}
-          >
-            {isMobile ? '提醒' : '盘中提醒'}
-          </Button>
-
-          <Button
-            size={isMobile ? 'small' : 'middle'}
-            icon={<CustomerServiceOutlined style={{ color: '#2563eb' }} />}
-            style={{ borderRadius: 8, flex: isMobile ? 1 : undefined, color: '#334155' }}
-            onClick={() => setContactOpen(true)}
-          >
-            联系
-          </Button>
-        </div>
+        </Space>
       </div>
 
       {/* 通用系统公告 / 市场时段状态提示 */}
@@ -962,9 +924,6 @@ export default function WatchlistPage() {
           </Text>
         </div>
       </Modal>
-
-      {/* 联系管理员弹窗 */}
-      <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
 
       {/* 盘中提醒设置弹窗 */}
       <NotificationChannelModal
