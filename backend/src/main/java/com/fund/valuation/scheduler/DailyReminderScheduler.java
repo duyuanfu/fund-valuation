@@ -5,7 +5,6 @@ import com.fund.valuation.domain.User;
 import com.fund.valuation.domain.UserNotificationChannel;
 import com.fund.valuation.dto.PortfolioView;
 import com.fund.valuation.service.AuthService;
-import com.fund.valuation.service.CalendarHolidayService;
 import com.fund.valuation.service.DailyReminderTemplateService;
 import com.fund.valuation.service.EmailSenderService;
 import com.fund.valuation.service.EstimateResult;
@@ -20,11 +19,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * 交易日 14:30 盘中关键决策半小时估值与持仓日报定时提醒调度器。
+ * 交易日盘中关键决策半小时估值与持仓日报定时提醒调度器。
+ * 支持用户自定义提醒时间 (14:00, 14:15, 14:30, 14:45, 14:50 等)。
  */
 @Slf4j
 @Component
@@ -41,55 +42,68 @@ public class DailyReminderScheduler {
     private final WxNotificationService wxNotificationService;
 
     /**
-     * 每个交易日 14:30 准时触发
+     * 交易日 14:00 - 14:59 每分钟轮询，匹配用户设定的提醒时间
      */
-    @Scheduled(cron = "0 30 14 * * 1-5", zone = "Asia/Shanghai")
+    @Scheduled(cron = "0 * 14 * * 1-5", zone = "Asia/Shanghai")
     public void runScheduledReminder() {
-        executeDailyReminder(false);
+        LocalTime now = LocalTime.now();
+        String currentMinute = String.format("%02d:%02d", now.getHour(), now.getMinute());
+        executeDailyReminder(false, currentMinute);
+    }
+
+    public int executeDailyReminder(boolean force) {
+        return executeDailyReminder(force, null);
     }
 
     /**
-     * 执行每日 14:30 推送逻辑 (支持管理后台 force 手动测试触发)
+     * 执行盘中推送逻辑
+     * @param force 是否忽略交易日判定 (支持管理后台手动强制触发)
+     * @param targetTimeMinute 指定提醒时间分秒 (如 "14:30")，若为 null 则分发给所有活跃订阅用户
      */
-    public int executeDailyReminder(boolean force) {
+    public int executeDailyReminder(boolean force, String targetTimeMinute) {
         LocalDate today = LocalDate.now();
 
         if (!force) {
             if (!TradingCalendar.isTradingDay(today)) {
-                log.info("今日 [{}] 为法定休市日/周末/节假日，跳过 14:30 盘中估值提醒推送", today);
                 return 0;
             }
         }
-
-        log.info(">>> 开始执行交易日 14:30 盘中估值与持仓提醒派发任务 (force={})", force);
 
         // 1. 预热刷新盘中最新估值快照
         try {
             runner.run();
         } catch (Exception e) {
-            log.warn("14:30 预热估值运行异常，继续使用缓存估值: {}", e.getMessage());
+            log.warn("预热估值运行异常，继续使用缓存估值: {}", e.getMessage());
         }
 
-        // 2. 查询所有启用了每日提醒的用户
-        List<UserNotificationChannel> channels = channelService.listActiveRemindUsers();
+        // 2. 查询目标分发用户
+        List<UserNotificationChannel> channels;
+        if (targetTimeMinute != null && !targetTimeMinute.isBlank()) {
+            channels = channelService.listActiveRemindUsers(targetTimeMinute);
+        } else {
+            channels = channelService.listActiveRemindUsers();
+        }
+
         if (channels.isEmpty()) {
-            log.info("当前无开启 14:30 提醒的活跃订阅用户，任务结束");
             return 0;
         }
+
+        log.info(">>> 开始执行交易日盘中估值与持仓提醒派发任务 (force={}, targetTime={}, 命中用户数={})",
+                force, targetTimeMinute != null ? targetTimeMinute : "ALL", channels.size());
 
         int sentCount = 0;
         for (UserNotificationChannel ch : channels) {
             try {
                 processSingleUserReminder(ch);
                 sentCount++;
-                // 发送微延时，防高并发频控
-                Thread.sleep(150);
+                // 发送微延时，防高频拥堵
+                Thread.sleep(100);
             } catch (Exception e) {
-                log.warn("向用户 [{}] 派发 14:30 提醒失败: {}", ch.getUserId(), e.getMessage());
+                log.warn("向用户 [{}] 派发盘中提醒失败: {}", ch.getUserId(), e.getMessage());
             }
         }
 
-        log.info("<<< 交易日 14:30 盘中估值提醒派发完毕，成功分发用户数: {}", sentCount);
+        log.info("<<< 交易日盘中估值提醒派发完毕，成功分发用户数: {}", sentCount);
         return sentCount;
     }
 
@@ -122,11 +136,12 @@ public class DailyReminderScheduler {
         }
 
         boolean hideAmount = Boolean.TRUE.equals(ch.getHideAmount());
+        String remindTime = ch.getRemindTime() != null && !ch.getRemindTime().isBlank() ? ch.getRemindTime() : "14:30";
 
-        // 1. 发送邮件
+        // 1. 发送邮件 (富文本 HTML)
         if (Boolean.TRUE.equals(ch.getEmailEnabled()) && ch.getEmail() != null && !ch.getEmail().isBlank()) {
             try {
-                String subject = "【盘中快报】14:30 基金估值与持仓日报 - " + username;
+                String subject = "【盘中快报】" + remindTime + " 基金估值与持仓日报 - " + username;
                 String html = templateService.renderHtmlEmail(
                         username,
                         portfolioView != null ? portfolioView.summary() : null,
@@ -141,10 +156,10 @@ public class DailyReminderScheduler {
             }
         }
 
-        // 2. 发送微信 / Webhook
+        // 2. 发送移动端 (Server酱微信 或 Bark)
         if (Boolean.TRUE.equals(ch.getWechatEnabled())) {
             try {
-                String title = "【14:30 盘中估值快报】" + username;
+                String title = "【" + remindTime + " 盘中估值快报】" + username;
                 String markdown = templateService.renderMarkdown(
                         username,
                         portfolioView != null ? portfolioView.summary() : null,
@@ -154,7 +169,7 @@ public class DailyReminderScheduler {
                 );
                 wxNotificationService.sendWechatNotification(ch, title, markdown, "http://localhost:8080");
             } catch (Exception e) {
-                log.warn("用户 [{}] 微信/Webhook 分发异常: {}", username, e.getMessage());
+                log.warn("用户 [{}] 移动端通知分发异常: {}", username, e.getMessage());
             }
         }
     }

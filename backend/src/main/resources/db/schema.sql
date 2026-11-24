@@ -166,18 +166,21 @@ CREATE TABLE IF NOT EXISTS user_notification_channel (
     user_id             VARCHAR(64)  NOT NULL COMMENT '用户名',
     email               VARCHAR(128) NULL     COMMENT '绑定的电子邮箱',
     email_enabled       TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用邮箱推送: 1启用/0关闭',
-    wechat_channel_type VARCHAR(32)  NOT NULL DEFAULT 'wxpusher' COMMENT '微信通道类型: wxpusher/webhook',
-    wechat_uid          VARCHAR(128) NULL     COMMENT 'WxPusher用户UID',
-    wechat_app_token    VARCHAR(255) NULL     COMMENT '个人自定义WxPusher AppToken',
-    wechat_webhook_url  VARCHAR(500) NULL     COMMENT '自定义微信/企微/钉钉/Bark/Server酱Webhook',
-    wechat_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用微信推送: 1启用/0关闭',
-    remind_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '每日14:30盘中提醒总开关: 1开启/0关闭',
+    wechat_channel_type VARCHAR(32)  NOT NULL DEFAULT 'serverchan' COMMENT '移动端通道类型: serverchan/bark',
+    serverchan_key      VARCHAR(128) NULL     COMMENT 'Server酱 SendKey (微信推送)',
+    bark_url            VARCHAR(255) NULL     COMMENT 'Bark 推送 Key 或完整 URL (iOS推送)',
+    wechat_uid          VARCHAR(128) NULL     COMMENT '历史兼容UID',
+    wechat_app_token    VARCHAR(255) NULL     COMMENT '历史兼容Token',
+    wechat_webhook_url  VARCHAR(500) NULL     COMMENT '历史兼容Webhook',
+    wechat_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用微信/移动端推送: 1启用/0关闭',
+    remind_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '盘中提醒总开关: 1开启/0关闭',
+    remind_time         VARCHAR(8)   NOT NULL DEFAULT '14:30' COMMENT '盘中提醒时间点: 14:00/14:15/14:30/14:45/14:50',
     push_scope          VARCHAR(32)  NOT NULL DEFAULT 'ALL_WATCHLIST' COMMENT '推送范围: ALL_WATCHLIST/PORTFOLIO_ONLY',
     hide_amount         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否隐藏具体资产金额: 1隐藏/0显示',
     updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_user_channel (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户通知渠道与14:30提醒配置';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户通知渠道与盘中提醒配置';
 
 CREATE TABLE IF NOT EXISTS sys_email_config (
     id             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',

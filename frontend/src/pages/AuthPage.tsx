@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Button, Card, Form, Input, Tabs, Typography, message, Modal, Select } from 'antd'
-import { LineChartOutlined, LockOutlined, UserOutlined, CustomerServiceOutlined } from '@ant-design/icons'
+import { LineChartOutlined, LockOutlined, UserOutlined, CustomerServiceOutlined, MailOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api'
@@ -26,7 +26,7 @@ export default function AuthPage() {
       .catch(() => {})
   }, [])
 
-  const submit = async (values: { username: string; password: string; referralSource?: string }) => {
+  const submit = async (values: { username: string; password: string; referralSource?: string; email?: string }) => {
     setSubmitting(true)
     try {
       if (mode === 'login') {
@@ -39,7 +39,7 @@ export default function AuthPage() {
           navigate('/', { replace: true })
         }
       } else {
-        const regRes = await api.register(values.username, values.password, values.referralSource)
+        const regRes = await api.register(values.username, values.password, values.referralSource, values.email)
         if (regRes.needApproval === false && regRes.token) {
           login(regRes.token, regRes.username, regRes.role ?? 'USER', regRes.isVip ?? true)
           message.success('注册成功，已赠送您 7 天 VIP 体验会员！')
@@ -281,6 +281,27 @@ export default function AuthPage() {
                 }}
               />
             </Form.Item>
+
+            {mode === 'register' && (
+              <Form.Item
+                name="email"
+                rules={[
+                  { type: 'email', message: '请输入有效的电子邮箱格式' },
+                ]}
+                style={{ marginBottom: 16 }}
+              >
+                <Input
+                  prefix={<MailOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
+                  placeholder="电子邮箱 (选填，自动开通交易日盘中估值提醒)"
+                  style={{
+                    borderRadius: 10,
+                    fontSize: 14,
+                    borderColor: '#e2e8f0',
+                    padding: '9px 12px',
+                  }}
+                />
+              </Form.Item>
+            )}
 
             {mode === 'register' && (
               <Form.Item

@@ -166,6 +166,9 @@ public class DatabaseAutoMigrator {
             """);
 
             // 8. 字段增量热升级容错
+            addColumnIfNotExists(conn, "user_notification_channel", "remind_time", "VARCHAR(8) DEFAULT '14:30'");
+            addColumnIfNotExists(conn, "user_notification_channel", "serverchan_key", "VARCHAR(128) NULL");
+            addColumnIfNotExists(conn, "user_notification_channel", "bark_url", "VARCHAR(255) NULL");
             addColumnIfNotExists(conn, "user_notification_channel", "wechat_app_token", "VARCHAR(255) NULL");
             addColumnIfNotExists(conn, "sys_email_config", "wxpusher_app_token", "VARCHAR(255) NULL");
             addColumnIfNotExists(conn, "sys_email_config", "wxpusher_qr_url", "VARCHAR(500) NULL");

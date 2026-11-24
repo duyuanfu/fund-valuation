@@ -1924,35 +1924,7 @@ export default function AdminPage() {
                           <Switch checkedChildren="开启 (推荐 465 端口)" unCheckedChildren="关闭 (通常 587/25 端口)" />
                         </Form.Item>
 
-                        <Divider style={{ margin: '16px 0 14px' }} />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                          <WechatOutlined style={{ color: '#16a34a', fontSize: 16 }} />
-                          <span style={{ fontWeight: 650, color: '#0f172a' }}>
-                            系统全局 WxPusher 微信免公众号服务配置
-                          </span>
-                        </div>
-                        <Row gutter={16}>
-                          <Col span={12}>
-                            <Form.Item
-                              name="wxpusherAppToken"
-                              label="系统 WxPusher AppToken"
-                              extra="以 AT_ 开头。在 wxpusher.zjiecode.com 免费创建应用获取"
-                            >
-                              <Input placeholder="例如: AT_xxxxxxxxxxxx" style={{ borderRadius: 8 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="wxpusherQrUrl"
-                              label="应用关注二维码 / 关注页面链接"
-                              extra="用户打开提醒弹窗时将直接展示该关注入口"
-                            >
-                              <Input placeholder="https://wxpusher.zjiecode.com/wxuser/?type=1&id=xxx#/follow" style={{ borderRadius: 8 }} />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-
-                        <Divider style={{ margin: '12px 0 16px' }} />
+                        <Divider style={{ margin: '14px 0 16px' }} />
 
                         <Space size={12}>
                           <Button
@@ -2006,10 +1978,10 @@ export default function AdminPage() {
                           <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>
                             ⏰ 定时任务执行规则：
                           </div>
-                          <div>• <strong>触发时间：</strong>每个法定 A 股交易日 14:30:00 准时触发。</div>
+                          <div>• <strong>触发时间：</strong>法定 A 股交易日按用户自选时间（如 14:30）准时触发。</div>
                           <div>• <strong>休市过滤：</strong>严格校验法定节假日及休市日，休市自动静默跳过。</div>
                           <div>• <strong>触达内容：</strong>持仓今日预估收益 + 重点自选估值榜单 + 网页直达。</div>
-                          <div>• <strong>推送渠道：</strong>HTML 邮件、微信 WxPusher、自定义 Webhook。</div>
+                          <div>• <strong>推送渠道：</strong>HTML 邮件、微信 (Server酱)、iOS Bark。</div>
                         </div>
 
                         <Alert

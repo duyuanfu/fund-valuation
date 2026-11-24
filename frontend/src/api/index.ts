@@ -77,10 +77,10 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
-  register: (username: string, password: string, referralSource?: string) =>
+  register: (username: string, password: string, referralSource?: string, email?: string) =>
     request<RegisterResponse>('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password, referralSource }),
+      body: JSON.stringify({ username, password, referralSource, email }),
     }),
 
   listWatchlist: () => request<EstimateResult[]>('/api/watchlist'),
@@ -232,7 +232,7 @@ export const api = {
       method: 'POST',
     }),
 
-  // 用户通知渠道与14:30盘中提醒
+  // 用户通知渠道与盘中提醒
   getNotificationChannel: () => request<NotificationChannelView>('/api/user/notification-channel'),
 
   updateNotificationChannel: (data: NotificationChannelView) =>
@@ -241,10 +241,28 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  bindNotificationEmail: (email: string) =>
+    request<{ success: boolean; message: string }>('/api/user/notification-channel/bind-email', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
   testNotificationEmail: (email?: string) =>
     request<{ success: boolean; message: string }>('/api/user/notification-channel/test-email', {
       method: 'POST',
       body: email ? JSON.stringify({ email }) : undefined,
+    }),
+
+  testNotificationServerchan: (serverchanKey?: string) =>
+    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-serverchan', {
+      method: 'POST',
+      body: serverchanKey ? JSON.stringify({ serverchanKey }) : undefined,
+    }),
+
+  testNotificationBark: (barkUrl?: string) =>
+    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-bark', {
+      method: 'POST',
+      body: barkUrl ? JSON.stringify({ barkUrl }) : undefined,
     }),
 
   testNotificationWechat: (wechatTarget?: string, wechatChannelType?: string) =>

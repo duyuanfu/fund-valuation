@@ -25,23 +25,32 @@ public class UserNotificationChannel {
     /** 是否启用邮箱推送 */
     private Boolean emailEnabled;
 
-    /** 微信通道类型: wxpusher / webhook */
+    /** 移动端/微信通道类型: serverchan / bark */
     private String wechatChannelType;
 
-    /** WxPusher 用户 UID (例如 UID_xxx) */
+    /** Server酱 SendKey (微信推送) */
+    private String serverchanKey;
+
+    /** Bark 推送 Key 或完整 URL (iOS推送) */
+    private String barkUrl;
+
+    /** 历史兼容 WxPusher UID */
     private String wechatUid;
 
-    /** 个人自定义 WxPusher AppToken (可选，留空则使用系统后台统一配置的 AppToken) */
+    /** 历史兼容 AppToken */
     private String wechatAppToken;
 
-    /** 自定义 Webhook 地址 (企微/钉钉/飞书/Bark/Server酱) */
+    /** 历史兼容 Webhook URL */
     private String wechatWebhookUrl;
 
-    /** 是否启用微信推送 */
+    /** 是否启用微信/移动端推送 */
     private Boolean wechatEnabled;
 
-    /** 每日14:30盘中提醒总开关 */
+    /** 盘中提醒总开关 */
     private Boolean remindEnabled;
+
+    /** 每日提醒时间点，默认 '14:30'，可选 '14:00', '14:15', '14:30', '14:45', '14:50' */
+    private String remindTime;
 
     /** 推送内容范围: ALL_WATCHLIST(全部自选) / PORTFOLIO_ONLY(仅持仓) */
     private String pushScope;

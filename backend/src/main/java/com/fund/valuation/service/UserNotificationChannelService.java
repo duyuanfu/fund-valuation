@@ -28,15 +28,13 @@ public class UserNotificationChannelService {
     private static final NotificationChannelView DEFAULT_VIEW = new NotificationChannelView(
             "",
             true,
-            "pushplus",
-            "",
+            "serverchan",
             "",
             "",
             true,
             true,
+            "14:30",
             "ALL_WATCHLIST",
-            false,
-            "",
             false
     );
 
@@ -75,12 +73,12 @@ public class UserNotificationChannelService {
 
         entity.setEmail(req.email() != null ? req.email().trim() : "");
         entity.setEmailEnabled(req.emailEnabled() != null ? req.emailEnabled() : true);
-        entity.setWechatChannelType(req.wechatChannelType() != null && !req.wechatChannelType().isBlank() ? req.wechatChannelType() : "pushplus");
-        entity.setWechatUid(req.wechatUid() != null ? req.wechatUid().trim() : "");
-        entity.setWechatAppToken(req.wechatAppToken() != null ? req.wechatAppToken().trim() : "");
-        entity.setWechatWebhookUrl(req.wechatWebhookUrl() != null ? req.wechatWebhookUrl().trim() : "");
+        entity.setWechatChannelType(req.wechatChannelType() != null && !req.wechatChannelType().isBlank() ? req.wechatChannelType().trim().toLowerCase() : "serverchan");
+        entity.setServerchanKey(req.serverchanKey() != null ? req.serverchanKey().trim() : "");
+        entity.setBarkUrl(req.barkUrl() != null ? req.barkUrl().trim() : "");
         entity.setWechatEnabled(req.wechatEnabled() != null ? req.wechatEnabled() : true);
         entity.setRemindEnabled(req.remindEnabled() != null ? req.remindEnabled() : true);
+        entity.setRemindTime(req.remindTime() != null && !req.remindTime().isBlank() ? req.remindTime().trim() : "14:30");
         entity.setPushScope(req.pushScope() != null && !req.pushScope().isBlank() ? req.pushScope() : "ALL_WATCHLIST");
         entity.setHideAmount(req.hideAmount() != null ? req.hideAmount() : false);
         entity.setUpdatedAt(LocalDateTime.now());
@@ -91,8 +89,44 @@ public class UserNotificationChannelService {
             channelMapper.updateById(entity);
         }
 
-        log.info("用户 [{}] 成功更新通知渠道设置: 提醒总开关={}", userId, entity.getRemindEnabled());
+        log.info("用户 [{}] 成功更新通知渠道设置: 提醒时间={}, 总开关={}", userId, entity.getRemindTime(), entity.getRemindEnabled());
         return toView(entity);
+    }
+
+    /**
+     * 针对新用户注册或未绑定邮箱的老用户快速绑定邮箱
+     */
+    @Transactional
+    public void bindEmail(String userId, String email) {
+        if (userId == null || userId.isBlank() || email == null || email.isBlank()) {
+            return;
+        }
+        String cleanEmail = email.trim();
+        if (!EMAIL_PATTERN.matcher(cleanEmail).matches()) {
+            throw new IllegalArgumentException("电子邮箱格式不正确");
+        }
+        UserNotificationChannel entity = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
+                .eq(UserNotificationChannel::getUserId, userId));
+        if (entity == null) {
+            entity = new UserNotificationChannel();
+            entity.setUserId(userId);
+            entity.setEmail(cleanEmail);
+            entity.setEmailEnabled(true);
+            entity.setWechatChannelType("serverchan");
+            entity.setWechatEnabled(true);
+            entity.setRemindEnabled(true);
+            entity.setRemindTime("14:30");
+            entity.setPushScope("ALL_WATCHLIST");
+            entity.setHideAmount(false);
+            entity.setUpdatedAt(LocalDateTime.now());
+            channelMapper.insert(entity);
+        } else {
+            entity.setEmail(cleanEmail);
+            entity.setEmailEnabled(true);
+            entity.setUpdatedAt(LocalDateTime.now());
+            channelMapper.updateById(entity);
+        }
+        log.info("用户 [{}] 成功绑定邮箱: {}", userId, cleanEmail);
     }
 
     public void testEmail(String userId) {
@@ -114,10 +148,13 @@ public class UserNotificationChannelService {
                 entity.setUserId(userId);
                 entity.setEmail(emailToSend);
                 entity.setEmailEnabled(true);
+                entity.setRemindEnabled(true);
+                entity.setRemindTime("14:30");
                 entity.setUpdatedAt(LocalDateTime.now());
                 channelMapper.insert(entity);
             } else {
                 entity.setEmail(emailToSend);
+                entity.setEmailEnabled(true);
                 entity.setUpdatedAt(LocalDateTime.now());
                 channelMapper.updateById(entity);
             }
@@ -131,29 +168,23 @@ public class UserNotificationChannelService {
         emailSenderService.sendTestEmail(emailToSend);
     }
 
-    public void testWechat(String userId) {
-        testWechat(userId, null, null);
-    }
-
-    public void testWechat(String userId, String tokenOrUrl, String channelType) {
+    public void testServerchan(String userId, String key) {
         UserNotificationChannel entity = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
                 .eq(UserNotificationChannel::getUserId, userId));
 
-        if (tokenOrUrl != null && !tokenOrUrl.isBlank()) {
+        if (key != null && !key.isBlank()) {
             boolean isNew = (entity == null);
             if (isNew) {
                 entity = new UserNotificationChannel();
                 entity.setUserId(userId);
-                entity.setWechatEnabled(true);
                 entity.setRemindEnabled(true);
+                entity.setRemindTime("14:30");
+                entity.setPushScope("ALL_WATCHLIST");
+                entity.setHideAmount(false);
             }
-            String type = (channelType != null && !channelType.isBlank()) ? channelType.trim().toLowerCase() : "pushplus";
-            entity.setWechatChannelType(type);
-            if ("wxpusher".equals(type)) {
-                entity.setWechatUid(tokenOrUrl.trim());
-            } else {
-                entity.setWechatWebhookUrl(tokenOrUrl.trim());
-            }
+            entity.setWechatChannelType("serverchan");
+            entity.setServerchanKey(key.trim());
+            entity.setWechatEnabled(true);
             entity.setUpdatedAt(LocalDateTime.now());
             if (isNew) {
                 channelMapper.insert(entity);
@@ -161,13 +192,57 @@ public class UserNotificationChannelService {
                 channelMapper.updateById(entity);
             }
         } else {
-            if (entity == null || ((entity.getWechatUid() == null || entity.getWechatUid().isBlank())
-                    && (entity.getWechatWebhookUrl() == null || entity.getWechatWebhookUrl().isBlank()))) {
-                throw new IllegalArgumentException("请先输入 PushPlus Token 或 Webhook 地址");
+            if (entity == null || entity.getServerchanKey() == null || entity.getServerchanKey().isBlank()) {
+                throw new IllegalArgumentException("请先输入 Server酱 SendKey（以 SCT 开头）");
             }
         }
 
         wxNotificationService.sendTestWechat(entity);
+    }
+
+    public void testBark(String userId, String keyOrUrl) {
+        UserNotificationChannel entity = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
+                .eq(UserNotificationChannel::getUserId, userId));
+
+        if (keyOrUrl != null && !keyOrUrl.isBlank()) {
+            boolean isNew = (entity == null);
+            if (isNew) {
+                entity = new UserNotificationChannel();
+                entity.setUserId(userId);
+                entity.setRemindEnabled(true);
+                entity.setRemindTime("14:30");
+                entity.setPushScope("ALL_WATCHLIST");
+                entity.setHideAmount(false);
+            }
+            entity.setWechatChannelType("bark");
+            entity.setBarkUrl(keyOrUrl.trim());
+            entity.setWechatEnabled(true);
+            entity.setUpdatedAt(LocalDateTime.now());
+            if (isNew) {
+                channelMapper.insert(entity);
+            } else {
+                channelMapper.updateById(entity);
+            }
+        } else {
+            if (entity == null || entity.getBarkUrl() == null || entity.getBarkUrl().isBlank()) {
+                throw new IllegalArgumentException("请先输入 Bark 推送 Key 或设备链接");
+            }
+        }
+
+        wxNotificationService.sendTestWechat(entity);
+    }
+
+    public void testWechat(String userId) {
+        testWechat(userId, null, null);
+    }
+
+    public void testWechat(String userId, String tokenOrUrl, String channelType) {
+        String type = channelType != null ? channelType.trim().toLowerCase() : "serverchan";
+        if ("bark".equals(type)) {
+            testBark(userId, tokenOrUrl);
+        } else {
+            testServerchan(userId, tokenOrUrl);
+        }
     }
 
     public List<UserNotificationChannel> listActiveRemindUsers() {
@@ -177,24 +252,30 @@ public class UserNotificationChannelService {
                         .or().eq(UserNotificationChannel::getWechatEnabled, true)));
     }
 
-    private NotificationChannelView toView(UserNotificationChannel e) {
-        com.fund.valuation.dto.EmailConfigView emailCfg = sysEmailConfigService != null ? sysEmailConfigService.getEmailConfig() : null;
-        String systemQr = (emailCfg != null && emailCfg.wxpusherQrUrl() != null) ? emailCfg.wxpusherQrUrl() : "";
-        boolean hasToken = (emailCfg != null && emailCfg.wxpusherAppToken() != null && !emailCfg.wxpusherAppToken().isBlank());
+    public List<UserNotificationChannel> listActiveRemindUsers(String remindTime) {
+        if (remindTime == null || remindTime.isBlank()) {
+            return listActiveRemindUsers();
+        }
+        return channelMapper.selectList(new LambdaQueryWrapper<UserNotificationChannel>()
+                .eq(UserNotificationChannel::getRemindEnabled, true)
+                .and(w -> w.eq(UserNotificationChannel::getEmailEnabled, true)
+                        .or().eq(UserNotificationChannel::getWechatEnabled, true))
+                .and(w -> w.eq(UserNotificationChannel::getRemindTime, remindTime)
+                        .or(remindTime.equals("14:30"), o -> o.isNull(UserNotificationChannel::getRemindTime).or().eq(UserNotificationChannel::getRemindTime, ""))));
+    }
 
+    private NotificationChannelView toView(UserNotificationChannel e) {
         return new NotificationChannelView(
                 e.getEmail(),
                 e.getEmailEnabled(),
-                e.getWechatChannelType(),
-                e.getWechatUid(),
-                e.getWechatAppToken(),
-                e.getWechatWebhookUrl(),
+                e.getWechatChannelType() != null ? e.getWechatChannelType() : "serverchan",
+                e.getServerchanKey(),
+                e.getBarkUrl(),
                 e.getWechatEnabled(),
                 e.getRemindEnabled(),
-                e.getPushScope(),
-                e.getHideAmount(),
-                systemQr,
-                hasToken
+                e.getRemindTime() != null && !e.getRemindTime().isBlank() ? e.getRemindTime() : "14:30",
+                e.getPushScope() != null ? e.getPushScope() : "ALL_WATCHLIST",
+                e.getHideAmount() != null ? e.getHideAmount() : false
         );
     }
 }

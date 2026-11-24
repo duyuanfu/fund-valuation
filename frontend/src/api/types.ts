@@ -253,16 +253,14 @@ export interface RegisterResponse {
 export interface NotificationChannelView {
   email?: string
   emailEnabled?: boolean
-  wechatChannelType?: string
-  wechatUid?: string
-  wechatAppToken?: string
-  wechatWebhookUrl?: string
+  wechatChannelType?: 'serverchan' | 'bark' | string
+  serverchanKey?: string
+  barkUrl?: string
   wechatEnabled?: boolean
   remindEnabled?: boolean
+  remindTime?: string
   pushScope?: 'ALL_WATCHLIST' | 'PORTFOLIO_ONLY' | string
   hideAmount?: boolean
-  systemWxpusherQrUrl?: string
-  hasSystemWxpusherToken?: boolean
 }
 
 export interface EmailConfigView {

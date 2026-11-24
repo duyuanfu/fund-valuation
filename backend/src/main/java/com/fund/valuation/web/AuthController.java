@@ -3,8 +3,10 @@ package com.fund.valuation.web;
 import com.fund.valuation.config.JwtAuthFilter;
 import com.fund.valuation.domain.User;
 import com.fund.valuation.service.AuthService;
+import com.fund.valuation.service.UserNotificationChannelService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,18 +14,29 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+    private final UserNotificationChannelService channelService;
 
     @PostMapping("/register")
     public RegisterResponse register(@RequestBody RegisterRequest req) {
         AuthService.RegisterResult res = authService.register(req.username(), req.password(), req.referralSource());
+
+        // 新用户注册时若填写了邮箱，自动绑定并开启盘中提醒
+        if (req.email() != null && !req.email().isBlank()) {
+            try {
+                channelService.bindEmail(res.username(), req.email().trim());
+            } catch (Exception e) {
+                log.warn("新用户 [{}] 注册时自动绑定邮箱失败: {}", res.username(), e.getMessage());
+            }
+        }
+
         return new RegisterResponse(
                 res.status(),
                 res.username(),
@@ -75,7 +88,10 @@ public class AuthController {
     public record Credentials(String username, String password) {
     }
 
-    public record RegisterRequest(String username, String password, String referralSource) {
+    public record RegisterRequest(String username, String password, String referralSource, String email) {
+        public RegisterRequest(String username, String password, String referralSource) {
+            this(username, password, referralSource, null);
+        }
     }
 
     public record LoginResponse(String token, String username, String role, boolean isVip) {

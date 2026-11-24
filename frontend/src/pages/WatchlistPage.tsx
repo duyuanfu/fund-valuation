@@ -31,6 +31,7 @@ import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import { ContactModal } from '../components/ContactModal'
 import { NotificationChannelModal } from '../components/NotificationChannelModal'
+import { EmailBindPromptModal } from '../components/EmailBindPromptModal'
 import {
   DndContext,
   PointerSensor,
@@ -404,6 +405,23 @@ export default function WatchlistPage() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [contactOpen, setContactOpen] = useState(false)
   const [notificationModalOpen, setNotificationModalOpen] = useState(false)
+  const [emailPromptOpen, setEmailPromptOpen] = useState(false)
+
+  // 针对老用户等未绑定邮箱的用户进入页面显示弹窗进行邮箱绑定
+  useEffect(() => {
+    const token = localStorage.getItem('fund_valuation_token')
+    if (!token) return
+    const dismissed = sessionStorage.getItem('dismiss_email_bind_prompt')
+    if (dismissed) return
+
+    api.getNotificationChannel()
+      .then((ch) => {
+        if (!ch || !ch.email || !ch.email.trim()) {
+          setEmailPromptOpen(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -775,7 +793,7 @@ export default function WatchlistPage() {
             style={{ borderRadius: 8, flex: isMobile ? 1 : undefined, color: '#334155' }}
             onClick={() => setNotificationModalOpen(true)}
           >
-            {isMobile ? '提醒' : '14:30 盘中提醒'}
+            {isMobile ? '提醒' : '盘中提醒'}
           </Button>
 
           <Button
@@ -965,10 +983,17 @@ export default function WatchlistPage() {
       {/* 联系管理员弹窗 */}
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
 
-      {/* 14:30 每日盘中提醒设置弹窗 */}
+      {/* 盘中提醒设置弹窗 */}
       <NotificationChannelModal
         open={notificationModalOpen}
         onClose={() => setNotificationModalOpen(false)}
+      />
+
+      {/* 针对老用户等未绑定邮箱的用户弹窗 */}
+      <EmailBindPromptModal
+        open={emailPromptOpen}
+        onClose={() => setEmailPromptOpen(false)}
+        onOpenFullSettings={() => setNotificationModalOpen(true)}
       />
     </div>
   )
