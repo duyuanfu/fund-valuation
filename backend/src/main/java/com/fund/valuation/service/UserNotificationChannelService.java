@@ -28,7 +28,7 @@ public class UserNotificationChannelService {
     private static final NotificationChannelView DEFAULT_VIEW = new NotificationChannelView(
             "",
             true,
-            "wxpusher",
+            "pushplus",
             "",
             "",
             "",
@@ -75,7 +75,7 @@ public class UserNotificationChannelService {
 
         entity.setEmail(req.email() != null ? req.email().trim() : "");
         entity.setEmailEnabled(req.emailEnabled() != null ? req.emailEnabled() : true);
-        entity.setWechatChannelType(req.wechatChannelType() != null && !req.wechatChannelType().isBlank() ? req.wechatChannelType() : "wxpusher");
+        entity.setWechatChannelType(req.wechatChannelType() != null && !req.wechatChannelType().isBlank() ? req.wechatChannelType() : "pushplus");
         entity.setWechatUid(req.wechatUid() != null ? req.wechatUid().trim() : "");
         entity.setWechatAppToken(req.wechatAppToken() != null ? req.wechatAppToken().trim() : "");
         entity.setWechatWebhookUrl(req.wechatWebhookUrl() != null ? req.wechatWebhookUrl().trim() : "");
@@ -132,12 +132,41 @@ public class UserNotificationChannelService {
     }
 
     public void testWechat(String userId) {
+        testWechat(userId, null, null);
+    }
+
+    public void testWechat(String userId, String tokenOrUrl, String channelType) {
         UserNotificationChannel entity = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
                 .eq(UserNotificationChannel::getUserId, userId));
-        if (entity == null || ((entity.getWechatUid() == null || entity.getWechatUid().isBlank())
-                && (entity.getWechatWebhookUrl() == null || entity.getWechatWebhookUrl().isBlank()))) {
-            throw new IllegalArgumentException("请先绑定微信扫码 UID 或填写 Webhook 地址");
+
+        if (tokenOrUrl != null && !tokenOrUrl.isBlank()) {
+            boolean isNew = (entity == null);
+            if (isNew) {
+                entity = new UserNotificationChannel();
+                entity.setUserId(userId);
+                entity.setWechatEnabled(true);
+                entity.setRemindEnabled(true);
+            }
+            String type = (channelType != null && !channelType.isBlank()) ? channelType.trim().toLowerCase() : "pushplus";
+            entity.setWechatChannelType(type);
+            if ("wxpusher".equals(type)) {
+                entity.setWechatUid(tokenOrUrl.trim());
+            } else {
+                entity.setWechatWebhookUrl(tokenOrUrl.trim());
+            }
+            entity.setUpdatedAt(LocalDateTime.now());
+            if (isNew) {
+                channelMapper.insert(entity);
+            } else {
+                channelMapper.updateById(entity);
+            }
+        } else {
+            if (entity == null || ((entity.getWechatUid() == null || entity.getWechatUid().isBlank())
+                    && (entity.getWechatWebhookUrl() == null || entity.getWechatWebhookUrl().isBlank()))) {
+                throw new IllegalArgumentException("请先输入 PushPlus Token 或 Webhook 地址");
+            }
         }
+
         wxNotificationService.sendTestWechat(entity);
     }
 

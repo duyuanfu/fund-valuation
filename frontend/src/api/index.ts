@@ -247,8 +247,11 @@ export const api = {
       body: email ? JSON.stringify({ email }) : undefined,
     }),
 
-  testNotificationWechat: () =>
-    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-wechat', { method: 'POST' }),
+  testNotificationWechat: (wechatTarget?: string, wechatChannelType?: string) =>
+    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-wechat', {
+      method: 'POST',
+      body: wechatTarget ? JSON.stringify({ wechatTarget, wechatChannelType }) : undefined,
+    }),
 
   // 管理后台系统邮件与提醒运维
   getAdminEmailConfig: () => request<EmailConfigView>('/api/admin/email-config'),

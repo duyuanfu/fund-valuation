@@ -37,15 +37,41 @@ public class WxNotificationService {
             return false;
         }
 
-        // 1. 若配置了自定义 Webhook 地址 (企微/钉钉/飞书/Bark/Server酱/PushPlus)
-        if (channel.getWechatWebhookUrl() != null && !channel.getWechatWebhookUrl().isBlank()) {
+        String type = channel.getWechatChannelType() != null ? channel.getWechatChannelType().trim().toLowerCase() : "pushplus";
+
+        // 1. 首选: PushPlus 微信免App直推
+        if ("pushplus".equals(type)) {
+            String token = (channel.getWechatWebhookUrl() != null && !channel.getWechatWebhookUrl().isBlank())
+                    ? channel.getWechatWebhookUrl().trim()
+                    : (channel.getWechatUid() != null ? channel.getWechatUid().trim() : "");
+            return sendToPushPlus(token, title, content, jumpUrl);
+        }
+
+        // 2. 自定义 Webhook 地址 (企微/钉钉/飞书/Bark/Server酱)
+        if ("webhook".equals(type) && channel.getWechatWebhookUrl() != null && !channel.getWechatWebhookUrl().isBlank()) {
             return sendToWebhook(channel.getWechatWebhookUrl().trim(), title, content, jumpUrl);
         }
 
-        // 2. 若配置了 WxPusher UID (微信扫码个人关注推送)
-        if ("wxpusher".equalsIgnoreCase(channel.getWechatChannelType())
-                && channel.getWechatUid() != null && !channel.getWechatUid().isBlank()) {
+        // 3. WxPusher 扫码关注 (需配合官方 App)
+        if ("wxpusher".equals(type) && channel.getWechatUid() != null && !channel.getWechatUid().isBlank()) {
             return sendToWxPusher(channel, title, content, jumpUrl);
+        }
+
+        // 兼容回退逻辑: 根据填写的凭证特征自动路由
+        if (channel.getWechatWebhookUrl() != null && !channel.getWechatWebhookUrl().isBlank()) {
+            String val = channel.getWechatWebhookUrl().trim();
+            if (val.length() == 32 || val.contains("pushplus")) {
+                return sendToPushPlus(val, title, content, jumpUrl);
+            }
+            return sendToWebhook(val, title, content, jumpUrl);
+        }
+        if (channel.getWechatUid() != null && !channel.getWechatUid().isBlank()) {
+            String uid = channel.getWechatUid().trim();
+            if (uid.startsWith("UID_")) {
+                return sendToWxPusher(channel, title, content, jumpUrl);
+            } else {
+                return sendToPushPlus(uid, title, content, jumpUrl);
+            }
         }
 
         return false;
@@ -59,15 +85,76 @@ public class WxNotificationService {
         String content = """
             ### 🎉 微信通知绑定成功
             
-            这是一条连通性测试消息！
+            这是一条来自**基金实时估值系统**的测试消息！
             
-            - **推送时间**: 交易日每日 14:30（收盘前半小时）
-            - **推送内容**: 今日持仓预估盈亏总览 + 自选重点基金盘中走势
-            - **服务状态**: 正常运行中
+            - **推送通道**: PushPlus 微信公众号推送
+            - **推送时间**: 交易日每日 14:30 准时送达（收盘前半小时决策点）
+            - **推送内容**: 今日持仓预估盈亏总览 + 自选重点基金盘中涨跌幅
+            - **运行状态**: 服务已正常连通
             
-            > 感谢使用基金实时估值，祝您投资顺利！
+            > 提示：今日 14:30 系统将为您准时推送最新估值播报，祝您投资顺利！
         """;
         return sendWechatNotification(channel, title, content, "http://localhost:8080");
+    }
+
+    /**
+     * 发送消息至 PushPlus (推送加 · 微信公众号免App原生直推)
+     */
+    public boolean sendToPushPlus(String token, String title, String content, String jumpUrl) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("请填写您的 PushPlus Token（32位字符，在 pushplus.plus 首页复制）");
+        }
+        String cleanToken = token.trim();
+        if (cleanToken.contains("token=")) {
+            cleanToken = cleanToken.substring(cleanToken.indexOf("token=") + 6);
+            if (cleanToken.contains("&")) {
+                cleanToken = cleanToken.substring(0, cleanToken.indexOf("&"));
+            }
+        } else if (cleanToken.contains("pushplus.plus/send/")) {
+            cleanToken = cleanToken.substring(cleanToken.indexOf("/send/") + 6);
+            if (cleanToken.contains("?")) {
+                cleanToken = cleanToken.substring(0, cleanToken.indexOf("?"));
+            }
+        }
+
+        try {
+            Map<String, Object> reqBody = Map.of(
+                    "token", cleanToken,
+                    "title", title,
+                    "content", content,
+                    "template", "markdown",
+                    "channel", "wechat"
+            );
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://www.pushplus.plus/send"))
+                    .timeout(Duration.ofSeconds(6))
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(reqBody)))
+                    .build();
+
+            HttpResponse<String> resp = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("PushPlus 微信消息推送响应: code={}, body={}", resp.statusCode(), resp.body());
+
+            if (resp.statusCode() != 200) {
+                throw new RuntimeException("PushPlus 接口返回 HTTP " + resp.statusCode() + ": " + resp.body());
+            }
+
+            JsonNode root = objectMapper.readTree(resp.body());
+            int code = root.path("code").asInt(-1);
+            if (code != 200) {
+                String msg = root.path("msg").asText("未知错误");
+                log.warn("PushPlus 消息推送被拒: code={}, msg={}", code, msg);
+                throw new RuntimeException("PushPlus 推送失败: " + msg + " (请核对 Token 是否正确，并确认微信已关注「pushplus推送加」公众号)");
+            }
+
+            return true;
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("向 PushPlus [{}] 推送失败: {}", cleanToken, e.getMessage());
+            throw new RuntimeException(e.getMessage());
+        }
     }
 
     private boolean sendToWxPusher(UserNotificationChannel channel, String title, String content, String jumpUrl) {

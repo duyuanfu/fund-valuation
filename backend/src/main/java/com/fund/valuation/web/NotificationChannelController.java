@@ -54,11 +54,14 @@ public class NotificationChannelController {
     }
 
     @PostMapping("/test-wechat")
-    public ResponseEntity<?> testWechat(HttpServletRequest request) {
+    public ResponseEntity<?> testWechat(HttpServletRequest request,
+                                        @RequestBody(required = false) Map<String, String> body) {
         String username = currentUser(request);
+        String tokenOrUrl = body != null ? body.get("wechatTarget") : null;
+        String channelType = body != null ? body.get("wechatChannelType") : null;
         try {
-            channelService.testWechat(username);
-            return ResponseEntity.ok(Map.of("success", true, "message", "微信/Webhook 测试消息已成功发出！"));
+            channelService.testWechat(username, tokenOrUrl, channelType);
+            return ResponseEntity.ok(Map.of("success", true, "message", "微信/Webhook 测试消息已成功发出，请在微信中查收！"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {

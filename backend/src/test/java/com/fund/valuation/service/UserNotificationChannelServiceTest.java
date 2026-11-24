@@ -32,7 +32,7 @@ class UserNotificationChannelServiceTest {
         assertNotNull(view);
         assertEquals("", view.email());
         assertTrue(view.emailEnabled());
-        assertEquals("wxpusher", view.wechatChannelType());
+        assertEquals("pushplus", view.wechatChannelType());
         assertTrue(view.remindEnabled());
     }
 
