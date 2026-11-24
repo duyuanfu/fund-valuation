@@ -160,3 +160,33 @@ CREATE TABLE IF NOT EXISTS sys_vip_order (
     KEY idx_vip_order_user (username),
     KEY idx_vip_order_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='VIP充值订单与开通记录';
+
+CREATE TABLE IF NOT EXISTS user_notification_channel (
+    id                  BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    user_id             VARCHAR(64)  NOT NULL COMMENT '用户名',
+    email               VARCHAR(128) NULL     COMMENT '绑定的电子邮箱',
+    email_enabled       TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用邮箱推送: 1启用/0关闭',
+    wechat_channel_type VARCHAR(32)  NOT NULL DEFAULT 'wxpusher' COMMENT '微信通道类型: wxpusher/webhook',
+    wechat_uid          VARCHAR(128) NULL     COMMENT 'WxPusher用户UID',
+    wechat_webhook_url  VARCHAR(500) NULL     COMMENT '自定义微信/企微/钉钉/Bark/Server酱Webhook',
+    wechat_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用微信推送: 1启用/0关闭',
+    remind_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '每日14:30盘中提醒总开关: 1开启/0关闭',
+    push_scope          VARCHAR(32)  NOT NULL DEFAULT 'ALL_WATCHLIST' COMMENT '推送范围: ALL_WATCHLIST/PORTFOLIO_ONLY',
+    hide_amount         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否隐藏具体资产金额: 1隐藏/0显示',
+    updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_channel (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户通知渠道与14:30提醒配置';
+
+CREATE TABLE IF NOT EXISTS sys_email_config (
+    id             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    smtp_host      VARCHAR(128) NOT NULL DEFAULT 'smtp.163.com' COMMENT 'SMTP服务器地址',
+    smtp_port      INT          NOT NULL DEFAULT 465 COMMENT 'SMTP端口',
+    smtp_username  VARCHAR(128) NULL     COMMENT 'SMTP登录账号',
+    smtp_password  VARCHAR(128) NULL     COMMENT 'SMTP授权密码',
+    sender_name    VARCHAR(64)  NULL     DEFAULT '基金实时估值' COMMENT '发件人名称',
+    sender_address VARCHAR(128) NULL     COMMENT '发件人邮箱地址',
+    ssl_enabled    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否开启SSL: 1开启/0关闭',
+    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统SMTP发件配置';

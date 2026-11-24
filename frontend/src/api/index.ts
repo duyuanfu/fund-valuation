@@ -14,6 +14,8 @@ import type {
   RegisterResponse,
   UserProfileView,
   VipOrderView,
+  NotificationChannelView,
+  EmailConfigView,
 } from './types'
 import {
   TOKEN_KEY,
@@ -229,6 +231,42 @@ export const api = {
     request<{ success: boolean; message: string }>(`/api/admin/vip-orders/${id}/approve`, {
       method: 'POST',
     }),
+
+  // 用户通知渠道与14:30盘中提醒
+  getNotificationChannel: () => request<NotificationChannelView>('/api/user/notification-channel'),
+
+  updateNotificationChannel: (data: NotificationChannelView) =>
+    request<NotificationChannelView>('/api/user/notification-channel', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  testNotificationEmail: () =>
+    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-email', { method: 'POST' }),
+
+  testNotificationWechat: () =>
+    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-wechat', { method: 'POST' }),
+
+  // 管理后台系统邮件与提醒运维
+  getAdminEmailConfig: () => request<EmailConfigView>('/api/admin/email-config'),
+
+  setAdminEmailConfig: (data: EmailConfigView) =>
+    request<EmailConfigView>('/api/admin/email-config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  testAdminEmail: (to: string) =>
+    request<{ success: boolean; message: string }>('/api/admin/email-config/test', {
+      method: 'POST',
+      body: JSON.stringify({ to }),
+    }),
+
+  triggerAdminDailyReminder: (force = true) =>
+    request<{ success: boolean; sentCount: number; message: string }>(
+      `/api/admin/email-config/trigger-daily-reminder?force=${force}`,
+      { method: 'POST' }
+    ),
 }
 
 export function sseUrl(): string {

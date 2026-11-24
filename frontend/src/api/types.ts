@@ -250,4 +250,26 @@ export interface RegisterResponse {
   isVip?: boolean
 }
 
+export interface NotificationChannelView {
+  email?: string
+  emailEnabled?: boolean
+  wechatChannelType?: string
+  wechatUid?: string
+  wechatWebhookUrl?: string
+  wechatEnabled?: boolean
+  remindEnabled?: boolean
+  pushScope?: 'ALL_WATCHLIST' | 'PORTFOLIO_ONLY' | string
+  hideAmount?: boolean
+}
+
+export interface EmailConfigView {
+  smtpHost: string
+  smtpPort: number
+  smtpUsername?: string
+  smtpPassword?: string
+  senderName?: string
+  senderAddress?: string
+  sslEnabled?: boolean
+}
+
 

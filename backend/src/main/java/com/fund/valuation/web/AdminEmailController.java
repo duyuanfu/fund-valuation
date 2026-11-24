@@ -1,0 +1,52 @@
+package com.fund.valuation.web;
+
+import com.fund.valuation.dto.EmailConfigView;
+import com.fund.valuation.scheduler.DailyReminderScheduler;
+import com.fund.valuation.service.EmailSenderService;
+import com.fund.valuation.service.SysEmailConfigService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/admin/email-config")
+@RequiredArgsConstructor
+public class AdminEmailController {
+
+    private final SysEmailConfigService sysEmailConfigService;
+    private final EmailSenderService emailSenderService;
+    private final DailyReminderScheduler dailyReminderScheduler;
+
+    @GetMapping
+    public ResponseEntity<EmailConfigView> getEmailConfig() {
+        return ResponseEntity.ok(sysEmailConfigService.getEmailConfig());
+    }
+
+    @PostMapping
+    public ResponseEntity<EmailConfigView> updateEmailConfig(@RequestBody EmailConfigView req) {
+        return ResponseEntity.ok(sysEmailConfigService.updateConfig(req));
+    }
+
+    @PostMapping("/test")
+    public ResponseEntity<?> testSend(@RequestBody Map<String, String> body) {
+        String to = body.get("to");
+        if (to == null || to.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "请输入测试收件人邮箱"));
+        }
+        emailSenderService.sendTestEmail(to.trim());
+        return ResponseEntity.ok(Map.of("success", true, "message", "测试邮件发送成功！"));
+    }
+
+    @PostMapping("/trigger-daily-reminder")
+    public ResponseEntity<?> triggerDailyReminder(@RequestParam(defaultValue = "true") boolean force) {
+        int sent = dailyReminderScheduler.executeDailyReminder(force);
+        return ResponseEntity.ok(Map.of("success", true, "sentCount", sent, "message", "14:30 盘中提醒任务已执行完毕，成功分发 " + sent + " 位用户"));
+    }
+}

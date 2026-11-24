@@ -27,6 +27,7 @@ import {
   CustomerServiceOutlined,
   LockOutlined,
   CheckCircleFilled,
+  BellOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
@@ -37,6 +38,7 @@ import { useAuth } from '../hooks/useAuth'
 import { PositionEditModal } from '../components/PositionEditModal'
 import { VipRechargeModal } from '../components/VipRechargeModal'
 import { ContactModal } from '../components/ContactModal'
+import { NotificationChannelModal } from '../components/NotificationChannelModal'
 import { fmtPct, fmtNav } from '../utils/format'
 
 const { Title, Text, Paragraph } = Typography
@@ -63,6 +65,7 @@ export default function PortfolioPage() {
   const [editingItem, setEditingItem] = useState<PositionItemView | null>(null)
   const [rechargeModalOpen, setRechargeModalOpen] = useState(false)
   const [contactModalOpen, setContactModalOpen] = useState(false)
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false)
 
   // 响应式与视图切换
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -565,6 +568,15 @@ export default function PortfolioPage() {
         <Space size={8}>
           <Button
             size={isMobile ? 'small' : 'middle'}
+            icon={<BellOutlined style={{ color: '#d97706' }} />}
+            onClick={() => setNotificationModalOpen(true)}
+            style={{ borderRadius: 8 }}
+          >
+            {isMobile ? '提醒' : '14:30 盘中提醒'}
+          </Button>
+
+          <Button
+            size={isMobile ? 'small' : 'middle'}
             icon={<ReloadOutlined spin={refreshing} />}
             loading={refreshing}
             onClick={() => loadPortfolio(true)}
@@ -1005,6 +1017,10 @@ export default function PortfolioPage() {
         onContactCustomerService={() => setContactModalOpen(true)}
       />
       <ContactModal open={contactModalOpen} onClose={() => setContactModalOpen(false)} />
+      <NotificationChannelModal
+        open={notificationModalOpen}
+        onClose={() => setNotificationModalOpen(false)}
+      />
     </div>
   )
 }

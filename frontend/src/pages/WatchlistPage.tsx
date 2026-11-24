@@ -25,10 +25,12 @@ import {
   SwapOutlined,
   SoundOutlined,
   CustomerServiceOutlined,
+  BellOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import { ContactModal } from '../components/ContactModal'
+import { NotificationChannelModal } from '../components/NotificationChannelModal'
 import {
   DndContext,
   PointerSensor,
@@ -401,6 +403,7 @@ export default function WatchlistPage() {
   // 监听屏幕断点 (< 768px 为移动端视图)
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [contactOpen, setContactOpen] = useState(false)
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false)
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -768,6 +771,15 @@ export default function WatchlistPage() {
 
           <Button
             size={isMobile ? 'small' : 'middle'}
+            icon={<BellOutlined style={{ color: '#d97706' }} />}
+            style={{ borderRadius: 8, flex: isMobile ? 1 : undefined, color: '#334155' }}
+            onClick={() => setNotificationModalOpen(true)}
+          >
+            {isMobile ? '提醒' : '14:30 盘中提醒'}
+          </Button>
+
+          <Button
+            size={isMobile ? 'small' : 'middle'}
             icon={<CustomerServiceOutlined style={{ color: '#2563eb' }} />}
             style={{ borderRadius: 8, flex: isMobile ? 1 : undefined, color: '#334155' }}
             onClick={() => setContactOpen(true)}
@@ -952,6 +964,12 @@ export default function WatchlistPage() {
 
       {/* 联系管理员弹窗 */}
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />
+
+      {/* 14:30 每日盘中提醒设置弹窗 */}
+      <NotificationChannelModal
+        open={notificationModalOpen}
+        onClose={() => setNotificationModalOpen(false)}
+      />
     </div>
   )
 }

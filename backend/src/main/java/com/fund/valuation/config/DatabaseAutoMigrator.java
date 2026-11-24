@@ -129,6 +129,39 @@ public class DatabaseAutoMigrator {
                 )
             """);
 
+            // 6. 补齐用户通知渠道与每日14:30提醒配置表
+            executeSqlQuietly(conn, """
+                CREATE TABLE IF NOT EXISTS user_notification_channel (
+                    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    user_id             VARCHAR(64)   NOT NULL UNIQUE,
+                    email               VARCHAR(128)  NULL,
+                    email_enabled       TINYINT(1)    DEFAULT 1,
+                    wechat_channel_type VARCHAR(32)   DEFAULT 'wxpusher',
+                    wechat_uid          VARCHAR(128)  NULL,
+                    wechat_webhook_url  VARCHAR(500)  NULL,
+                    wechat_enabled      TINYINT(1)    DEFAULT 1,
+                    remind_enabled      TINYINT(1)    DEFAULT 1,
+                    push_scope          VARCHAR(32)   DEFAULT 'ALL_WATCHLIST',
+                    hide_amount         TINYINT(1)    DEFAULT 0,
+                    updated_at          TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
+            // 7. 补齐系统 SMTP 发件配置表
+            executeSqlQuietly(conn, """
+                CREATE TABLE IF NOT EXISTS sys_email_config (
+                    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    smtp_host      VARCHAR(128)  DEFAULT 'smtp.163.com',
+                    smtp_port      INT           DEFAULT 465,
+                    smtp_username  VARCHAR(128)  NULL,
+                    smtp_password  VARCHAR(128)  NULL,
+                    sender_name    VARCHAR(64)   DEFAULT '基金实时估值',
+                    sender_address VARCHAR(128)  NULL,
+                    ssl_enabled    TINYINT(1)    DEFAULT 1,
+                    updated_at     TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
             log.info("Database schema check and auto-migration finished successfully.");
         } catch (Exception e) {
             log.warn("Database auto-migration skipped or encountered error: {}", e.getMessage());

@@ -141,3 +141,30 @@ CREATE TABLE IF NOT EXISTS sys_vip_order (
     created_at   TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
     processed_at TIMESTAMP     NULL
 );
+
+CREATE TABLE IF NOT EXISTS user_notification_channel (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id             VARCHAR(64)   NOT NULL UNIQUE,
+    email               VARCHAR(128)  NULL,
+    email_enabled       BOOLEAN       DEFAULT TRUE,
+    wechat_channel_type VARCHAR(32)   DEFAULT 'wxpusher',
+    wechat_uid          VARCHAR(128)  NULL,
+    wechat_webhook_url  VARCHAR(500)  NULL,
+    wechat_enabled      BOOLEAN       DEFAULT TRUE,
+    remind_enabled      BOOLEAN       DEFAULT TRUE,
+    push_scope          VARCHAR(32)   DEFAULT 'ALL_WATCHLIST',
+    hide_amount         BOOLEAN       DEFAULT FALSE,
+    updated_at          TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sys_email_config (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    smtp_host      VARCHAR(128)  DEFAULT 'smtp.163.com',
+    smtp_port      INT           DEFAULT 465,
+    smtp_username  VARCHAR(128)  NULL,
+    smtp_password  VARCHAR(128)  NULL,
+    sender_name    VARCHAR(64)   DEFAULT '基金实时估值',
+    sender_address VARCHAR(128)  NULL,
+    ssl_enabled    BOOLEAN       DEFAULT TRUE,
+    updated_at     TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+);

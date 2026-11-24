@@ -1,0 +1,328 @@
+import { useState, useEffect } from 'react'
+import {
+  Modal,
+  Form,
+  Input,
+  Switch,
+  Radio,
+  Button,
+  Space,
+  Alert,
+  message,
+  Card,
+} from 'antd'
+import {
+  BellOutlined,
+  MailOutlined,
+  WechatOutlined,
+  SendOutlined,
+  SafetyOutlined,
+  QrcodeOutlined,
+  LinkOutlined,
+} from '@ant-design/icons'
+import { api } from '../api'
+import type { NotificationChannelView } from '../api/types'
+
+interface NotificationChannelModalProps {
+  open: boolean
+  onClose: () => void
+}
+
+export function NotificationChannelModal({ open, onClose }: NotificationChannelModalProps) {
+  const [form] = Form.useForm<NotificationChannelView>()
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [testingWechat, setTestingWechat] = useState(false)
+  const [wechatType, setWechatType] = useState('wxpusher')
+
+  const loadChannel = async () => {
+    setLoading(true)
+    try {
+      const data = await api.getNotificationChannel()
+      if (data) {
+        form.setFieldsValue({
+          email: data.email || '',
+          emailEnabled: data.emailEnabled ?? true,
+          wechatChannelType: data.wechatChannelType || 'wxpusher',
+          wechatUid: data.wechatUid || '',
+          wechatWebhookUrl: data.wechatWebhookUrl || '',
+          wechatEnabled: data.wechatEnabled ?? true,
+          remindEnabled: data.remindEnabled ?? true,
+          pushScope: data.pushScope || 'ALL_WATCHLIST',
+          hideAmount: data.hideAmount ?? false,
+        })
+        setWechatType(data.wechatChannelType || 'wxpusher')
+      }
+    } catch {
+      // 容错静默
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (open) {
+      loadChannel()
+    }
+  }, [open])
+
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields()
+      setSaving(true)
+      await api.updateNotificationChannel(values)
+      message.success('通知渠道设置已成功保存！交易日 14:30 将准时为您推送。')
+      onClose()
+    } catch (e: any) {
+      message.error(e?.message || '保存失败，请检查输入项')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleTestEmail = async () => {
+    setTestingEmail(true)
+    try {
+      // 先保存再测试
+      const values = await form.validateFields()
+      await api.updateNotificationChannel(values)
+      const res = await api.testNotificationEmail()
+      message.success(res.message || '测试邮件已发出，请检查收件箱')
+    } catch (e: any) {
+      message.error(e?.message || '测试邮件发送失败')
+    } finally {
+      setTestingEmail(false)
+    }
+  }
+
+  const handleTestWechat = async () => {
+    setTestingWechat(true)
+    try {
+      // 先保存再测试
+      const values = await form.validateFields()
+      await api.updateNotificationChannel(values)
+      const res = await api.testNotificationWechat()
+      message.success(res.message || '微信/Webhook 测试消息已发出！')
+    } catch (e: any) {
+      message.error(e?.message || '测试推送失败，请检查 UID 或 Webhook 地址')
+    } finally {
+      setTestingWechat(false)
+    }
+  }
+
+  return (
+    <Modal
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
+            }}
+          >
+            <BellOutlined style={{ color: '#ffffff', fontSize: 16 }} />
+          </div>
+          <div>
+            <span style={{ fontWeight: 700, color: '#0f172a' }}>每日 14:30 盘中关键提醒 · 邮件与微信绑定</span>
+          </div>
+        </div>
+      }
+      open={open}
+      onCancel={onClose}
+      width={620}
+      centered
+      destroyOnClose
+      footer={[
+        <Button key="cancel" onClick={onClose} style={{ borderRadius: 8 }}>
+          取消
+        </Button>,
+        <Button
+          key="save"
+          type="primary"
+          loading={saving}
+          onClick={handleSave}
+          style={{
+            borderRadius: 8,
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            fontWeight: 600,
+          }}
+        >
+          保存提醒设置
+        </Button>,
+      ]}
+    >
+      <div style={{ padding: '6px 0' }}>
+        <Alert
+          type="info"
+          showIcon
+          message="为什么是 14:30？"
+          description="A股与场外公募基金以每日 15:00 为申购/赎回确认截止点。系统在交易日 14:30 准时测算最新收益走势，无需您主动打开网页，直接推送到您的手机，助您把握盘尾黄金调仓时机！"
+          style={{ marginBottom: 16, borderRadius: 10 }}
+        />
+
+        <Form form={form} layout="vertical" disabled={loading}>
+          {/* 总开关 */}
+          <Card
+            size="small"
+            style={{
+              borderRadius: 10,
+              background: '#f8fafc',
+              marginBottom: 16,
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: 650, color: '#1e293b' }}>开启交易日 14:30 盘中提醒</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>休市日与节假日将自动静默，不打扰您的休息</div>
+              </div>
+              <Form.Item name="remindEnabled" valuePropName="checked" noStyle>
+                <Switch checkedChildren="已开启" unCheckedChildren="已关闭" />
+              </Form.Item>
+            </div>
+          </Card>
+
+          {/* 渠道 1: 电子邮箱 */}
+          <Card
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Space>
+                  <MailOutlined style={{ color: '#2563eb' }} />
+                  <span style={{ fontWeight: 650 }}>电子邮箱接收 (推荐，排版精美)</span>
+                </Space>
+                <Form.Item name="emailEnabled" valuePropName="checked" noStyle>
+                  <Switch size="small" checkedChildren="开启" unCheckedChildren="关闭" />
+                </Form.Item>
+              </div>
+            }
+            size="small"
+            style={{ borderRadius: 10, marginBottom: 16 }}
+          >
+            <Form.Item
+              name="email"
+              label="电子邮箱地址"
+              rules={[{ type: 'email', message: '请输入有效的电子邮箱格式' }]}
+              extra="支持 QQ邮箱、163网易、Gmail、Outlook 等任何常用邮箱，手机端将收到标准邮件提醒。"
+            >
+              <Input placeholder="例如: yourname@qq.com" allowClear prefix={<MailOutlined style={{ color: '#94a3b8' }} />} />
+            </Form.Item>
+
+            <div style={{ textAlign: 'right' }}>
+              <Button
+                size="small"
+                icon={<SendOutlined />}
+                loading={testingEmail}
+                onClick={handleTestEmail}
+                style={{ borderRadius: 6 }}
+              >
+                发送测试邮件
+              </Button>
+            </div>
+          </Card>
+
+          {/* 渠道 2: 微信 / Webhook */}
+          <Card
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Space>
+                  <WechatOutlined style={{ color: '#16a34a' }} />
+                  <span style={{ fontWeight: 650 }}>微信通知 (支持扫码个人接收或企业微信)</span>
+                </Space>
+                <Form.Item name="wechatEnabled" valuePropName="checked" noStyle>
+                  <Switch size="small" checkedChildren="开启" unCheckedChildren="关闭" />
+                </Form.Item>
+              </div>
+            }
+            size="small"
+            style={{ borderRadius: 10, marginBottom: 16 }}
+          >
+            <Form.Item name="wechatChannelType" label="微信推送模式">
+              <Radio.Group
+                onChange={(e) => setWechatType(e.target.value)}
+                buttonStyle="solid"
+                style={{ width: '100%' }}
+              >
+                <Radio.Button value="wxpusher" style={{ width: '50%', textAlign: 'center' }}>
+                  <QrcodeOutlined /> WxPusher 微信扫码关注
+                </Radio.Button>
+                <Radio.Button value="webhook" style={{ width: '50%', textAlign: 'center' }}>
+                  <LinkOutlined /> 自定义 Webhook / 企微
+                </Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+
+            {wechatType === 'wxpusher' ? (
+              <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: 8, border: '1px solid #bbf7d0', marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.6 }}>
+                  <b>微信直接接收操作指南：</b><br />
+                  1. 打开微信，关注 <b>WxPusher</b> 官方推送服务号（免费无需下载 App）；<br />
+                  2. 在公众号内点击「我的」➔「我的 UID」，将获得的 <code>UID_xxxx</code> 填入下方输入框；<br />
+                  3. 点击下方「发送测试微信」，手机微信将立即收到确认卡片！
+                </div>
+                <Form.Item
+                  name="wechatUid"
+                  label="您的 WxPusher UID"
+                  style={{ marginTop: 10, marginBottom: 0 }}
+                >
+                  <Input placeholder="例如: UID_a1b2c3d4e5f6g7h8..." allowClear />
+                </Form.Item>
+              </div>
+            ) : (
+              <Form.Item
+                name="wechatWebhookUrl"
+                label="自定义 Webhook 推送地址"
+                extra="支持企业微信群机器人、钉钉机器人、飞书机器人、Bark(iOS) 或 Server酱地址"
+              >
+                <Input placeholder="https://qyapi.weixin.qq.com/... 或 https://api.day.app/..." allowClear />
+              </Form.Item>
+            )}
+
+            <div style={{ textAlign: 'right' }}>
+              <Button
+                size="small"
+                icon={<SendOutlined />}
+                loading={testingWechat}
+                onClick={handleTestWechat}
+                style={{ borderRadius: 6 }}
+              >
+                发送测试微信/Webhook
+              </Button>
+            </div>
+          </Card>
+
+          {/* 偏好设置 */}
+          <Card title="个性化推送偏好" size="small" style={{ borderRadius: 10 }}>
+            <Form.Item name="pushScope" label="推送内容范围">
+              <Radio.Group>
+                <Radio value="ALL_WATCHLIST">自选与持仓全部推送</Radio>
+                <Radio value="PORTFOLIO_ONLY">仅推送实际持仓基金 (VIP)</Radio>
+              </Radio.Group>
+            </Form.Item>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>
+                  <SafetyOutlined style={{ marginRight: 6, color: '#64748b' }} />
+                  隐藏具体资产金额 (隐私脱敏)
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  开启后在邮件和微信中仅显示百分比涨跌幅，不显示持仓总额与盈亏具体金额
+                </div>
+              </div>
+              <Form.Item name="hideAmount" valuePropName="checked" noStyle>
+                <Switch />
+              </Form.Item>
+            </div>
+          </Card>
+        </Form>
+      </div>
+    </Modal>
+  )
+}
