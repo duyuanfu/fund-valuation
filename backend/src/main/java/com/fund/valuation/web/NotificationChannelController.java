@@ -28,24 +28,40 @@ public class NotificationChannelController {
     }
 
     @PostMapping
-    public ResponseEntity<NotificationChannelView> updateChannel(HttpServletRequest request,
-                                                                 @RequestBody NotificationChannelView req) {
+    public ResponseEntity<?> updateChannel(HttpServletRequest request,
+                                           @RequestBody NotificationChannelView req) {
         String username = currentUser(request);
-        return ResponseEntity.ok(channelService.updateChannel(username, req));
+        try {
+            return ResponseEntity.ok(channelService.updateChannel(username, req));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PostMapping("/test-email")
     public ResponseEntity<?> testEmail(HttpServletRequest request) {
         String username = currentUser(request);
-        channelService.testEmail(username);
-        return ResponseEntity.ok(Map.of("success", true, "message", "测试邮件已成功发送，请注意查收收件箱或垃圾箱！"));
+        try {
+            channelService.testEmail(username);
+            return ResponseEntity.ok(Map.of("success", true, "message", "测试邮件已成功发送，请注意查收收件箱或垃圾箱！"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage() != null ? e.getMessage() : "邮件发送异常"));
+        }
     }
 
     @PostMapping("/test-wechat")
     public ResponseEntity<?> testWechat(HttpServletRequest request) {
         String username = currentUser(request);
-        channelService.testWechat(username);
-        return ResponseEntity.ok(Map.of("success", true, "message", "微信/Webhook 测试消息已成功发出！"));
+        try {
+            channelService.testWechat(username);
+            return ResponseEntity.ok(Map.of("success", true, "message", "微信/Webhook 测试消息已成功发出！"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage() != null ? e.getMessage() : "微信/Webhook 推送异常"));
+        }
     }
 
     private String currentUser(HttpServletRequest request) {

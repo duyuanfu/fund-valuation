@@ -168,6 +168,7 @@ CREATE TABLE IF NOT EXISTS user_notification_channel (
     email_enabled       TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用邮箱推送: 1启用/0关闭',
     wechat_channel_type VARCHAR(32)  NOT NULL DEFAULT 'wxpusher' COMMENT '微信通道类型: wxpusher/webhook',
     wechat_uid          VARCHAR(128) NULL     COMMENT 'WxPusher用户UID',
+    wechat_app_token    VARCHAR(255) NULL     COMMENT '个人自定义WxPusher AppToken',
     wechat_webhook_url  VARCHAR(500) NULL     COMMENT '自定义微信/企微/钉钉/Bark/Server酱Webhook',
     wechat_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用微信推送: 1启用/0关闭',
     remind_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '每日14:30盘中提醒总开关: 1开启/0关闭',
@@ -186,7 +187,9 @@ CREATE TABLE IF NOT EXISTS sys_email_config (
     smtp_password  VARCHAR(128) NULL     COMMENT 'SMTP授权密码',
     sender_name    VARCHAR(64)  NULL     DEFAULT '基金实时估值' COMMENT '发件人名称',
     sender_address VARCHAR(128) NULL     COMMENT '发件人邮箱地址',
-    ssl_enabled    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否开启SSL: 1开启/0关闭',
-    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    ssl_enabled        TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否开启SSL: 1开启/0关闭',
+    wxpusher_app_token VARCHAR(255) NULL     COMMENT '系统全局WxPusher AppToken',
+    wxpusher_qr_url    VARCHAR(500) NULL     COMMENT '系统WxPusher应用关注二维码图片或链接',
+    updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统SMTP发件配置';

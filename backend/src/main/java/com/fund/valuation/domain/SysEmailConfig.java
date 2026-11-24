@@ -37,6 +37,12 @@ public class SysEmailConfig {
     /** 是否开启 SSL */
     private Boolean sslEnabled;
 
+    /** WxPusher 系统应用 Token (例如 AT_xxx) */
+    private String wxpusherAppToken;
+
+    /** WxPusher 用户关注应用二维码图片或链接 (例如 https://wxpusher.zjiecode.com/wxuser/?type=1&id=xxx#/follow) */
+    private String wxpusherQrUrl;
+
     /** 更新时间 */
     private LocalDateTime updatedAt;
 }

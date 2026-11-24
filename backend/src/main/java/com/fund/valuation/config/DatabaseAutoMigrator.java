@@ -138,6 +138,7 @@ public class DatabaseAutoMigrator {
                     email_enabled       TINYINT(1)    DEFAULT 1,
                     wechat_channel_type VARCHAR(32)   DEFAULT 'wxpusher',
                     wechat_uid          VARCHAR(128)  NULL,
+                    wechat_app_token    VARCHAR(255)  NULL,
                     wechat_webhook_url  VARCHAR(500)  NULL,
                     wechat_enabled      TINYINT(1)    DEFAULT 1,
                     remind_enabled      TINYINT(1)    DEFAULT 1,
@@ -157,10 +158,17 @@ public class DatabaseAutoMigrator {
                     smtp_password  VARCHAR(128)  NULL,
                     sender_name    VARCHAR(64)   DEFAULT '基金实时估值',
                     sender_address VARCHAR(128)  NULL,
-                    ssl_enabled    TINYINT(1)    DEFAULT 1,
-                    updated_at     TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+                    ssl_enabled        TINYINT(1)    DEFAULT 1,
+                    wxpusher_app_token VARCHAR(255)  NULL,
+                    wxpusher_qr_url    VARCHAR(500)  NULL,
+                    updated_at         TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
                 )
             """);
+
+            // 8. 字段增量热升级容错
+            addColumnIfNotExists(conn, "user_notification_channel", "wechat_app_token", "VARCHAR(255) NULL");
+            addColumnIfNotExists(conn, "sys_email_config", "wxpusher_app_token", "VARCHAR(255) NULL");
+            addColumnIfNotExists(conn, "sys_email_config", "wxpusher_qr_url", "VARCHAR(500) NULL");
 
             log.info("Database schema check and auto-migration finished successfully.");
         } catch (Exception e) {

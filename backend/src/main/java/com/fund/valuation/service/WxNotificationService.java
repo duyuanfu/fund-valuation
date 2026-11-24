@@ -1,7 +1,9 @@
 package com.fund.valuation.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fund.valuation.domain.UserNotificationChannel;
+import com.fund.valuation.dto.EmailConfigView;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class WxNotificationService {
 
     private final ObjectMapper objectMapper;
     private final SysVipConfigService sysVipConfigService;
+    private final SysEmailConfigService sysEmailConfigService;
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6))
@@ -34,7 +37,7 @@ public class WxNotificationService {
             return false;
         }
 
-        // 1. 若配置了自定义 Webhook 地址 (企微/钉钉/飞书/Bark/Server酱)
+        // 1. 若配置了自定义 Webhook 地址 (企微/钉钉/飞书/Bark/Server酱/PushPlus)
         if (channel.getWechatWebhookUrl() != null && !channel.getWechatWebhookUrl().isBlank()) {
             return sendToWebhook(channel.getWechatWebhookUrl().trim(), title, content, jumpUrl);
         }
@@ -42,7 +45,7 @@ public class WxNotificationService {
         // 2. 若配置了 WxPusher UID (微信扫码个人关注推送)
         if ("wxpusher".equalsIgnoreCase(channel.getWechatChannelType())
                 && channel.getWechatUid() != null && !channel.getWechatUid().isBlank()) {
-            return sendToWxPusher(channel.getWechatUid().trim(), title, content, jumpUrl);
+            return sendToWxPusher(channel, title, content, jumpUrl);
         }
 
         return false;
@@ -67,15 +70,33 @@ public class WxNotificationService {
         return sendWechatNotification(channel, title, content, "http://localhost:8080");
     }
 
-    private boolean sendToWxPusher(String uid, String title, String content, String jumpUrl) {
-        try {
-            // 获取系统全局配置或默认 WxPusher appToken
-            String appToken = "AT_DEFAULT_APP_TOKEN";
-            var vipCfg = sysVipConfigService.getVipConfig();
-            if (vipCfg != null && vipCfg.webhookUrl() != null && vipCfg.webhookUrl().startsWith("AT_")) {
-                appToken = vipCfg.webhookUrl().trim();
-            }
+    private boolean sendToWxPusher(UserNotificationChannel channel, String title, String content, String jumpUrl) {
+        String uid = channel.getWechatUid() != null ? channel.getWechatUid().trim() : "";
+        if (uid.isBlank()) {
+            throw new IllegalArgumentException("请填写您的 WxPusher UID（以 UID_ 开头）");
+        }
 
+        // 1. 确定使用的 AppToken (用户个人设置 > 系统全局邮件与提醒配置 > VIP全局配置)
+        String appToken = null;
+        if (channel.getWechatAppToken() != null && !channel.getWechatAppToken().isBlank()) {
+            appToken = channel.getWechatAppToken().trim();
+        } else {
+            EmailConfigView emailCfg = sysEmailConfigService.getEmailConfig();
+            if (emailCfg != null && emailCfg.wxpusherAppToken() != null && !emailCfg.wxpusherAppToken().isBlank()) {
+                appToken = emailCfg.wxpusherAppToken().trim();
+            } else {
+                var vipCfg = sysVipConfigService.getVipConfig();
+                if (vipCfg != null && vipCfg.webhookUrl() != null && vipCfg.webhookUrl().startsWith("AT_")) {
+                    appToken = vipCfg.webhookUrl().trim();
+                }
+            }
+        }
+
+        if (appToken == null || appToken.isBlank() || "AT_DEFAULT_APP_TOKEN".equals(appToken)) {
+            throw new IllegalArgumentException("未配置有效 WxPusher AppToken！WxPusher 机制要求必须由应用持有者提供 AppToken（以 AT_ 开头）。请在管理员后台配置系统 WxPusher Token，或在下方输入您个人创建的应用 AppToken。");
+        }
+
+        try {
             Map<String, Object> reqBody = Map.of(
                     "appToken", appToken,
                     "content", content,
@@ -94,17 +115,60 @@ public class WxNotificationService {
 
             HttpResponse<String> resp = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             log.info("WxPusher 微信消息推送响应: code={}, body={}", resp.statusCode(), resp.body());
-            return resp.statusCode() == 200;
+
+            if (resp.statusCode() != 200) {
+                throw new RuntimeException("WxPusher 接口返回 HTTP " + resp.statusCode() + ": " + resp.body());
+            }
+
+            JsonNode root = objectMapper.readTree(resp.body());
+            int code = root.path("code").asInt(-1);
+            if (code != 1000) {
+                String msg = root.path("msg").asText("未知错误");
+                log.warn("WxPusher 消息被拒收: code={}, msg={}", code, msg);
+                throw new RuntimeException("WxPusher 拒绝发送: " + msg + " (code=" + code + ")");
+            }
+
+            JsonNode dataNode = root.path("data");
+            if (dataNode.isArray() && !dataNode.isEmpty()) {
+                JsonNode first = dataNode.get(0);
+                int targetCode = first.path("code").asInt(1000);
+                if (targetCode != 1000) {
+                    String status = first.path("status").asText("未关注应用");
+                    log.warn("WxPusher 目标用户推送失败: code={}, status={}", targetCode, status);
+                    throw new RuntimeException("微信推送失败: " + status + "（WxPusher 规则：用户微信必须先扫码关注该 AppToken 对应的应用二维码，否则无法接收消息）");
+                }
+            }
+
+            return true;
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("向 WxPusher UID [{}] 推送微信消息失败: {}", uid, e.getMessage());
-            return false;
+            throw new RuntimeException(e.getMessage());
         }
     }
 
     private boolean sendToWebhook(String webhookUrl, String title, String content, String jumpUrl) {
+        String url = webhookUrl.trim();
+        // 智能兼容 Server酱 SendKey (如直接输入 SCTxxxx)
+        if (url.startsWith("SCT") && !url.contains("/")) {
+            url = "https://sctapi.ftqq.com/" + url + ".send";
+        }
+        // 智能兼容 PushPlus Token (如直接输入 32位 hex token)
+        else if (url.length() == 32 && !url.contains("/") && !url.contains(":")) {
+            url = "http://www.pushplus.plus/send?token=" + url;
+        }
+
         try {
             String jsonBody;
-            if (webhookUrl.contains("dingtalk.com")) {
+            if (url.contains("pushplus.plus")) {
+                // PushPlus 微信个人推送
+                jsonBody = objectMapper.writeValueAsString(Map.of(
+                        "title", title,
+                        "content", content,
+                        "template", "markdown"
+                ));
+            } else if (url.contains("dingtalk.com")) {
                 jsonBody = objectMapper.writeValueAsString(Map.of(
                         "msgtype", "markdown",
                         "markdown", Map.of(
@@ -112,28 +176,28 @@ public class WxNotificationService {
                                 "text", "### " + title + "\n\n" + content + (jumpUrl != null ? "\n\n[点击前往查看详情](" + jumpUrl + ")" : "")
                         )
                 ));
-            } else if (webhookUrl.contains("weixin.qq.com") || webhookUrl.contains("work.weixin")) {
+            } else if (url.contains("weixin.qq.com") || url.contains("work.weixin")) {
                 jsonBody = objectMapper.writeValueAsString(Map.of(
                         "msgtype", "markdown",
                         "markdown", Map.of(
                                 "content", "### " + title + "\n\n" + content + (jumpUrl != null ? "\n\n[点击前往查看详情](" + jumpUrl + ")" : "")
                         )
                 ));
-            } else if (webhookUrl.contains("feishu.cn") || webhookUrl.contains("larksuite.com")) {
+            } else if (url.contains("feishu.cn") || url.contains("larksuite.com")) {
                 jsonBody = objectMapper.writeValueAsString(Map.of(
                         "msg_type", "text",
                         "content", Map.of(
                                 "text", title + "\n\n" + content
                         )
                 ));
-            } else if (webhookUrl.contains("day.app")) {
+            } else if (url.contains("day.app")) {
                 // Bark
                 jsonBody = objectMapper.writeValueAsString(Map.of(
                         "title", title,
                         "body", content.replaceAll("[#*`>]", "").trim(),
                         "url", jumpUrl != null ? jumpUrl : ""
                 ));
-            } else if (webhookUrl.contains("ftqq.com")) {
+            } else if (url.contains("ftqq.com")) {
                 // Server酱
                 jsonBody = objectMapper.writeValueAsString(Map.of(
                         "title", title,
@@ -148,18 +212,21 @@ public class WxNotificationService {
             }
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(webhookUrl))
+                    .uri(URI.create(url))
                     .timeout(Duration.ofSeconds(6))
                     .header("Content-Type", "application/json; charset=UTF-8")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
             HttpResponse<String> resp = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-            log.info("Webhook 推送完成: url={}, code={}", webhookUrl, resp.statusCode());
-            return resp.statusCode() == 200;
+            log.info("Webhook 推送完成: url={}, code={}", url, resp.statusCode());
+            if (resp.statusCode() < 200 || resp.statusCode() >= 300) {
+                throw new RuntimeException("Webhook 目标服务器返回 HTTP " + resp.statusCode() + ": " + resp.body());
+            }
+            return true;
         } catch (Exception e) {
-            log.warn("Webhook 推送失败: url={}, err={}", webhookUrl, e.getMessage());
-            return false;
+            log.warn("Webhook 推送失败: url={}, err={}", url, e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
     }
 }

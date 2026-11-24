@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS user_notification_channel (
     email_enabled       BOOLEAN       DEFAULT TRUE,
     wechat_channel_type VARCHAR(32)   DEFAULT 'wxpusher',
     wechat_uid          VARCHAR(128)  NULL,
+    wechat_app_token    VARCHAR(255)  NULL,
     wechat_webhook_url  VARCHAR(500)  NULL,
     wechat_enabled      BOOLEAN       DEFAULT TRUE,
     remind_enabled      BOOLEAN       DEFAULT TRUE,
@@ -165,6 +166,8 @@ CREATE TABLE IF NOT EXISTS sys_email_config (
     smtp_password  VARCHAR(128)  NULL,
     sender_name    VARCHAR(64)   DEFAULT '基金实时估值',
     sender_address VARCHAR(128)  NULL,
-    ssl_enabled    BOOLEAN       DEFAULT TRUE,
-    updated_at     TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
+    ssl_enabled        BOOLEAN       DEFAULT TRUE,
+    wxpusher_app_token VARCHAR(255)  NULL,
+    wxpusher_qr_url    VARCHAR(500)  NULL,
+    updated_at         TIMESTAMP     DEFAULT CURRENT_TIMESTAMP
 );

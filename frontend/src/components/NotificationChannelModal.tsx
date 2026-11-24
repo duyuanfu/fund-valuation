@@ -35,17 +35,20 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
   const [testingEmail, setTestingEmail] = useState(false)
   const [testingWechat, setTestingWechat] = useState(false)
   const [wechatType, setWechatType] = useState('wxpusher')
+  const [channelData, setChannelData] = useState<NotificationChannelView | null>(null)
 
   const loadChannel = async () => {
     setLoading(true)
     try {
       const data = await api.getNotificationChannel()
       if (data) {
+        setChannelData(data)
         form.setFieldsValue({
           email: data.email || '',
           emailEnabled: data.emailEnabled ?? true,
           wechatChannelType: data.wechatChannelType || 'wxpusher',
           wechatUid: data.wechatUid || '',
+          wechatAppToken: data.wechatAppToken || '',
           wechatWebhookUrl: data.wechatWebhookUrl || '',
           wechatEnabled: data.wechatEnabled ?? true,
           remindEnabled: data.remindEnabled ?? true,
@@ -261,26 +264,43 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
             {wechatType === 'wxpusher' ? (
               <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: 8, border: '1px solid #bbf7d0', marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.6 }}>
-                  <b>微信直接接收操作指南：</b><br />
-                  1. 打开微信，关注 <b>WxPusher</b> 官方推送服务号（免费无需下载 App）；<br />
-                  2. 在公众号内点击「我的」➔「我的 UID」，将获得的 <code>UID_xxxx</code> 填入下方输入框；<br />
+                  <b>WxPusher 微信免公众号接收指南：</b><br />
+                  1. 关注 WxPusher 服务号，点击「我的」➔「我的 UID」复制 <code>UID_xxxx</code>；<br />
+                  2. <b>关键步骤：</b>请确保微信已扫描本应用（或您自建应用）专属关注二维码，否则 WxPusher 会因防骚扰机制拒绝发送；<br />
+                  {channelData?.systemWxpusherQrUrl ? (
+                    <div style={{ margin: '6px 0', padding: '6px 10px', background: '#dcfce7', borderRadius: 6 }}>
+                      👉 <b>系统通知应用关注入口：</b>
+                      <a href={channelData.systemWxpusherQrUrl} target="_blank" rel="noreferrer" style={{ marginLeft: 6, fontWeight: 600 }}>
+                        点击此处打开关注二维码链接
+                      </a>
+                    </div>
+                  ) : null}
                   3. 点击下方「发送测试微信」，手机微信将立即收到确认卡片！
                 </div>
                 <Form.Item
                   name="wechatUid"
                   label="您的 WxPusher UID"
-                  style={{ marginTop: 10, marginBottom: 0 }}
+                  rules={[{ required: wechatType === 'wxpusher', message: '请输入 WxPusher UID' }]}
+                  style={{ marginTop: 10, marginBottom: 8 }}
                 >
                   <Input placeholder="例如: UID_a1b2c3d4e5f6g7h8..." allowClear />
+                </Form.Item>
+                <Form.Item
+                  name="wechatAppToken"
+                  label="个人自定义 AppToken (可选)"
+                  extra="以 AT_ 开头。留空时默认使用系统后台统一配置的 AppToken。如果您在 wxpusher.zjiecode.com 创建了个人应用，请在此填入您的 AppToken。"
+                  style={{ marginBottom: 0 }}
+                >
+                  <Input placeholder="例如: AT_xxxxxxxxxxxx (留空使用系统默认)" allowClear />
                 </Form.Item>
               </div>
             ) : (
               <Form.Item
                 name="wechatWebhookUrl"
                 label="自定义 Webhook 推送地址"
-                extra="支持企业微信群机器人、钉钉机器人、飞书机器人、Bark(iOS) 或 Server酱地址"
+                extra="支持：1. 企业微信机器人 2. Server酱(直接输入 SCTxxxx 或完整地址) 3. PushPlus推送加(直接输入 token 或地址) 4. 钉钉/飞书/Bark"
               >
-                <Input placeholder="https://qyapi.weixin.qq.com/... 或 https://api.day.app/..." allowClear />
+                <Input placeholder="例如: https://qyapi.weixin.qq.com/... 或 SCTxxxx 或 PushPlus Token" allowClear />
               </Form.Item>
             )}
 

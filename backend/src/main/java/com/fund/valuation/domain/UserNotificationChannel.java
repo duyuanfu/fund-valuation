@@ -31,6 +31,9 @@ public class UserNotificationChannel {
     /** WxPusher 用户 UID (例如 UID_xxx) */
     private String wechatUid;
 
+    /** 个人自定义 WxPusher AppToken (可选，留空则使用系统后台统一配置的 AppToken) */
+    private String wechatAppToken;
+
     /** 自定义 Webhook 地址 (企微/钉钉/飞书/Bark/Server酱) */
     private String wechatWebhookUrl;
 

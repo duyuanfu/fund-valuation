@@ -31,7 +31,9 @@ public class SysEmailConfigService {
             "",
             "基金实时估值系统",
             "",
-            true
+            true,
+            "",
+            ""
     );
 
     @Autowired
@@ -55,7 +57,9 @@ public class SysEmailConfigService {
                             persistent.getSmtpPassword(),
                             persistent.getSenderName() != null ? persistent.getSenderName() : DEFAULT_CONFIG.senderName(),
                             persistent.getSenderAddress(),
-                            persistent.getSslEnabled() != null ? persistent.getSslEnabled() : DEFAULT_CONFIG.sslEnabled()
+                            persistent.getSslEnabled() != null ? persistent.getSslEnabled() : DEFAULT_CONFIG.sslEnabled(),
+                            persistent.getWxpusherAppToken(),
+                            persistent.getWxpusherQrUrl()
                     );
                     currentConfig.set(view);
                     rebuildMailSender(view);
@@ -85,7 +89,9 @@ public class SysEmailConfigService {
                 req.smtpPassword() != null ? req.smtpPassword().trim() : "",
                 req.senderName() != null && !req.senderName().isBlank() ? req.senderName().trim() : DEFAULT_CONFIG.senderName(),
                 req.senderAddress() != null ? req.senderAddress().trim() : "",
-                req.sslEnabled() != null ? req.sslEnabled() : true
+                req.sslEnabled() != null ? req.sslEnabled() : true,
+                req.wxpusherAppToken() != null ? req.wxpusherAppToken().trim() : "",
+                req.wxpusherQrUrl() != null ? req.wxpusherQrUrl().trim() : ""
         );
 
         if (emailConfigMapper != null) {
@@ -99,6 +105,8 @@ public class SysEmailConfigService {
                 entity.setSenderName(view.senderName());
                 entity.setSenderAddress(view.senderAddress());
                 entity.setSslEnabled(view.sslEnabled());
+                entity.setWxpusherAppToken(view.wxpusherAppToken());
+                entity.setWxpusherQrUrl(view.wxpusherQrUrl());
                 entity.setUpdatedAt(LocalDateTime.now());
                 emailConfigMapper.insert(entity);
                 log.info("persisted sys_email_config to database");

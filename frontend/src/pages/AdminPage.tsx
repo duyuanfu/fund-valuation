@@ -528,6 +528,8 @@ export default function AdminPage() {
           senderName: cfg.senderName ?? '基金盘中估值助手',
           senderAddress: cfg.senderAddress,
           sslEnabled: cfg.sslEnabled ?? true,
+          wxpusherAppToken: cfg.wxpusherAppToken || '',
+          wxpusherQrUrl: cfg.wxpusherQrUrl || '',
         })
       }
     } catch {
@@ -1907,6 +1909,34 @@ export default function AdminPage() {
                         <Form.Item name="sslEnabled" label="启用 SSL / TLS 加密" valuePropName="checked">
                           <Switch checkedChildren="开启 (推荐 465 端口)" unCheckedChildren="关闭 (通常 587/25 端口)" />
                         </Form.Item>
+
+                        <Divider style={{ margin: '16px 0 14px' }} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                          <WechatOutlined style={{ color: '#16a34a', fontSize: 16 }} />
+                          <span style={{ fontWeight: 650, color: '#0f172a' }}>
+                            系统全局 WxPusher 微信免公众号服务配置
+                          </span>
+                        </div>
+                        <Row gutter={16}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="wxpusherAppToken"
+                              label="系统 WxPusher AppToken"
+                              extra="以 AT_ 开头。在 wxpusher.zjiecode.com 免费创建应用获取"
+                            >
+                              <Input placeholder="例如: AT_xxxxxxxxxxxx" style={{ borderRadius: 8 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="wxpusherQrUrl"
+                              label="应用关注二维码 / 关注页面链接"
+                              extra="用户打开提醒弹窗时将直接展示该关注入口"
+                            >
+                              <Input placeholder="https://wxpusher.zjiecode.com/wxuser/?type=1&id=xxx#/follow" style={{ borderRadius: 8 }} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
 
                         <Divider style={{ margin: '12px 0 16px' }} />
 

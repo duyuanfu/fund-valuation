@@ -255,11 +255,14 @@ export interface NotificationChannelView {
   emailEnabled?: boolean
   wechatChannelType?: string
   wechatUid?: string
+  wechatAppToken?: string
   wechatWebhookUrl?: string
   wechatEnabled?: boolean
   remindEnabled?: boolean
   pushScope?: 'ALL_WATCHLIST' | 'PORTFOLIO_ONLY' | string
   hideAmount?: boolean
+  systemWxpusherQrUrl?: string
+  hasSystemWxpusherToken?: boolean
 }
 
 export interface EmailConfigView {
@@ -270,6 +273,8 @@ export interface EmailConfigView {
   senderName?: string
   senderAddress?: string
   sslEnabled?: boolean
+  wxpusherAppToken?: string
+  wxpusherQrUrl?: string
 }
 
 

@@ -21,6 +21,7 @@ public class UserNotificationChannelService {
     private final UserNotificationChannelMapper channelMapper;
     private final EmailSenderService emailSenderService;
     private final WxNotificationService wxNotificationService;
+    private final SysEmailConfigService sysEmailConfigService;
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
 
@@ -30,9 +31,12 @@ public class UserNotificationChannelService {
             "wxpusher",
             "",
             "",
+            "",
             true,
             true,
             "ALL_WATCHLIST",
+            false,
+            "",
             false
     );
 
@@ -73,6 +77,7 @@ public class UserNotificationChannelService {
         entity.setEmailEnabled(req.emailEnabled() != null ? req.emailEnabled() : true);
         entity.setWechatChannelType(req.wechatChannelType() != null && !req.wechatChannelType().isBlank() ? req.wechatChannelType() : "wxpusher");
         entity.setWechatUid(req.wechatUid() != null ? req.wechatUid().trim() : "");
+        entity.setWechatAppToken(req.wechatAppToken() != null ? req.wechatAppToken().trim() : "");
         entity.setWechatWebhookUrl(req.wechatWebhookUrl() != null ? req.wechatWebhookUrl().trim() : "");
         entity.setWechatEnabled(req.wechatEnabled() != null ? req.wechatEnabled() : true);
         entity.setRemindEnabled(req.remindEnabled() != null ? req.remindEnabled() : true);
@@ -106,10 +111,7 @@ public class UserNotificationChannelService {
                 && (entity.getWechatWebhookUrl() == null || entity.getWechatWebhookUrl().isBlank()))) {
             throw new IllegalArgumentException("请先绑定微信扫码 UID 或填写 Webhook 地址");
         }
-        boolean ok = wxNotificationService.sendTestWechat(entity);
-        if (!ok) {
-            throw new RuntimeException("微信/Webhook 测试推送发送失败，请检查配置参数");
-        }
+        wxNotificationService.sendTestWechat(entity);
     }
 
     public List<UserNotificationChannel> listActiveRemindUsers() {
@@ -120,16 +122,23 @@ public class UserNotificationChannelService {
     }
 
     private NotificationChannelView toView(UserNotificationChannel e) {
+        com.fund.valuation.dto.EmailConfigView emailCfg = sysEmailConfigService != null ? sysEmailConfigService.getEmailConfig() : null;
+        String systemQr = (emailCfg != null && emailCfg.wxpusherQrUrl() != null) ? emailCfg.wxpusherQrUrl() : "";
+        boolean hasToken = (emailCfg != null && emailCfg.wxpusherAppToken() != null && !emailCfg.wxpusherAppToken().isBlank());
+
         return new NotificationChannelView(
                 e.getEmail(),
                 e.getEmailEnabled(),
                 e.getWechatChannelType(),
                 e.getWechatUid(),
+                e.getWechatAppToken(),
                 e.getWechatWebhookUrl(),
                 e.getWechatEnabled(),
                 e.getRemindEnabled(),
                 e.getPushScope(),
-                e.getHideAmount()
+                e.getHideAmount(),
+                systemQr,
+                hasToken
         );
     }
 }
