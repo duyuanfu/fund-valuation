@@ -241,8 +241,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  testNotificationEmail: () =>
-    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-email', { method: 'POST' }),
+  testNotificationEmail: (email?: string) =>
+    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-email', {
+      method: 'POST',
+      body: email ? JSON.stringify({ email }) : undefined,
+    }),
 
   testNotificationWechat: () =>
     request<{ success: boolean; message: string }>('/api/user/notification-channel/test-wechat', { method: 'POST' }),

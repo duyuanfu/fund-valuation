@@ -78,37 +78,59 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
       message.success('通知渠道设置已成功保存！交易日 14:30 将准时为您推送。')
       onClose()
     } catch (e: any) {
-      message.error(e?.message || '保存失败，请检查输入项')
+      if (e?.errorFields) {
+        message.error(e.errorFields[0]?.errors[0] || '请完善表单必填项')
+      } else {
+        message.error(e?.message || '保存失败，请检查输入项')
+      }
     } finally {
       setSaving(false)
     }
   }
 
   const handleTestEmail = async () => {
-    setTestingEmail(true)
     try {
-      // 先保存再测试
-      const values = await form.validateFields()
-      await api.updateNotificationChannel(values)
-      const res = await api.testNotificationEmail()
+      await form.validateFields(['email'])
+      const emailVal = form.getFieldValue('email')
+      if (!emailVal || !emailVal.trim()) {
+        message.warning('请先输入接收测试的电子邮箱地址')
+        return
+      }
+      setTestingEmail(true)
+      // 自动保存当前表单参数
+      const currentValues = form.getFieldsValue()
+      await api.updateNotificationChannel(currentValues).catch(() => {})
+      const res = await api.testNotificationEmail(emailVal.trim())
       message.success(res.message || '测试邮件已发出，请检查收件箱')
     } catch (e: any) {
-      message.error(e?.message || '测试邮件发送失败')
+      if (e?.errorFields) {
+        message.error(e.errorFields[0]?.errors[0] || '请输入有效的电子邮箱格式')
+      } else {
+        message.error(e?.message || '测试邮件发送失败')
+      }
     } finally {
       setTestingEmail(false)
     }
   }
 
   const handleTestWechat = async () => {
-    setTestingWechat(true)
     try {
-      // 先保存再测试
-      const values = await form.validateFields()
-      await api.updateNotificationChannel(values)
+      if (wechatType === 'wxpusher') {
+        await form.validateFields(['wechatUid'])
+      } else {
+        await form.validateFields(['wechatWebhookUrl'])
+      }
+      setTestingWechat(true)
+      const currentValues = form.getFieldsValue()
+      await api.updateNotificationChannel(currentValues).catch(() => {})
       const res = await api.testNotificationWechat()
       message.success(res.message || '微信/Webhook 测试消息已发出！')
     } catch (e: any) {
-      message.error(e?.message || '测试推送失败，请检查 UID 或 Webhook 地址')
+      if (e?.errorFields) {
+        message.error(e.errorFields[0]?.errors[0] || '请完善微信推送参数')
+      } else {
+        message.error(e?.message || '测试推送失败，请检查 UID 或 Webhook 地址')
+      }
     } finally {
       setTestingWechat(false)
     }
@@ -211,7 +233,18 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
             <Form.Item
               name="email"
               label="电子邮箱地址"
-              rules={[{ type: 'email', message: '请输入有效的电子邮箱格式' }]}
+              rules={[
+                { type: 'email', message: '请输入有效的电子邮箱格式' },
+                {
+                  validator: (_, val) => {
+                    const emailEnabled = form.getFieldValue('emailEnabled')
+                    if (emailEnabled && (!val || !val.trim())) {
+                      return Promise.reject(new Error('开启邮箱通知时请输入电子邮箱地址'))
+                    }
+                    return Promise.resolve()
+                  },
+                },
+              ]}
               extra="支持 QQ邮箱、163网易、Gmail、Outlook 等任何常用邮箱，手机端将收到标准邮件提醒。"
             >
               <Input placeholder="例如: yourname@qq.com" allowClear prefix={<MailOutlined style={{ color: '#94a3b8' }} />} />
@@ -280,7 +313,17 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
                 <Form.Item
                   name="wechatUid"
                   label="您的 WxPusher UID"
-                  rules={[{ required: wechatType === 'wxpusher', message: '请输入 WxPusher UID' }]}
+                  rules={[
+                    {
+                      validator: (_, val) => {
+                        const wechatEnabled = form.getFieldValue('wechatEnabled')
+                        if (wechatEnabled && wechatType === 'wxpusher' && (!val || !val.trim())) {
+                          return Promise.reject(new Error('开启微信通知时请输入 WxPusher UID'))
+                        }
+                        return Promise.resolve()
+                      },
+                    },
+                  ]}
                   style={{ marginTop: 10, marginBottom: 8 }}
                 >
                   <Input placeholder="例如: UID_a1b2c3d4e5f6g7h8..." allowClear />
@@ -298,6 +341,17 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
               <Form.Item
                 name="wechatWebhookUrl"
                 label="自定义 Webhook 推送地址"
+                rules={[
+                  {
+                    validator: (_, val) => {
+                      const wechatEnabled = form.getFieldValue('wechatEnabled')
+                      if (wechatEnabled && wechatType === 'webhook' && (!val || !val.trim())) {
+                        return Promise.reject(new Error('开启自定义 Webhook 时请输入推送地址'))
+                      }
+                      return Promise.resolve()
+                    },
+                  },
+                ]}
                 extra="支持：1. 企业微信机器人 2. Server酱(直接输入 SCTxxxx 或完整地址) 3. PushPlus推送加(直接输入 token 或地址) 4. 钉钉/飞书/Bark"
               >
                 <Input placeholder="例如: https://qyapi.weixin.qq.com/... 或 SCTxxxx 或 PushPlus Token" allowClear />

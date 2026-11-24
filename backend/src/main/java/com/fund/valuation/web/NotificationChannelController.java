@@ -39,10 +39,12 @@ public class NotificationChannelController {
     }
 
     @PostMapping("/test-email")
-    public ResponseEntity<?> testEmail(HttpServletRequest request) {
+    public ResponseEntity<?> testEmail(HttpServletRequest request,
+                                       @RequestBody(required = false) Map<String, String> body) {
         String username = currentUser(request);
+        String email = body != null ? body.get("email") : null;
         try {
-            channelService.testEmail(username);
+            channelService.testEmail(username, email);
             return ResponseEntity.ok(Map.of("success", true, "message", "测试邮件已成功发送，请注意查收收件箱或垃圾箱！"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

@@ -96,12 +96,39 @@ public class UserNotificationChannelService {
     }
 
     public void testEmail(String userId) {
+        testEmail(userId, null);
+    }
+
+    public void testEmail(String userId, String targetEmail) {
+        String emailToSend = targetEmail;
         UserNotificationChannel entity = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
                 .eq(UserNotificationChannel::getUserId, userId));
-        if (entity == null || entity.getEmail() == null || entity.getEmail().isBlank()) {
-            throw new IllegalArgumentException("请先填写并保存您的电子邮箱地址");
+
+        if (emailToSend != null && !emailToSend.isBlank()) {
+            emailToSend = emailToSend.trim();
+            if (!EMAIL_PATTERN.matcher(emailToSend).matches()) {
+                throw new IllegalArgumentException("电子邮箱格式不正确");
+            }
+            if (entity == null) {
+                entity = new UserNotificationChannel();
+                entity.setUserId(userId);
+                entity.setEmail(emailToSend);
+                entity.setEmailEnabled(true);
+                entity.setUpdatedAt(LocalDateTime.now());
+                channelMapper.insert(entity);
+            } else {
+                entity.setEmail(emailToSend);
+                entity.setUpdatedAt(LocalDateTime.now());
+                channelMapper.updateById(entity);
+            }
+        } else {
+            if (entity == null || entity.getEmail() == null || entity.getEmail().isBlank()) {
+                throw new IllegalArgumentException("请先填写并保存您的电子邮箱地址");
+            }
+            emailToSend = entity.getEmail().trim();
         }
-        emailSenderService.sendTestEmail(entity.getEmail().trim());
+
+        emailSenderService.sendTestEmail(emailToSend);
     }
 
     public void testWechat(String userId) {
