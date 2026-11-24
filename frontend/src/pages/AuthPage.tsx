@@ -243,14 +243,14 @@ export default function AuthPage() {
             <Form.Item
               name="username"
               rules={[
-                { required: true, message: '请输入用户名' },
-                { min: 2, max: 20, message: '用户名长度在 2-20 个字符' },
+                { required: true, message: mode === 'login' ? '请输入用户名或绑定邮箱' : '请输入用户名' },
+                { min: 2, max: 64, message: '账号长度在 2-64 个字符' },
               ]}
               style={{ marginBottom: 16 }}
             >
               <Input
                 prefix={<UserOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
-                placeholder="用户名 / userId"
+                placeholder={mode === 'login' ? '用户名 / 绑定邮箱' : '用户名 / 账号ID'}
                 autoComplete="username"
                 style={{
                   borderRadius: 10,

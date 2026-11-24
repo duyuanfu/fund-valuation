@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS bond_duration (
 
 CREATE TABLE IF NOT EXISTS `user` (
     id            BIGINT      NOT NULL AUTO_INCREMENT,
-    username      VARCHAR(32) NOT NULL COMMENT '用户名',
+    username      VARCHAR(64) NOT NULL COMMENT '用户名',
     password_hash VARCHAR(100) NOT NULL COMMENT 'BCrypt 密码哈希',
     role          VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT '角色: ADMIN/USER',
     status        VARCHAR(20) NOT NULL DEFAULT 'NORMAL' COMMENT '状态: NORMAL/DISABLED',

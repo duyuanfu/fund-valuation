@@ -26,6 +26,9 @@ class AuthServiceTest {
     @Autowired
     private SysVipConfigService sysVipConfigService;
 
+    @Autowired
+    private UserNotificationChannelService channelService;
+
     @BeforeEach
     void cleanDb() {
         userMapper.delete(null);
@@ -109,6 +112,31 @@ class AuthServiceTest {
             AuthService.LoginResult loginRes = authService.login("frank", "password123");
             assertEquals("frank", loginRes.username());
             assertNotNull(loginRes.token());
+        } finally {
+            sysVipConfigService.updateRequireApproval(true);
+        }
+    }
+
+    @Test
+    void loginWithBoundEmail() {
+        sysVipConfigService.updateRequireApproval(false);
+        try {
+            authService.register("user_with_email", "password123");
+            channelService.bindEmail("user_with_email", "user@yeah.net");
+
+            // 1. 使用用户名登录
+            AuthService.LoginResult res1 = authService.login("user_with_email", "password123");
+            assertEquals("user_with_email", res1.username());
+            assertNotNull(res1.token());
+
+            // 2. 使用绑定的邮箱登录
+            AuthService.LoginResult res2 = authService.login("user@yeah.net", "password123");
+            assertEquals("user_with_email", res2.username());
+            assertNotNull(res2.token());
+
+            // 3. 密码错误失败
+            assertThrows(IllegalArgumentException.class,
+                    () -> authService.login("user@yeah.net", "wrongpass"));
         } finally {
             sysVipConfigService.updateRequireApproval(true);
         }

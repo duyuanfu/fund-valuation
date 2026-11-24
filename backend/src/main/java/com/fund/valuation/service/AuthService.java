@@ -1,7 +1,9 @@
 package com.fund.valuation.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fund.valuation.domain.UserNotificationChannel;
 import com.fund.valuation.domain.User;
+import com.fund.valuation.mapper.UserNotificationChannelMapper;
 import com.fund.valuation.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,13 +19,14 @@ import java.time.LocalDateTime;
 public class AuthService {
 
     private final UserMapper userMapper;
+    private final UserNotificationChannelMapper channelMapper;
     private final JwtService jwtService;
     private final SysVipConfigService sysVipConfigService;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public RegisterResult register(String username, String password, String referralSource) {
-        if (username == null || username.isBlank() || username.length() > 32) {
-            throw new IllegalArgumentException("用户名不能为空且不超过32字符");
+        if (username == null || username.isBlank() || username.length() > 64) {
+            throw new IllegalArgumentException("用户名不能为空且不超过64字符");
         }
         if (password == null || password.length() < 6) {
             throw new IllegalArgumentException("密码至少6位");
@@ -110,10 +113,27 @@ public class AuthService {
 
     /**
      * 登录,成功返回 LoginResult;失败抛 IllegalArgumentException。
+     * 支持用户名 或 绑定的电子邮箱 登录。
      */
-    public LoginResult login(String username, String password) {
+    public LoginResult login(String usernameOrAccount, String password) {
+        if (usernameOrAccount == null || usernameOrAccount.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalArgumentException("用户名和密码不能为空");
+        }
+        String account = usernameOrAccount.trim();
         User u = userMapper.selectOne(new LambdaQueryWrapper<User>()
-                .eq(User::getUsername, username));
+                .eq(User::getUsername, account));
+
+        // 若用户名未匹配且包含 @，尝试通过绑定的邮箱查找对应用户
+        if (u == null && account.contains("@") && channelMapper != null) {
+            UserNotificationChannel ch = channelMapper.selectOne(new LambdaQueryWrapper<UserNotificationChannel>()
+                    .eq(UserNotificationChannel::getEmail, account)
+                    .last("LIMIT 1"));
+            if (ch != null && ch.getUserId() != null && !ch.getUserId().isBlank()) {
+                u = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                        .eq(User::getUsername, ch.getUserId()));
+            }
+        }
+
         if (u == null || !encoder.matches(password, u.getPasswordHash())) {
             throw new IllegalArgumentException("用户名或密码错误");
         }
@@ -128,7 +148,7 @@ public class AuthService {
         u.setLoginCount((u.getLoginCount() == null ? 0 : u.getLoginCount()) + 1);
         userMapper.updateById(u);
 
-        String token = jwtService.generate(username);
+        String token = jwtService.generate(u.getUsername());
         String role = (u.getRole() == null || u.getRole().isBlank()) ? User.ROLE_USER : u.getRole();
         return new LoginResult(token, u.getUsername(), role, u.isVipEffective());
     }

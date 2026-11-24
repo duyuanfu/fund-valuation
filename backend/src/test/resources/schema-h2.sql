@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS bond_duration (
 
 CREATE TABLE IF NOT EXISTS `user` (
     id            BIGINT       NOT NULL AUTO_INCREMENT,
-    username      VARCHAR(32)  NOT NULL,
+    username      VARCHAR(64)  NOT NULL,
     password_hash VARCHAR(100) NOT NULL,
     role          VARCHAR(20)  DEFAULT 'USER',
     status        VARCHAR(20)  DEFAULT 'NORMAL',
