@@ -1,11 +1,24 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Button, Layout, Typography, Spin, Tag, Segmented } from 'antd'
-import { LogoutOutlined, LineChartOutlined, UserOutlined, CustomerServiceOutlined } from '@ant-design/icons'
+import { Layout, Typography, Spin, Tag, Segmented, Dropdown } from 'antd'
+import type { MenuProps } from 'antd'
+import {
+  LogoutOutlined,
+  LineChartOutlined,
+  UserOutlined,
+  CustomerServiceOutlined,
+  MailOutlined,
+  BellOutlined,
+  DownOutlined,
+} from '@ant-design/icons'
 import { Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import { ContactModal } from './components/ContactModal'
+import { NotificationChannelModal } from './components/NotificationChannelModal'
+import { EmailBindPromptModal } from './components/EmailBindPromptModal'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { api } from './api'
+import type { NotificationChannelView } from './api/types'
 
 // 全路由懒加载: 各模块独立按需割离，登录页不加载自选表/图表，首屏提速 80%
 const AuthPage = lazy(() => import('./pages/AuthPage'))
@@ -23,6 +36,29 @@ function LayoutShell() {
   const location = useLocation()
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [contactOpen, setContactOpen] = useState(false)
+  const [channel, setChannel] = useState<NotificationChannelView | null>(null)
+  const [emailPromptOpen, setEmailPromptOpen] = useState(false)
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false)
+
+  const refreshChannel = () => {
+    if (token && !isAdmin) {
+      api.getNotificationChannel()
+        .then((ch) => {
+          setChannel(ch)
+          if (!ch || !ch.email || !ch.email.trim()) {
+            const dismissed = sessionStorage.getItem('dismiss_email_bind_prompt')
+            if (!dismissed) {
+              setEmailPromptOpen(true)
+            }
+          }
+        })
+        .catch(() => {})
+    }
+  }
+
+  useEffect(() => {
+    refreshChannel()
+  }, [token, isAdmin])
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -47,6 +83,90 @@ function LayoutShell() {
       </Suspense>
     )
   }
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'user-profile',
+      disabled: true,
+      label: (
+        <div style={{ padding: '6px 4px', minWidth: 200, cursor: 'default' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>
+              {username}
+            </span>
+            {isVip && !isAdmin ? (
+              <Tag color="gold" style={{ margin: 0, fontWeight: 700, fontSize: 11, borderRadius: 4 }}>
+                👑 VIP会员
+              </Tag>
+            ) : isAdmin ? (
+              <Tag color="purple" style={{ margin: 0, fontWeight: 700, fontSize: 11, borderRadius: 4 }}>
+                🛠 超级管理员
+              </Tag>
+            ) : (
+              <Tag color="default" style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>
+                普通用户
+              </Tag>
+            )}
+          </div>
+          {!isAdmin && (
+            <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              <MailOutlined style={{ color: channel?.email ? '#2563eb' : '#d97706', fontSize: 13 }} />
+              {channel?.email ? (
+                <span style={{ color: '#334155', wordBreak: 'break-all' }}>{channel.email}</span>
+              ) : (
+                <span
+                  style={{ color: '#d97706', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEmailPromptOpen(true)
+                  }}
+                >
+                  未绑定邮箱 (点击立即绑定)
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    { type: 'divider' },
+    ...(!isAdmin
+      ? [
+          {
+            key: 'reminder',
+            icon: <BellOutlined style={{ color: '#d97706' }} />,
+            label: (
+              <span style={{ fontWeight: 500 }}>
+                盘中提醒设置
+                {channel?.remindTime ? (
+                  <span style={{ color: '#94a3b8', fontSize: 11, marginLeft: 6 }}>
+                    ({channel.remindTime})
+                  </span>
+                ) : null}
+              </span>
+            ),
+            onClick: () => setNotificationModalOpen(true),
+          },
+        ]
+      : []),
+    {
+      key: 'contact',
+      icon: <CustomerServiceOutlined style={{ color: '#2563eb' }} />,
+      label: '联系客服 / 管理员',
+      onClick: () => setContactOpen(true),
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      danger: true,
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: () => {
+        logout()
+        navigate('/login')
+      },
+    },
+  ]
 
   return (
     <Layout style={{ minHeight: '100vh', background: '#f8fafc' }} className="no-horiz-overflow">
@@ -138,124 +258,63 @@ function LayoutShell() {
           />
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 10, lineHeight: 1, flexShrink: 0 }}>
-          {/* 用户区域 - 与浅色界面融合的轻量质感，VIP 仅以柔和金色点缀 */}
-          {isVip && !isAdmin ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1, flexShrink: 0 }}>
+          {/* 我的 · 个人信息与操作下拉菜单 */}
+          <Dropdown
+            menu={{ items: userMenuItems }}
+            trigger={['click']}
+            placement="bottomRight"
+            arrow={{ pointAtCenter: true }}
+          >
             <div
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
-                border: '1px solid #fde68a',
-                padding: '4px 9px',
+                cursor: 'pointer',
+                padding: '4px 10px',
                 borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 600,
-                height: 28,
+                background: isVip && !isAdmin
+                  ? 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)'
+                  : (isAdmin ? 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)' : '#ffffff'),
+                border: isVip && !isAdmin
+                  ? '1px solid #fde68a'
+                  : (isAdmin ? '1px solid #ddd6fe' : '1px solid #e2e8f0'),
+                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
+                userSelect: 'none',
+                transition: 'all 0.2s',
+                height: 30,
                 boxSizing: 'border-box',
-                boxShadow: '0 1px 3px rgba(217, 119, 6, 0.08)',
               }}
             >
-              <UserOutlined style={{ color: '#d97706', fontSize: 12 }} />
-              <span style={{ color: '#92400e' }}>{username}</span>
-              <span
-                style={{
-                  background: '#b45309',
-                  color: '#ffffff',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  padding: '1px 5px',
-                  borderRadius: 4,
-                  lineHeight: '12px',
-                  letterSpacing: 0.6,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                }}
-              >
-                VIP
+              <UserOutlined style={{ color: isVip && !isAdmin ? '#d97706' : (isAdmin ? '#7c3aed' : '#2563eb'), fontSize: 13 }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {username}
               </span>
+              {isVip && !isAdmin && (
+                <span
+                  style={{
+                    background: '#b45309',
+                    color: '#ffffff',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: '1px 5px',
+                    borderRadius: 4,
+                    lineHeight: '12px',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  VIP
+                </span>
+              )}
+              {isAdmin && (
+                <Tag color="purple" style={{ margin: 0, padding: '0 4px', fontSize: 10, lineHeight: '14px', borderRadius: 4, fontWeight: 700 }}>
+                  ADMIN
+                </Tag>
+              )}
+              <DownOutlined style={{ fontSize: 9, color: '#94a3b8', marginLeft: 1 }} />
             </div>
-          ) : isAdmin ? (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)',
-                border: '1px solid #ddd6fe',
-                padding: '4px 10px',
-                borderRadius: 20,
-                fontSize: 12,
-                fontWeight: 600,
-                height: 28,
-                boxSizing: 'border-box',
-                boxShadow: '0 1px 3px rgba(124, 58, 237, 0.08)',
-              }}
-            >
-              <UserOutlined style={{ color: '#7c3aed', fontSize: 12 }} />
-              <span style={{ color: '#5b21b6' }}>{username}</span>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                padding: '4px 10px',
-                borderRadius: 20,
-                fontSize: 12,
-                color: '#1e293b',
-                fontWeight: 500,
-                lineHeight: 1,
-                height: 28,
-                boxSizing: 'border-box',
-              }}
-            >
-              <UserOutlined style={{ color: '#64748b', fontSize: 12 }} />
-              <span>{username}</span>
-            </div>
-          )}
-
-          {/* 联系客服支持 */}
-          <Button
-            type="text"
-            size="small"
-            icon={<CustomerServiceOutlined style={{ color: '#2563eb' }} />}
-            onClick={() => setContactOpen(true)}
-            style={{
-              color: '#475569',
-              fontSize: 12,
-              display: 'flex',
-              alignItems: 'center',
-              height: 28,
-              borderRadius: 6,
-            }}
-          >
-            {!isMobile && '联系'}
-          </Button>
-
-          <Button
-            type="text"
-            size="small"
-            icon={<LogoutOutlined />}
-            style={{
-              color: '#64748b',
-              fontSize: 12,
-              display: 'flex',
-              alignItems: 'center',
-              height: 28,
-              borderRadius: 6,
-            }}
-            onClick={() => {
-              logout()
-              navigate('/login')
-            }}
-          >
-            {!isMobile && '退出'}
-          </Button>
+          </Dropdown>
         </div>
       </Header>
 
@@ -325,6 +384,29 @@ function LayoutShell() {
           </Suspense>
         </ErrorBoundary>
       </Content>
+
+      {/* 盘中提醒设置弹窗 */}
+      <NotificationChannelModal
+        open={notificationModalOpen}
+        onClose={() => {
+          setNotificationModalOpen(false)
+          refreshChannel()
+        }}
+      />
+
+      {/* 针对老用户等未绑定邮箱的用户弹窗 */}
+      <EmailBindPromptModal
+        open={emailPromptOpen}
+        onClose={() => setEmailPromptOpen(false)}
+        onSuccess={(newEmail) => {
+          setChannel((prev) => (prev ? { ...prev, email: newEmail } : { email: newEmail } as any))
+          refreshChannel()
+        }}
+        onOpenFullSettings={() => {
+          setEmailPromptOpen(false)
+          setNotificationModalOpen(true)
+        }}
+      />
 
       {/* 联系管理员弹窗 */}
       <ContactModal open={contactOpen} onClose={() => setContactOpen(false)} />

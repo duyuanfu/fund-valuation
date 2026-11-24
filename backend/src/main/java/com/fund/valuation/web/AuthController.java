@@ -26,6 +26,11 @@ public class AuthController {
 
     @PostMapping("/register")
     public RegisterResponse register(@RequestBody RegisterRequest req) {
+        if (!"admin".equalsIgnoreCase(req.username())) {
+            if (req.email() == null || req.email().isBlank() || !req.email().contains("@")) {
+                throw new IllegalArgumentException("电子邮箱不能为空且须为有效格式");
+            }
+        }
         AuthService.RegisterResult res = authService.register(req.username(), req.password(), req.referralSource());
 
         // 新用户注册时若填写了邮箱，自动绑定并开启盘中提醒

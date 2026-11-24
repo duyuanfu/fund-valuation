@@ -7,12 +7,14 @@ interface EmailBindPromptModalProps {
   open: boolean
   onClose: () => void
   onOpenFullSettings: () => void
+  onSuccess?: (email: string) => void
 }
 
 export function EmailBindPromptModal({
   open,
   onClose,
   onOpenFullSettings,
+  onSuccess,
 }: EmailBindPromptModalProps) {
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -32,8 +34,9 @@ export function EmailBindPromptModal({
     setSubmitting(true)
     try {
       await api.bindNotificationEmail(clean)
-      message.success('🎉 邮箱绑定成功！已自动开启交易日 14:30 盘中估值提醒。')
+      message.success('🎉 邮箱绑定成功！已自动开启交易日盘中估值提醒。')
       sessionStorage.setItem('dismiss_email_bind_prompt', '1')
+      if (onSuccess) onSuccess(clean)
       onClose()
     } catch (e: any) {
       message.error(e?.message || '邮箱绑定失败，请稍后重试')

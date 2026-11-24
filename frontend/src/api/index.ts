@@ -285,12 +285,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ to }),
     }),
-
-  triggerAdminDailyReminder: (force = true) =>
-    request<{ success: boolean; sentCount: number; message: string }>(
-      `/api/admin/email-config/trigger-daily-reminder?force=${force}`,
-      { method: 'POST' }
-    ),
 }
 
 export function sseUrl(): string {

@@ -39,7 +39,6 @@ import { PositionEditModal } from '../components/PositionEditModal'
 import { VipRechargeModal } from '../components/VipRechargeModal'
 import { ContactModal } from '../components/ContactModal'
 import { NotificationChannelModal } from '../components/NotificationChannelModal'
-import { EmailBindPromptModal } from '../components/EmailBindPromptModal'
 import { fmtPct, fmtNav } from '../utils/format'
 
 const { Title, Text, Paragraph } = Typography
@@ -67,23 +66,6 @@ export default function PortfolioPage() {
   const [rechargeModalOpen, setRechargeModalOpen] = useState(false)
   const [contactModalOpen, setContactModalOpen] = useState(false)
   const [notificationModalOpen, setNotificationModalOpen] = useState(false)
-  const [emailPromptOpen, setEmailPromptOpen] = useState(false)
-
-  // 针对老用户等未绑定邮箱的用户进入页面显示弹窗进行邮箱绑定
-  useEffect(() => {
-    const token = localStorage.getItem('fund_valuation_token')
-    if (!token) return
-    const dismissed = sessionStorage.getItem('dismiss_email_bind_prompt')
-    if (dismissed) return
-
-    api.getNotificationChannel()
-      .then((ch) => {
-        if (!ch || !ch.email || !ch.email.trim()) {
-          setEmailPromptOpen(true)
-        }
-      })
-      .catch(() => {})
-  }, [])
 
   // 响应式与视图切换
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -1038,11 +1020,6 @@ export default function PortfolioPage() {
       <NotificationChannelModal
         open={notificationModalOpen}
         onClose={() => setNotificationModalOpen(false)}
-      />
-      <EmailBindPromptModal
-        open={emailPromptOpen}
-        onClose={() => setEmailPromptOpen(false)}
-        onOpenFullSettings={() => setNotificationModalOpen(true)}
       />
     </div>
   )

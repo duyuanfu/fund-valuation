@@ -31,6 +31,7 @@ export default function AuthPage() {
     try {
       if (mode === 'login') {
         const res = await api.login(values.username, values.password)
+        sessionStorage.removeItem('dismiss_email_bind_prompt')
         login(res.token, res.username, res.role, res.isVip)
         message.success('欢迎回来')
         if (res.role === 'ADMIN') {
@@ -243,14 +244,14 @@ export default function AuthPage() {
             <Form.Item
               name="username"
               rules={[
-                { required: true, message: mode === 'login' ? '请输入用户名或绑定邮箱' : '请输入用户名' },
+                { required: true, message: mode === 'login' ? '请输入用户名或电子邮箱' : '请输入用户名' },
                 { min: 2, max: 64, message: '账号长度在 2-64 个字符' },
               ]}
               style={{ marginBottom: 16 }}
             >
               <Input
                 prefix={<UserOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
-                placeholder={mode === 'login' ? '用户名 / 绑定邮箱' : '用户名 / 账号ID'}
+                placeholder={mode === 'login' ? '用户名 / 电子邮箱' : '用户名 / 账号ID'}
                 autoComplete="username"
                 style={{
                   borderRadius: 10,
@@ -286,13 +287,14 @@ export default function AuthPage() {
               <Form.Item
                 name="email"
                 rules={[
+                  { required: true, message: '请输入电子邮箱' },
                   { type: 'email', message: '请输入有效的电子邮箱格式' },
                 ]}
                 style={{ marginBottom: 16 }}
               >
                 <Input
                   prefix={<MailOutlined style={{ color: '#94a3b8', marginRight: 4 }} />}
-                  placeholder="电子邮箱 (选填，自动开通交易日盘中估值提醒)"
+                  placeholder="电子邮箱 (必填，用于接收盘中提醒与账号找回)"
                   style={{
                     borderRadius: 10,
                     fontSize: 14,

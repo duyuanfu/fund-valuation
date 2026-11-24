@@ -1,7 +1,6 @@
 package com.fund.valuation.web;
 
 import com.fund.valuation.dto.EmailConfigView;
-import com.fund.valuation.scheduler.DailyReminderScheduler;
 import com.fund.valuation.service.EmailSenderService;
 import com.fund.valuation.service.SysEmailConfigService;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -22,7 +20,6 @@ public class AdminEmailController {
 
     private final SysEmailConfigService sysEmailConfigService;
     private final EmailSenderService emailSenderService;
-    private final DailyReminderScheduler dailyReminderScheduler;
 
     @GetMapping
     public ResponseEntity<EmailConfigView> getEmailConfig() {
@@ -46,11 +43,5 @@ public class AdminEmailController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage() != null ? e.getMessage() : "邮件发送异常"));
         }
-    }
-
-    @PostMapping("/trigger-daily-reminder")
-    public ResponseEntity<?> triggerDailyReminder(@RequestParam(defaultValue = "true") boolean force) {
-        int sent = dailyReminderScheduler.executeDailyReminder(force);
-        return ResponseEntity.ok(Map.of("success", true, "sentCount", sent, "message", "14:30 盘中提醒任务已执行完毕，成功分发 " + sent + " 位用户"));
     }
 }

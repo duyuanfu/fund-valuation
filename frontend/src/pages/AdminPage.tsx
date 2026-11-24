@@ -48,8 +48,6 @@ import {
   WechatOutlined,
   AlipayCircleOutlined,
   MailOutlined,
-  BellOutlined,
-  SendOutlined,
 } from '@ant-design/icons'
 import { api, sseUrl } from '../api'
 import type {
@@ -508,11 +506,10 @@ export default function AdminPage() {
     }
   }
 
-  /* ---------------- 9. 邮件配置与 14:30 盘中提醒运维 ---------------- */
+  /* ---------------- 9. 邮件配置与发信运维 ---------------- */
   const [emailConfigForm] = Form.useForm()
   const [savingEmailConfig, setSavingEmailConfig] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
-  const [triggeringReminder, setTriggeringReminder] = useState(false)
   const [testEmailModalOpen, setTestEmailModalOpen] = useState(false)
   const [testEmailTarget, setTestEmailTarget] = useState('')
 
@@ -578,18 +575,6 @@ export default function AdminPage() {
       message.error(e?.message || '测试邮件发送失败，请检查 SMTP 配置及网络')
     } finally {
       setTestingEmail(false)
-    }
-  }
-
-  const handleTriggerDailyReminder = async () => {
-    setTriggeringReminder(true)
-    try {
-      const res = await api.triggerAdminDailyReminder(true)
-      message.success(res.message || `推送执行完毕，共触达 ${res.sentCount} 位用户`)
-    } catch (e: any) {
-      message.error(e?.message || '触发盘中提醒推送失败')
-    } finally {
-      setTriggeringReminder(false)
     }
   }
 
@@ -1836,178 +1821,138 @@ export default function AdminPage() {
             ),
           },
           {
-            key: 'emailReminder',
+            key: 'emailConfig',
             label: (
               <span>
-                <MailOutlined /> 邮件与14:30提醒运维
+                <MailOutlined /> 系统发信配置
               </span>
             ),
             children: (
-              <Space direction="vertical" size={16} style={{ width: '100%' }}>
-                <Row gutter={[16, 16]}>
-                  {/* 左侧：发件邮箱 SMTP 配置 */}
-                  <Col xs={24} lg={14}>
-                    <Card
-                      title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <MailOutlined style={{ color: '#2563eb' }} />
-                          <span>系统发件邮箱配置 (SMTP)</span>
+              <div style={{ maxWidth: 760, margin: '0 auto', padding: '8px 0' }}>
+                <Card
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                        }}
+                      >
+                        <MailOutlined style={{ color: '#ffffff', fontSize: 16 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 15 }}>
+                          系统发件邮箱配置 (SMTP)
                         </div>
-                      }
-                      bordered={false}
-                      style={{ borderRadius: 12, boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)' }}
-                    >
-                      <Alert
-                        type="info"
-                        showIcon
-                        message="发信服务说明"
-                        description="系统用于向用户发送每日 14:30 盘中预估收益邮件及系统级通知。推荐使用网易 163 邮箱或 QQ 邮箱的 SMTP 授权码。"
-                        style={{ marginBottom: 16, borderRadius: 8 }}
-                      />
-                      <Form form={emailConfigForm} layout="vertical">
-                        <Row gutter={16}>
-                          <Col span={16}>
-                            <Form.Item
-                              name="smtpHost"
-                              label="SMTP 服务器地址"
-                              rules={[{ required: true, message: '请输入 SMTP 服务器地址' }]}
-                            >
-                              <Input placeholder="例如: smtp.163.com 或 smtp.qq.com" style={{ borderRadius: 8 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={8}>
-                            <Form.Item
-                              name="smtpPort"
-                              label="端口"
-                              rules={[{ required: true, message: '请输入端口' }]}
-                            >
-                              <InputNumber style={{ width: '100%', borderRadius: 8 }} placeholder="465" />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                          <Col span={12}>
-                            <Form.Item
-                              name="smtpUsername"
-                              label="SMTP 账号 (发信邮箱)"
-                              rules={[{ required: true, message: '请输入邮箱账号' }]}
-                            >
-                              <Input placeholder="your_account@163.com" style={{ borderRadius: 8 }} autoComplete="off" />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="smtpPassword"
-                              label="SMTP 授权码 / 密码"
-                              rules={[{ required: true, message: '请输入授权码' }]}
-                            >
-                              <Input.Password placeholder="邮箱后台生成的客户端授权码" style={{ borderRadius: 8 }} autoComplete="new-password" />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                          <Col span={12}>
-                            <Form.Item name="senderName" label="发件人显示昵称">
-                              <Input placeholder="基金盘中估值助手" style={{ borderRadius: 8 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item name="senderAddress" label="发信人地址 (From Header)">
-                              <Input placeholder="留空时默认与 SMTP 账号相同" style={{ borderRadius: 8 }} />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-
-                        <Form.Item name="sslEnabled" label="启用 SSL / TLS 加密" valuePropName="checked">
-                          <Switch checkedChildren="开启 (推荐 465 端口)" unCheckedChildren="关闭 (通常 587/25 端口)" />
+                        <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+                          配置网易163、QQ、阿里云等标准 SMTP 授权账号，保障用户盘中播报精准送达
+                        </div>
+                      </div>
+                    </div>
+                  }
+                  bordered={false}
+                  style={{ borderRadius: 14, boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)' }}
+                >
+                  <Form form={emailConfigForm} layout="vertical">
+                    <Row gutter={16}>
+                      <Col xs={24} sm={16}>
+                        <Form.Item
+                          name="smtpHost"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>SMTP 服务器地址</span>}
+                          rules={[{ required: true, message: '请输入 SMTP 服务器地址' }]}
+                        >
+                          <Input placeholder="例如: smtp.yeah.net 或 smtp.163.com" style={{ borderRadius: 8 }} />
                         </Form.Item>
-
-                        <Divider style={{ margin: '14px 0 16px' }} />
-
-                        <Space size={12}>
-                          <Button
-                            type="primary"
-                            loading={savingEmailConfig}
-                            onClick={handleSaveEmailConfig}
-                            style={{
-                              borderRadius: 8,
-                              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                              fontWeight: 550,
-                            }}
-                          >
-                            保存发件配置
-                          </Button>
-                          <Button
-                            onClick={handleOpenTestEmailModal}
-                            loading={savingEmailConfig}
-                            style={{ borderRadius: 8 }}
-                          >
-                            发送测试邮件
-                          </Button>
-                        </Space>
-                      </Form>
-                    </Card>
-                  </Col>
-
-                  {/* 右侧：14:30 盘中推送规则与手动分发 */}
-                  <Col xs={24} lg={10}>
-                    <Card
-                      title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <BellOutlined style={{ color: '#d97706' }} />
-                          <span>每日 14:30 盘中提醒运维调度</span>
-                        </div>
-                      }
-                      bordered={false}
-                      style={{ borderRadius: 12, boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)' }}
-                    >
-                      <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                        <div
-                          style={{
-                            padding: '12px 14px',
-                            borderRadius: 8,
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            fontSize: 13,
-                            lineHeight: 1.6,
-                            color: '#334155',
-                          }}
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Form.Item
+                          name="smtpPort"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>SMTP 端口</span>}
+                          rules={[{ required: true, message: '请输入端口' }]}
                         >
-                          <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>
-                            ⏰ 定时任务执行规则：
-                          </div>
-                          <div>• <strong>触发时间：</strong>法定 A 股交易日按用户自选时间（如 14:30）准时触发。</div>
-                          <div>• <strong>休市过滤：</strong>严格校验法定节假日及休市日，休市自动静默跳过。</div>
-                          <div>• <strong>触达内容：</strong>持仓今日预估收益 + 重点自选估值榜单 + 网页直达。</div>
-                          <div>• <strong>推送渠道：</strong>HTML 邮件、微信 (Server酱)、iOS Bark。</div>
-                        </div>
+                          <InputNumber style={{ width: '100%', borderRadius: 8 }} placeholder="465" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
 
-                        <Alert
-                          type="warning"
-                          showIcon
-                          message="一键手动执行测试"
-                          description="点击下方按钮可强制立即执行一次 14:30 盘中提醒分发（忽略交易日限制），将向当前所有已开启提醒且配置了有效邮箱或微信渠道的用户分发实时估值快照。"
-                          style={{ borderRadius: 8 }}
-                        />
-
-                        <Button
-                          type="primary"
-                          danger
-                          icon={<SendOutlined />}
-                          loading={triggeringReminder}
-                          onClick={handleTriggerDailyReminder}
-                          block
-                          style={{ height: 40, borderRadius: 8, fontWeight: 600 }}
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="smtpUsername"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>SMTP 登录账号 (发信邮箱)</span>}
+                          rules={[{ required: true, message: '请输入邮箱账号' }]}
                         >
-                          一键手动立即执行 14:30 盘中提醒分发
-                        </Button>
-                      </Space>
-                    </Card>
-                  </Col>
-                </Row>
-              </Space>
+                          <Input placeholder="your_account@yeah.net" style={{ borderRadius: 8 }} autoComplete="off" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="smtpPassword"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>SMTP 客户端授权码</span>}
+                          rules={[{ required: true, message: '请输入授权码' }]}
+                        >
+                          <Input.Password placeholder="邮箱后台生成的客户端授权码" style={{ borderRadius: 8 }} autoComplete="new-password" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                      <Col xs={24} sm={12}>
+                        <Form.Item name="senderName" label={<span style={{ fontWeight: 550, color: '#334155' }}>发件人显示昵称</span>}>
+                          <Input placeholder="基金盘中估值助手" style={{ borderRadius: 8 }} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <Form.Item name="senderAddress" label={<span style={{ fontWeight: 550, color: '#334155' }}>发件人地址 (From Header)</span>}>
+                          <Input placeholder="留空时默认与 SMTP 账号相同" style={{ borderRadius: 8 }} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>SSL / TLS 安全加密传输</div>
+                          <div style={{ fontSize: 12, color: '#64748b' }}>端口 465 建议开启；端口 587 / 25 通常关闭</div>
+                        </div>
+                        <Form.Item name="sslEnabled" valuePropName="checked" noStyle>
+                          <Switch checkedChildren="已开启 (465)" unCheckedChildren="关闭" />
+                        </Form.Item>
+                      </div>
+                    </div>
+
+                    <Space size={12}>
+                      <Button
+                        type="primary"
+                        loading={savingEmailConfig}
+                        onClick={handleSaveEmailConfig}
+                        style={{
+                          height: 38,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                          fontWeight: 600,
+                          padding: '0 20px',
+                        }}
+                      >
+                        保存发件配置
+                      </Button>
+                      <Button
+                        onClick={handleOpenTestEmailModal}
+                        loading={savingEmailConfig}
+                        style={{ height: 38, borderRadius: 8, padding: '0 16px' }}
+                      >
+                        发送测试邮件
+                      </Button>
+                    </Space>
+                  </Form>
+                </Card>
+              </div>
             ),
           },
           {

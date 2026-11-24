@@ -11,6 +11,7 @@ import {
   Card,
   Tag,
   Segmented,
+  TimePicker,
 } from 'antd'
 import {
   BellOutlined,
@@ -21,6 +22,7 @@ import {
   AppleOutlined,
   ClockCircleOutlined,
 } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import { api } from '../api'
 import type { NotificationChannelView } from '../api/types'
 
@@ -29,12 +31,14 @@ interface NotificationChannelModalProps {
   onClose: () => void
 }
 
-const REMIND_TIME_OPTIONS = [
-  { label: '14:00 (提前看盘)', value: '14:00' },
+const PRESET_TIMES = [
+  { label: '14:30 (🔥黄金决策)', value: '14:30' },
   { label: '14:15 (中盘异动)', value: '14:15' },
-  { label: '14:30 (🔥推荐·黄金半小时)', value: '14:30' },
   { label: '14:45 (尾盘冲刺)', value: '14:45' },
-  { label: '14:50 (最后10分钟)', value: '14:50' },
+  { label: '14:00 (提前看盘)', value: '14:00' },
+  { label: '14:50 (最后10分)', value: '14:50' },
+  { label: '10:30 (早盘确认)', value: '10:30' },
+  { label: '11:15 (午盘前瞻)', value: '11:15' },
 ]
 
 export function NotificationChannelModal({ open, onClose }: NotificationChannelModalProps) {
@@ -45,21 +49,24 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
   const [testingServerchan, setTestingServerchan] = useState(false)
   const [testingBark, setTestingBark] = useState(false)
   const [channelType, setChannelType] = useState<'serverchan' | 'bark'>('serverchan')
+  const [selectedTime, setSelectedTime] = useState<string>('14:30')
 
   const loadChannel = async () => {
     setLoading(true)
     try {
       const data = await api.getNotificationChannel()
       if (data) {
+        const timeVal = data.remindTime || '14:30'
+        setSelectedTime(timeVal)
         form.setFieldsValue({
           email: data.email || '',
           emailEnabled: data.emailEnabled ?? true,
-          wechatChannelType: (data.wechatChannelType === 'bark' ? 'bark' : 'serverchan'),
+          wechatChannelType: data.wechatChannelType === 'bark' ? 'bark' : 'serverchan',
           serverchanKey: data.serverchanKey || '',
           barkUrl: data.barkUrl || '',
           wechatEnabled: data.wechatEnabled ?? true,
           remindEnabled: data.remindEnabled ?? true,
-          remindTime: data.remindTime || '14:30',
+          remindTime: timeVal,
           pushScope: data.pushScope || 'ALL_WATCHLIST',
           hideAmount: data.hideAmount ?? false,
         })
@@ -78,17 +85,51 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
     }
   }, [open])
 
+  // A股交易时段限制: 09:30-11:30, 13:00-15:00
+  const disabledTradingTime = () => ({
+    disabledHours: () => {
+      const allowed = [9, 10, 11, 13, 14, 15]
+      const disabled: number[] = []
+      for (let i = 0; i < 24; i++) {
+        if (!allowed.includes(i)) disabled.push(i)
+      }
+      return disabled
+    },
+    disabledMinutes: (selectedHour: number) => {
+      const disabled: number[] = []
+      if (selectedHour === 9) {
+        // 09:30 开市，0-29 禁用
+        for (let m = 0; m < 30; m++) disabled.push(m)
+      } else if (selectedHour === 11) {
+        // 11:30 早盘休市，31-59 禁用
+        for (let m = 31; m < 60; m++) disabled.push(m)
+      } else if (selectedHour === 15) {
+        // 15:00 闭市，1-59 禁用
+        for (let m = 1; m < 60; m++) disabled.push(m)
+      }
+      return disabled
+    },
+  })
+
+  const handleTimeChange = (timeStr: string) => {
+    if (!timeStr) return
+    setSelectedTime(timeStr)
+    form.setFieldValue('remindTime', timeStr)
+  }
+
   const handleSave = async () => {
     try {
       const values = await form.validateFields()
       setSaving(true)
-      await api.updateNotificationChannel(values)
-      const timeStr = values.remindTime || '14:30'
-      message.success(`提醒设置已成功保存！交易日 ${timeStr} 将准时为您推送。`)
+      await api.updateNotificationChannel({
+        ...values,
+        remindTime: selectedTime,
+      })
+      message.success(`提醒设置已成功保存！交易日 ${selectedTime} 将准时为您推送。`)
       onClose()
     } catch (e: any) {
       if (e?.errorFields) {
-        message.error(e.errorFields[0]?.errors[0] || '请完善表单必填项')
+        message.error(e.errorFields[0]?.errors[0] || '请完善表单输入')
       } else {
         message.error(e?.message || '保存失败，请检查输入项')
       }
@@ -98,72 +139,63 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
   }
 
   const handleTestEmail = async () => {
+    const emailVal = form.getFieldValue('email')
+    if (!emailVal || !emailVal.trim()) {
+      message.warning('请先输入接收测试的电子邮箱地址')
+      return
+    }
+    const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$/
+    if (!emailRegex.test(emailVal.trim())) {
+      message.error('请输入有效的电子邮箱格式')
+      return
+    }
+
+    setTestingEmail(true)
     try {
-      await form.validateFields(['email'])
-      const emailVal = form.getFieldValue('email')
-      if (!emailVal || !emailVal.trim()) {
-        message.warning('请先输入接收测试的电子邮箱地址')
-        return
-      }
-      setTestingEmail(true)
       const currentValues = form.getFieldsValue()
-      await api.updateNotificationChannel(currentValues).catch(() => {})
+      await api.updateNotificationChannel({ ...currentValues, remindTime: selectedTime }).catch(() => {})
       const res = await api.testNotificationEmail(emailVal.trim())
       message.success(res.message || '测试邮件已发出，请检查收件箱或垃圾箱！')
     } catch (e: any) {
-      if (e?.errorFields) {
-        message.error(e.errorFields[0]?.errors[0] || '请输入有效的电子邮箱格式')
-      } else {
-        message.error(e?.message || '测试邮件发送失败')
-      }
+      message.error(e?.message || '测试邮件发送失败')
     } finally {
       setTestingEmail(false)
     }
   }
 
   const handleTestServerchan = async () => {
+    const keyVal = form.getFieldValue('serverchanKey')
+    if (!keyVal || !keyVal.trim()) {
+      message.warning('请先输入 Server酱 SendKey（以 SCT 开头）')
+      return
+    }
+    setTestingServerchan(true)
     try {
-      await form.validateFields(['serverchanKey'])
-      const keyVal = form.getFieldValue('serverchanKey')
-      if (!keyVal || !keyVal.trim()) {
-        message.warning('请先输入 Server酱 SendKey')
-        return
-      }
-      setTestingServerchan(true)
       const currentValues = form.getFieldsValue()
-      await api.updateNotificationChannel(currentValues).catch(() => {})
+      await api.updateNotificationChannel({ ...currentValues, remindTime: selectedTime }).catch(() => {})
       const res = await api.testNotificationServerchan(keyVal.trim())
       message.success(res.message || 'Server酱测试消息已发出，请在微信中查收！')
     } catch (e: any) {
-      if (e?.errorFields) {
-        message.error(e.errorFields[0]?.errors[0] || '请输入 Server酱 SendKey')
-      } else {
-        message.error(e?.message || 'Server酱推送失败，请检查 SendKey 是否正确')
-      }
+      message.error(e?.message || 'Server酱推送失败，请检查 SendKey 是否正确')
     } finally {
       setTestingServerchan(false)
     }
   }
 
   const handleTestBark = async () => {
+    const barkVal = form.getFieldValue('barkUrl')
+    if (!barkVal || !barkVal.trim()) {
+      message.warning('请先输入 Bark 设备 Key 或完整链接')
+      return
+    }
+    setTestingBark(true)
     try {
-      await form.validateFields(['barkUrl'])
-      const barkVal = form.getFieldValue('barkUrl')
-      if (!barkVal || !barkVal.trim()) {
-        message.warning('请先输入 Bark 推送 Key 或完整 URL')
-        return
-      }
-      setTestingBark(true)
       const currentValues = form.getFieldsValue()
-      await api.updateNotificationChannel(currentValues).catch(() => {})
+      await api.updateNotificationChannel({ ...currentValues, remindTime: selectedTime }).catch(() => {})
       const res = await api.testNotificationBark(barkVal.trim())
       message.success(res.message || 'Bark 测试消息已发出，请在 iOS 设备中查收！')
     } catch (e: any) {
-      if (e?.errorFields) {
-        message.error(e.errorFields[0]?.errors[0] || '请输入 Bark 设备 Key 或链接')
-      } else {
-        message.error(e?.message || 'Bark 推送失败，请检查设备 Key 是否有效')
-      }
+      message.error(e?.message || 'Bark 推送失败，请检查设备 Key 是否有效')
     } finally {
       setTestingBark(false)
     }
@@ -227,7 +259,7 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
     >
       <div style={{ padding: '4px 0', maxHeight: '72vh', overflowY: 'auto' }}>
         <Form form={form} layout="vertical" disabled={loading}>
-          {/* 总开关与提醒时间 */}
+          {/* 总开关与时间选择器 (限制在开市时间) */}
           <Card
             size="small"
             style={{
@@ -252,34 +284,63 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
             </div>
 
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontSize: 13, fontWeight: 600, color: '#334155' }}>
-                <ClockCircleOutlined style={{ color: '#2563eb' }} />
-                <span>选择提醒送达时间</span>
-                <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>
-                  (A股每日 15:00 申购/赎回确认截止)
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#334155' }}>
+                  <ClockCircleOutlined style={{ color: '#2563eb' }} />
+                  <span>选择提醒送达时间</span>
+                </div>
+                <span style={{ fontSize: 11, color: '#059669', background: '#ecfdf5', padding: '1px 8px', borderRadius: 10, border: '1px solid #a7f3d0' }}>
+                  ⏰ 限制在开市时段 (09:30-11:30, 13:00-15:00)
                 </span>
               </div>
-              <Form.Item name="remindTime" noStyle initialValue="14:30">
-                <Radio.Group style={{ width: '100%' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
-                    {REMIND_TIME_OPTIONS.map((opt) => (
-                      <Radio.Button
-                        key={opt.value}
-                        value={opt.value}
-                        style={{
-                          textAlign: 'center',
-                          borderRadius: 8,
-                          fontSize: 12,
-                          height: 36,
-                          lineHeight: '34px',
-                        }}
-                      >
-                        {opt.label}
-                      </Radio.Button>
-                    ))}
-                  </div>
-                </Radio.Group>
-              </Form.Item>
+
+              {/* 时间选择器 + 快捷预设按钮组 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                <TimePicker
+                  value={selectedTime ? dayjs(selectedTime, 'HH:mm') : dayjs('14:30', 'HH:mm')}
+                  format="HH:mm"
+                  minuteStep={5}
+                  disabledTime={disabledTradingTime}
+                  allowClear={false}
+                  showNow={false}
+                  onChange={(_, str) => {
+                    if (str) handleTimeChange(str as string)
+                  }}
+                  style={{
+                    width: 120,
+                    borderRadius: 8,
+                    fontWeight: 650,
+                    fontSize: 14,
+                    borderColor: '#2563eb',
+                  }}
+                />
+                <span style={{ fontSize: 12, color: '#64748b' }}>或快捷选择预设时段：</span>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {PRESET_TIMES.map((opt) => {
+                  const isSelected = selectedTime === opt.value
+                  return (
+                    <Button
+                      key={opt.value}
+                      size="small"
+                      type={isSelected ? 'primary' : 'default'}
+                      onClick={() => handleTimeChange(opt.value)}
+                      style={{
+                        borderRadius: 6,
+                        fontSize: 12,
+                        height: 28,
+                        fontWeight: isSelected ? 650 : 400,
+                        ...(isSelected
+                          ? { background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }
+                          : { borderColor: '#cbd5e1' }),
+                      }}
+                    >
+                      {opt.label}
+                    </Button>
+                  )
+                })}
+              </div>
             </div>
           </Card>
 
@@ -304,21 +365,12 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
               label={<span style={{ fontSize: 13, color: '#334155' }}>电子邮箱地址</span>}
               rules={[
                 { type: 'email', message: '请输入有效的电子邮箱格式' },
-                {
-                  validator: (_, val) => {
-                    const emailEnabled = form.getFieldValue('emailEnabled')
-                    if (emailEnabled && (!val || !val.trim())) {
-                      return Promise.reject(new Error('开启邮箱通知时请输入电子邮箱地址'))
-                    }
-                    return Promise.resolve()
-                  },
-                },
               ]}
               extra="支持 QQ邮箱、网易163、Gmail、Outlook 等任何常用邮箱，邮件客户端将准时送达卡片。"
               style={{ marginBottom: 10 }}
             >
               <Input
-                placeholder="例如: yourname@163.com"
+                placeholder="例如: yourname@163.com (留空则不通过邮箱推送)"
                 allowClear
                 prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
                 style={{ borderRadius: 8 }}
@@ -338,7 +390,7 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
             </div>
           </Card>
 
-          {/* 渠道 2 & 3: 移动端 (Server酱微信 或 iOS Bark) */}
+          {/* 渠道 2 & 3: 移动端 (Server酱微信 或 iOS Bark) - 为空时不阻挡保存和关闭 */}
           <Card
             title={
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -407,21 +459,10 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
                 </div>
                 <Form.Item
                   name="serverchanKey"
-                  label={<span style={{ fontSize: 13, color: '#166534', fontWeight: 600 }}>您的 Server酱 SendKey</span>}
-                  rules={[
-                    {
-                      validator: (_, val) => {
-                        const wechatEnabled = form.getFieldValue('wechatEnabled')
-                        if (wechatEnabled && channelType === 'serverchan' && (!val || !val.trim())) {
-                          return Promise.reject(new Error('开启微信通知时请输入 Server酱 SendKey'))
-                        }
-                        return Promise.resolve()
-                      },
-                    },
-                  ]}
+                  label={<span style={{ fontSize: 13, color: '#166534', fontWeight: 600 }}>您的 Server酱 SendKey (可选，留空不开启微信)</span>}
                   style={{ marginTop: 10, marginBottom: 0 }}
                 >
-                  <Input placeholder="例如: SCT123456Txxxxxxxxxxxxxxxx" allowClear style={{ borderRadius: 8 }} />
+                  <Input placeholder="例如: SCT123456Txxxxxxxxxxxxxxxx (选填，留空不阻挡保存)" allowClear style={{ borderRadius: 8 }} />
                 </Form.Item>
 
                 <div style={{ textAlign: 'right', marginTop: 10 }}>
@@ -458,21 +499,10 @@ export function NotificationChannelModal({ open, onClose }: NotificationChannelM
                 </div>
                 <Form.Item
                   name="barkUrl"
-                  label={<span style={{ fontSize: 13, color: '#1e293b', fontWeight: 600 }}>Bark 设备 Key 或完整推送 URL</span>}
-                  rules={[
-                    {
-                      validator: (_, val) => {
-                        const wechatEnabled = form.getFieldValue('wechatEnabled')
-                        if (wechatEnabled && channelType === 'bark' && (!val || !val.trim())) {
-                          return Promise.reject(new Error('开启 Bark 通知时请输入设备 Key 或链接'))
-                        }
-                        return Promise.resolve()
-                      },
-                    },
-                  ]}
+                  label={<span style={{ fontSize: 13, color: '#1e293b', fontWeight: 600 }}>Bark 设备 Key 或完整推送 URL (可选，留空不开启Bark)</span>}
                   style={{ marginTop: 10, marginBottom: 0 }}
                 >
-                  <Input placeholder="输入 Bark 设备 Key 或 https://api.day.app/YOUR_KEY" allowClear style={{ borderRadius: 8 }} />
+                  <Input placeholder="输入 Bark 设备 Key 或 https://api.day.app/YOUR_KEY (选填，留空不阻挡保存)" allowClear style={{ borderRadius: 8 }} />
                 </Form.Item>
 
                 <div style={{ textAlign: 'right', marginTop: 10 }}>
