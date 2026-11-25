@@ -33,8 +33,11 @@ public class TianTianFundClient {
     private static final String JJCC_URL = "https://fundf10.eastmoney.com/FundArchivesDatas.aspx";
     private static final String ZCPZ_PAGE_PREFIX = "https://fundf10.eastmoney.com/zcpz_";
     private static final String NET_DIAGRAM_URL = "https://fundmobapi.eastmoney.com/FundMApi/FundNetDiagram.ashx";
+    private static final String SEARCH_API_URL = "https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx";
     private static final String REFERER_F10 = "https://fundf10.eastmoney.com/";
     private static final int RATE_LIMIT_RETRIES = 4;
+
+    public record FundSearchItem(String code, String name, String type) {}
 
     private final HttpSupport http;
     private final ObjectMapper objectMapper;
@@ -514,6 +517,41 @@ public class TianTianFundClient {
             return new BigDecimal(str.trim());
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * 根据基金名称关键字或代码搜索天天基金官方数据目录
+     */
+    public List<FundSearchItem> searchFundsByName(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return List.of();
+        }
+        try {
+            String encoded = java.net.URLEncoder.encode(keyword.trim(), StandardCharsets.UTF_8);
+            String url = SEARCH_API_URL + "?m=1&key=" + encoded;
+            String body = fetchWithRateLimitRetry(url, "https://fund.eastmoney.com/");
+            if (body == null || body.isBlank()) {
+                return List.of();
+            }
+            JsonNode root = objectMapper.readTree(body);
+            JsonNode datas = root.path("Datas");
+            if (datas.isMissingNode() || !datas.isArray()) {
+                return List.of();
+            }
+            List<FundSearchItem> items = new ArrayList<>();
+            for (JsonNode node : datas) {
+                String code = node.path("CODE").asText("").trim();
+                String name = node.path("NAME").asText("").trim();
+                String type = node.path("FundBaseInfo").path("FTYPE").asText("").trim();
+                if (code.matches("\\d{6}")) {
+                    items.add(new FundSearchItem(code, name, type));
+                }
+            }
+            return items;
+        } catch (Exception e) {
+            log.warn("searchFundsByName failed for {}: {}", keyword, e.getMessage());
+            return List.of();
         }
     }
 

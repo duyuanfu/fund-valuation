@@ -51,7 +51,7 @@ import type { EstimateResult, NoticeView } from '../api/types'
 import { api } from '../api'
 import { colorOf, fmtNav, fmtPct } from '../utils/format'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 // 严格锁定垂直单轴运动的 Modifier，彻底杜绝横向位移与甩出界面
 const restrictToVerticalAxis = ({
@@ -662,22 +662,9 @@ export default function WatchlistPage() {
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Title
-              level={4}
-              style={{
-                margin: 0,
-                fontSize: isMobile ? 18 : 20,
-                color: '#0f172a',
-                fontWeight: 650,
-              }}
-            >
-              自选估值
-            </Title>
-            <span style={{ fontSize: 12, color: '#64748b' }}>
-              共 {estimates.length} 只自选
-            </span>
-          </div>
+          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+            共 {estimates.length} 只自选
+          </span>
         </div>
 
         <Space size={8} style={{ marginLeft: 'auto' }}>

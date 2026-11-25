@@ -5,7 +5,6 @@ public record NotificationChannelView(
         Boolean emailEnabled,
         String wechatChannelType,
         String serverchanKey,
-        String barkUrl,
         Boolean wechatEnabled,
         Boolean remindEnabled,
         String remindTime,
@@ -22,7 +21,6 @@ public record NotificationChannelView(
             Boolean emailEnabled,
             String wechatChannelType,
             String serverchanKey,
-            String barkUrl,
             Boolean wechatEnabled,
             Boolean remindEnabled,
             String remindTime,
@@ -30,7 +28,7 @@ public record NotificationChannelView(
             Boolean hideAmount
     ) {
         this(email, emailEnabled, wechatChannelType != null ? wechatChannelType : "serverchan",
-                serverchanKey, barkUrl,
+                serverchanKey,
                 wechatEnabled != null ? wechatEnabled : true,
                 remindEnabled != null ? remindEnabled : true,
                 remindTime != null && !remindTime.isBlank() ? remindTime : "14:30",
@@ -50,7 +48,7 @@ public record NotificationChannelView(
             String pushScope,
             Boolean hideAmount
     ) {
-        this(email, emailEnabled, wechatChannelType, null, null, wechatEnabled, remindEnabled, "14:30", pushScope, hideAmount, wechatUid, null, wechatWebhookUrl, null, false);
+        this(email, emailEnabled, wechatChannelType, null, wechatEnabled, remindEnabled, "14:30", pushScope, hideAmount, wechatUid, null, wechatWebhookUrl, null, false);
     }
 
     public NotificationChannelView(
@@ -67,6 +65,6 @@ public record NotificationChannelView(
             String systemWxpusherQrUrl,
             Boolean hasSystemWxpusherToken
     ) {
-        this(email, emailEnabled, wechatChannelType, null, null, wechatEnabled, remindEnabled, "14:30", pushScope, hideAmount, wechatUid, wechatAppToken, wechatWebhookUrl, systemWxpusherQrUrl, hasSystemWxpusherToken);
+        this(email, emailEnabled, wechatChannelType, null, wechatEnabled, remindEnabled, "14:30", pushScope, hideAmount, wechatUid, wechatAppToken, wechatWebhookUrl, systemWxpusherQrUrl, hasSystemWxpusherToken);
     }
 }

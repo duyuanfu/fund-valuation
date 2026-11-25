@@ -45,7 +45,6 @@ class UserNotificationChannelServiceTest {
                 true,
                 "serverchan",
                 "SCT123456Key",
-                "",
                 true,
                 true,
                 "14:15",
@@ -67,13 +66,12 @@ class UserNotificationChannelServiceTest {
         assertEquals("14:15", fetched.remindTime());
         assertTrue(fetched.hideAmount());
 
-        // 更新配置为 Bark
+        // 更新配置
         NotificationChannelView updateReq = new NotificationChannelView(
                 "updated@example.com",
                 false,
-                "bark",
-                "",
-                "https://api.day.app/DEVICE_KEY",
+                "serverchan",
+                "SCT_NEW_KEY",
                 true,
                 true,
                 "14:45",
@@ -83,8 +81,8 @@ class UserNotificationChannelServiceTest {
         NotificationChannelView updated = channelService.updateChannel(userId, updateReq);
         assertEquals("updated@example.com", updated.email());
         assertFalse(updated.emailEnabled());
-        assertEquals("bark", updated.wechatChannelType());
-        assertEquals("https://api.day.app/DEVICE_KEY", updated.barkUrl());
+        assertEquals("serverchan", updated.wechatChannelType());
+        assertEquals("SCT_NEW_KEY", updated.serverchanKey());
         assertEquals("14:45", updated.remindTime());
         assertEquals("PORTFOLIO_ONLY", updated.pushScope());
         assertFalse(updated.hideAmount());
@@ -108,7 +106,7 @@ class UserNotificationChannelServiceTest {
 
         // 同一用户允许更新配置保持原邮箱
         assertDoesNotThrow(() -> channelService.updateChannel("user_a", new NotificationChannelView(
-                "unique@example.com", true, "serverchan", "", "", false, true, "14:30", "ALL_WATCHLIST", false
+                "unique@example.com", true, "serverchan", "", false, true, "14:30", "ALL_WATCHLIST", false
         )));
 
         // 同一用户修改为新邮箱
@@ -132,7 +130,6 @@ class UserNotificationChannelServiceTest {
                 true,
                 "serverchan",
                 "",
-                "",
                 false,
                 true,
                 "14:30",
@@ -146,22 +143,22 @@ class UserNotificationChannelServiceTest {
     void testListActiveRemindUsers() {
         // 用户1：开启提醒 + 开启邮箱 (默认 14:30)
         channelService.updateChannel("u1", new NotificationChannelView(
-                "u1@example.com", true, "serverchan", "", "", false, true, "14:30", "ALL_WATCHLIST", false
+                "u1@example.com", true, "serverchan", "", false, true, "14:30", "ALL_WATCHLIST", false
         ));
 
         // 用户2：开启提醒 + 开启微信 (14:15)
         channelService.updateChannel("u2", new NotificationChannelView(
-                "", false, "serverchan", "SCT2", "", true, true, "14:15", "ALL_WATCHLIST", false
+                "", false, "serverchan", "SCT2", true, true, "14:15", "ALL_WATCHLIST", false
         ));
 
         // 用户3：总开关关闭
         channelService.updateChannel("u3", new NotificationChannelView(
-                "u3@example.com", true, "serverchan", "SCT3", "", true, false, "14:30", "ALL_WATCHLIST", false
+                "u3@example.com", true, "serverchan", "SCT3", true, false, "14:30", "ALL_WATCHLIST", false
         ));
 
         // 用户4：总开关开启但子渠道全关
         channelService.updateChannel("u4", new NotificationChannelView(
-                "u4@example.com", false, "serverchan", "SCT4", "", false, true, "14:30", "ALL_WATCHLIST", false
+                "u4@example.com", false, "serverchan", "SCT4", false, true, "14:30", "ALL_WATCHLIST", false
         ));
 
         List<UserNotificationChannel> activeUsers = channelService.listActiveRemindUsers();

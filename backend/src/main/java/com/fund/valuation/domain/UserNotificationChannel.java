@@ -25,14 +25,11 @@ public class UserNotificationChannel {
     /** 是否启用邮箱推送 */
     private Boolean emailEnabled;
 
-    /** 移动端/微信通道类型: serverchan / bark */
+    /** 移动端/微信通道类型: serverchan */
     private String wechatChannelType;
 
     /** Server酱 SendKey (微信推送) */
     private String serverchanKey;
-
-    /** Bark 推送 Key 或完整 URL (iOS推送) */
-    private String barkUrl;
 
     /** 历史兼容 WxPusher UID */
     private String wechatUid;

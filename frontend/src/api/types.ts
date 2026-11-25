@@ -253,9 +253,8 @@ export interface RegisterResponse {
 export interface NotificationChannelView {
   email?: string
   emailEnabled?: boolean
-  wechatChannelType?: 'serverchan' | 'bark' | string
+  wechatChannelType?: 'serverchan' | string
   serverchanKey?: string
-  barkUrl?: string
   wechatEnabled?: boolean
   remindEnabled?: boolean
   remindTime?: string
@@ -273,6 +272,39 @@ export interface EmailConfigView {
   sslEnabled?: boolean
   wxpusherAppToken?: string
   wxpusherQrUrl?: string
+}
+
+export interface FundSearchItem {
+  code: string
+  name: string
+  type: string
+}
+
+export interface OcrFundItem {
+  fundName: string
+  fundCode: string | null
+  holdingAmount: number
+  yesterdayIncome?: number | null
+  holdingProfit?: number | null
+  holdingProfitRate?: number | null
+  candidates?: FundSearchItem[]
+  warning?: string | null
+}
+
+export interface ScreenshotImportResult {
+  success: boolean
+  message: string
+  items: OcrFundItem[]
+  remainingQuota?: number
+}
+
+export interface VisionConfigView {
+  enabled: boolean
+  apiBaseUrl: string
+  apiKey?: string
+  modelName: string
+  dailyUserLimit: number
+  hasApiKey?: boolean
 }
 
 

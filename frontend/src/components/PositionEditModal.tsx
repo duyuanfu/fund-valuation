@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Modal, Form, Input, InputNumber, Typography, message, Alert, Spin } from 'antd'
 import {
   WalletOutlined,
-  DollarOutlined,
   PercentageOutlined,
   SearchOutlined,
   InfoCircleOutlined,
@@ -231,7 +230,6 @@ export function PositionEditModal({ open, editingItem, onClose, onSuccess }: Pos
               placeholder="例如: 10000.00"
               precision={2}
               min={0.01}
-              prefix={<DollarOutlined style={{ color: '#94a3b8' }} />}
               onChange={handleAmountChange}
             />
           </Form.Item>
@@ -252,7 +250,6 @@ export function PositionEditModal({ open, editingItem, onClose, onSuccess }: Pos
               style={{ width: '100%', borderRadius: 8 }}
               placeholder="例如: +35.20 或 -12.50 (可填0)"
               precision={2}
-              prefix="¥"
             />
           </Form.Item>
 
@@ -266,7 +263,6 @@ export function PositionEditModal({ open, editingItem, onClose, onSuccess }: Pos
                 style={{ width: '100%', borderRadius: 8 }}
                 placeholder="例如: 500.00"
                 precision={2}
-                prefix="¥"
                 onChange={handleProfitChange}
               />
             </Form.Item>
@@ -300,7 +296,7 @@ export function PositionEditModal({ open, editingItem, onClose, onSuccess }: Pos
             >
               <InfoCircleOutlined style={{ color: '#2563eb' }} />
               <span>
-                自动推算持仓成本约为: <b style={{ color: '#0f172a' }}>¥{computedCost.toFixed(2)}</b>
+                自动推算持仓成本约为: <b style={{ color: '#0f172a' }}>{computedCost.toFixed(2)}</b>
               </span>
             </div>
           )}

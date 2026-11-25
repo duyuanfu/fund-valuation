@@ -156,7 +156,7 @@ public class DailyReminderScheduler {
             }
         }
 
-        // 2. 发送移动端 (Server酱微信 或 Bark)
+        // 2. 发送微信推送 (Server酱)
         if (Boolean.TRUE.equals(ch.getWechatEnabled())) {
             try {
                 String title = "【" + remindTime + " 盘中估值快报】" + username;

@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -153,5 +154,27 @@ class PortfolioServiceTest {
 
         portfolioService.removePosition(USER, "110022");
         assertEquals(0, portfolioService.getPortfolio(USER).items().size());
+    }
+
+    @Test
+    void batchSavePositionsSuccessfullySavesMultipleFunds() {
+        Fund f2 = new Fund();
+        f2.setCode("161725");
+        f2.setName("招商中证白酒指数(LOF)A");
+        f2.setType("index");
+        f2.setPrevNav(new BigDecimal("1.2000"));
+        f2.setNavDate(LocalDate.now().minusDays(1));
+        f2.setUpdatedAt(LocalDateTime.now());
+        fundMapper.insert(f2);
+        when(fundCatalogService.ensureFund("161725")).thenReturn(f2);
+
+        List<PositionSaveRequest> batch = List.of(
+                new PositionSaveRequest("110022", new BigDecimal("5000.00"), BigDecimal.ZERO, new BigDecimal("100.00"), null),
+                new PositionSaveRequest("161725", new BigDecimal("8000.00"), new BigDecimal("-50.00"), null, new BigDecimal("2.50"))
+        );
+
+        List<UserPosition> saved = portfolioService.batchSavePositions(USER, batch);
+        assertEquals(2, saved.size());
+        assertEquals(2, portfolioService.getPortfolio(USER).items().size());
     }
 }

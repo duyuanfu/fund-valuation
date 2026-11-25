@@ -174,6 +174,19 @@ public class DatabaseAutoMigrator {
             addColumnIfNotExists(conn, "sys_email_config", "wxpusher_app_token", "VARCHAR(255) NULL");
             addColumnIfNotExists(conn, "sys_email_config", "wxpusher_qr_url", "VARCHAR(500) NULL");
 
+            // 9. 补齐系统 AI 视觉识图配置表
+            executeSqlQuietly(conn, """
+                CREATE TABLE IF NOT EXISTS sys_vision_config (
+                    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    enabled          TINYINT(1)   DEFAULT 1,
+                    api_base_url     VARCHAR(255) DEFAULT 'https://open.bigmodel.cn/api/paas/v4',
+                    api_key          VARCHAR(255) NULL,
+                    model_name       VARCHAR(64)  DEFAULT 'glm-4v-flash',
+                    daily_user_limit INT          DEFAULT 20,
+                    updated_at       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
             log.info("Database schema check and auto-migration finished successfully.");
         } catch (Exception e) {
             log.warn("Database auto-migration skipped or encountered error: {}", e.getMessage());

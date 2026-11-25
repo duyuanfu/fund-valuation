@@ -87,9 +87,11 @@ function LayoutShell() {
   const userMenuItems: MenuProps['items'] = [
     {
       key: 'user-profile',
-      disabled: true,
       label: (
-        <div style={{ padding: '6px 4px', minWidth: 200, cursor: 'default' }}>
+        <div
+          style={{ padding: '6px 4px', minWidth: 200, cursor: 'default' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 14 }}>
               {username}
@@ -118,7 +120,7 @@ function LayoutShell() {
                     style={{ fontSize: 11, color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap' }}
                     onClick={(e) => {
                       e.stopPropagation()
-                      setNotificationModalOpen(true)
+                      setEmailPromptOpen(true)
                     }}
                   >
                     修改
@@ -412,6 +414,7 @@ function LayoutShell() {
       {/* 针对老用户等未绑定邮箱的用户弹窗 */}
       <EmailBindPromptModal
         open={emailPromptOpen}
+        initialEmail={channel?.email}
         onClose={() => setEmailPromptOpen(false)}
         onSuccess={(newEmail) => {
           setChannel((prev) => (prev ? { ...prev, email: newEmail } : { email: newEmail } as any))

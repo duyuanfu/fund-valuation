@@ -196,3 +196,14 @@ CREATE TABLE IF NOT EXISTS sys_email_config (
     updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统SMTP发件配置';
+
+CREATE TABLE IF NOT EXISTS sys_vision_config (
+    id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    enabled          TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用AI视觉识图功能: 1启用/0禁用',
+    api_base_url     VARCHAR(255) NOT NULL DEFAULT 'https://open.bigmodel.cn/api/paas/v4' COMMENT '兼容OpenAI的视觉接口Base URL',
+    api_key          VARCHAR(255) NULL     COMMENT '大模型API密钥',
+    model_name       VARCHAR(64)  NOT NULL DEFAULT 'glm-4v-flash' COMMENT '视觉大模型名称',
+    daily_user_limit INT          NOT NULL DEFAULT 20 COMMENT '单用户每日识图次数上限',
+    updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI视觉识别模型配置';

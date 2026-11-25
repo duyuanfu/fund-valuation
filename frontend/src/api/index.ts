@@ -16,6 +16,16 @@ import type {
   VipOrderView,
   NotificationChannelView,
   EmailConfigView,
+  FundSearchItem,
+  ScreenshotImportResult,
+  VisionConfigView,
+} from './types'
+export type {
+  EmailConfigView,
+  FundSearchItem,
+  OcrFundItem,
+  ScreenshotImportResult,
+  VisionConfigView,
 } from './types'
 import {
   TOKEN_KEY,
@@ -259,12 +269,6 @@ export const api = {
       body: serverchanKey ? JSON.stringify({ serverchanKey }) : undefined,
     }),
 
-  testNotificationBark: (barkUrl?: string) =>
-    request<{ success: boolean; message: string }>('/api/user/notification-channel/test-bark', {
-      method: 'POST',
-      body: barkUrl ? JSON.stringify({ barkUrl }) : undefined,
-    }),
-
   testNotificationWechat: (wechatTarget?: string, wechatChannelType?: string) =>
     request<{ success: boolean; message: string }>('/api/user/notification-channel/test-wechat', {
       method: 'POST',
@@ -284,6 +288,60 @@ export const api = {
     request<{ success: boolean; message: string }>('/api/admin/email-config/test', {
       method: 'POST',
       body: JSON.stringify({ to }),
+    }),
+
+  // 基金模糊搜索
+  searchFunds: (query: string) =>
+    request<FundSearchItem[]>(`/api/funds/search?q=${encodeURIComponent(query)}`),
+
+  // 持仓截图识别 (Base64 或 FormData)
+  importPortfolioScreenshotBase64: (image: string, contentType = 'image/jpeg') =>
+    request<ScreenshotImportResult>('/api/portfolio/import-screenshot', {
+      method: 'POST',
+      body: JSON.stringify({ image, contentType }),
+    }),
+
+  importPortfolioScreenshotFile: async (file: File): Promise<ScreenshotImportResult> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const token = localStorage.getItem(TOKEN_KEY)
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    const res = await fetch('/api/portfolio/import-screenshot', {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+    if (!res.ok) {
+      let err = `上传失败 (${res.status})`
+      try {
+        const body = await res.json()
+        if (body && (body.message || body.error)) err = body.message || body.error
+      } catch {}
+      throw new Error(err)
+    }
+    return res.json()
+  },
+
+  // 批量保存持仓
+  batchSavePortfolio: (items: PositionSaveRequest[]) =>
+    request<{ success: boolean; count: number }>('/api/portfolio/batch', {
+      method: 'POST',
+      body: JSON.stringify(items),
+    }),
+
+  // 管理后台视觉识别配置
+  getAdminVisionConfig: () => request<VisionConfigView>('/api/admin/vision-config'),
+
+  setAdminVisionConfig: (data: VisionConfigView) =>
+    request<VisionConfigView>('/api/admin/vision-config', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  testAdminVisionConfig: (data?: Partial<VisionConfigView>) =>
+    request<{ success: boolean; message: string }>('/api/admin/vision-config/test', {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
     }),
 }
 

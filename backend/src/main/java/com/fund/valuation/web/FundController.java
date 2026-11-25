@@ -19,6 +19,8 @@ import com.fund.valuation.service.FundHoldingService;
 import com.fund.valuation.service.FundPerformanceService;
 import com.fund.valuation.service.QuoteService;
 import com.fund.valuation.service.ValuationEngine;
+import com.fund.valuation.client.TianTianFundClient.FundSearchItem;
+import com.fund.valuation.service.FundSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,7 +33,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/fund")
+@RequestMapping({"/api/fund", "/api/funds"})
 @RequiredArgsConstructor
 public class FundController {
 
@@ -42,7 +44,16 @@ public class FundController {
     private final QuoteService quoteService;
     private final BondDurationService bondDurationService;
     private final FundPerformanceService performanceService;
+    private final FundSearchService fundSearchService;
     private final AppProperties properties;
+
+    /**
+     * 基金模糊检索: 支持基金名称、拼音或代码模糊联想
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<FundSearchItem>> search(@RequestParam("q") String query) {
+        return ResponseEntity.ok(fundSearchService.search(query, 10));
+    }
 
     /**
      * 单只基金详情:基本信息 + 当前估值 + 持仓明细 + 当日历史(+债券基金利率驱动信息)。

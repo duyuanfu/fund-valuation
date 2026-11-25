@@ -39,6 +39,8 @@ import { PositionEditModal } from '../components/PositionEditModal'
 import { VipRechargeModal } from '../components/VipRechargeModal'
 import { ContactModal } from '../components/ContactModal'
 import { NotificationChannelModal } from '../components/NotificationChannelModal'
+import { ScreenshotImportModal } from '../components/ScreenshotImportModal'
+import { ImportChoiceModal } from '../components/ImportChoiceModal'
 import { fmtPct, fmtNav } from '../utils/format'
 
 const { Title, Text, Paragraph } = Typography
@@ -46,7 +48,7 @@ const { Title, Text, Paragraph } = Typography
 function fmtMoney(val: number | null | undefined, showPlus = false): string {
   if (val === null || val === undefined) return '--'
   const prefix = showPlus && val > 0 ? '+' : ''
-  return `${prefix}¥${val.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `${prefix}${val.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 export default function PortfolioPage() {
@@ -65,6 +67,8 @@ export default function PortfolioPage() {
   const [rechargeModalOpen, setRechargeModalOpen] = useState(false)
   const [contactModalOpen, setContactModalOpen] = useState(false)
   const [notificationModalOpen, setNotificationModalOpen] = useState(false)
+  const [screenshotModalOpen, setScreenshotModalOpen] = useState(false)
+  const [choiceModalOpen, setChoiceModalOpen] = useState(false)
 
   // 响应式与视图切换
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -228,7 +232,7 @@ export default function PortfolioPage() {
                 boxShadow: '0 2px 8px rgba(217, 119, 6, 0.25)',
               }}
             >
-              立即开通 VIP 会员 (¥{vipConfig?.monthlyPrice != null ? Number(vipConfig.monthlyPrice) : 2.9}起)
+              立即开通 VIP 会员 ({vipConfig?.monthlyPrice != null ? Number(vipConfig.monthlyPrice) : 2.9}元起)
             </Button>
             <Button
               size={isMobile ? 'middle' : 'large'}
@@ -302,22 +306,22 @@ export default function PortfolioPage() {
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
               <div style={{ background: '#ffffff', padding: '14px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>今日预估总收益</Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>+¥368.50</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>+368.50</div>
                 <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>日内涨跌: +0.64%</div>
               </div>
               <div style={{ background: '#ffffff', padding: '14px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>持仓总市值 (动态)</Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>¥58,260.00</div>
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>基准: ¥57,891.50</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>58,260.00</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>基准: 57,891.50</div>
               </div>
               <div style={{ background: '#ffffff', padding: '14px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>最新累计总盈亏</Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>+¥3,420.00</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>+3,420.00</div>
                 <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>总回报率: +6.23%</div>
               </div>
               <div style={{ background: '#ffffff', padding: '14px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>昨日官方收益</Text>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>+¥120.00</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>+120.00</div>
                 <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>官方确认到账</div>
               </div>
             </div>
@@ -326,10 +330,10 @@ export default function PortfolioPage() {
               <div style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontWeight: 650 }}>易方达消费行业股票 (110022)</div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>持有金额: ¥20,000.00 · 昨日收益: +¥50.00</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>持有金额: 20,000.00</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: '#dc2626' }}>+¥260.00</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: '#dc2626' }}>+260.00</div>
                   <span className="badge-up" style={{ fontSize: 12 }}>+1.30%</span>
                 </div>
               </div>
@@ -546,17 +550,9 @@ export default function PortfolioPage() {
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Title level={4} style={{ margin: 0, fontSize: isMobile ? 18 : 20, color: '#0f172a', fontWeight: 650 }}>
-              持仓估值
-            </Title>
-            <Tag color="gold" style={{ margin: 0, borderRadius: 10, fontWeight: 700, fontSize: 11 }}>
-              <CrownOutlined /> VIP
-            </Tag>
-            <span style={{ fontSize: 12, color: '#64748b' }}>
-              共 {data?.items?.length ?? 0} 只持仓
-            </span>
-          </div>
+          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+            共 {data?.items?.length ?? 0} 只持仓
+          </span>
         </div>
 
         <Space size={8} style={{ marginLeft: 'auto' }}>
@@ -583,10 +579,7 @@ export default function PortfolioPage() {
             type="primary"
             size={isMobile ? 'small' : 'middle'}
             icon={<PlusOutlined />}
-            onClick={() => {
-              setEditingItem(null)
-              setEditModalOpen(true)
-            }}
+            onClick={() => setChoiceModalOpen(true)}
             style={{
               borderRadius: 8,
               background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
@@ -602,153 +595,310 @@ export default function PortfolioPage() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '80px 0' }}>
           <Spin size="large" />
-          <div style={{ marginTop: 12, color: '#64748b', fontSize: 13 }}>正在加载持仓与实时估算...</div>
         </div>
       ) : (
         <>
-          {/* 顶部4大核心资产收益看板 (纯净白底 · 稳重大气) */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-              gap: 10,
-              marginBottom: 14,
-            }}
-          >
-            {/* 今日预估收益 */}
+          {/* 顶部总览卡片 */}
+          {isMobile ? (
+            /* 移动端资产总览看板：与全站浅色调统一和谐，同时以蓝标标题栏与双层结构区分于下方持仓卡片 */
             <div
               style={{
                 background: '#ffffff',
                 border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: isMobile ? '12px 14px' : '16px 18px',
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                borderRadius: 14,
+                padding: '12px 14px',
+                marginBottom: 12,
+                boxShadow: '0 1px 4px rgba(15, 23, 42, 0.04)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>今日收益</Text>
-                {isUp ? (
-                  <ArrowUpOutlined style={{ color: '#dc2626', fontSize: 12 }} />
-                ) : isDown ? (
-                  <ArrowDownOutlined style={{ color: '#16a34a', fontSize: 12 }} />
-                ) : null}
-              </div>
+              {/* 总览标题栏：带微蓝装饰标识，清晰标明“持仓总览”，区别于下方个基卡片 */}
               <div
                 style={{
-                  fontSize: isMobile ? 21 : 26,
-                  fontWeight: 750,
-                  color: todayColor,
-                  fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
-                  lineHeight: 1.2,
-                  marginTop: 4,
-                  letterSpacing: -0.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingBottom: 8,
+                  marginBottom: 10,
+                  borderBottom: '1px solid #f1f5f9',
                 }}
               >
-                {fmtMoney(summary?.totalTodayIncome, true)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div
+                    style={{
+                      width: 3,
+                      height: 12,
+                      borderRadius: 2,
+                      background: 'linear-gradient(180deg, #2563eb 0%, #3b82f6 100%)',
+                    }}
+                  />
+                  <span style={{ fontSize: 12.5, fontWeight: 650, color: '#334155' }}>
+                    持仓总览
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>实时估算</span>
               </div>
-              <div style={{ marginTop: 3, fontSize: 12, color: todayColor }}>
-                涨跌 {fmtPct(summary?.totalTodayIncomePct)}
-              </div>
-            </div>
 
-            {/* 持仓总资产 (最新市值) */}
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: isMobile ? '12px 14px' : '16px 18px',
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
-              }}
-            >
-              <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>总市值</Text>
+              {/* 上层核心指标：今日预估收益 + 总资产市值 */}
               <div
                 style={{
-                  fontSize: isMobile ? 21 : 26,
-                  fontWeight: 700,
-                  color: '#0f172a',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
-                  lineHeight: 1.2,
-                  marginTop: 4,
-                  letterSpacing: -0.5,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
                 }}
               >
-                {fmtMoney(summary?.totalMarketValue)}
-              </div>
-              <div style={{ marginTop: 3, fontSize: 12, color: '#94a3b8' }}>
-                持仓 {fmtMoney(summary?.totalHoldingAmount)}
-              </div>
-            </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500 }}>
+                      今日预估收益
+                    </span>
+                    {isUp ? (
+                      <ArrowUpOutlined style={{ color: '#dc2626', fontSize: 11 }} />
+                    ) : isDown ? (
+                      <ArrowDownOutlined style={{ color: '#16a34a', fontSize: 11 }} />
+                    ) : null}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 23,
+                      fontWeight: 750,
+                      color: isUp ? '#dc2626' : isDown ? '#16a34a' : '#0f172a',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                      letterSpacing: -0.5,
+                      lineHeight: 1.25,
+                      marginTop: 2,
+                    }}
+                  >
+                    {fmtMoney(summary?.totalTodayIncome, true)}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 2,
+                      fontSize: 11.5,
+                      fontWeight: 500,
+                      color: isUp ? '#dc2626' : isDown ? '#16a34a' : '#64748b',
+                    }}
+                  >
+                    涨跌 {fmtPct(summary?.totalTodayIncomePct)}
+                  </div>
+                </div>
 
-            {/* 最新累计总盈亏 */}
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: isMobile ? '12px 14px' : '16px 18px',
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
-              }}
-            >
-              <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>累计盈亏</Text>
-              <div
-                style={{
-                  fontSize: isMobile ? 21 : 26,
-                  fontWeight: 750,
-                  color: (summary?.dynamicTotalProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
-                  lineHeight: 1.2,
-                  marginTop: 4,
-                  letterSpacing: -0.5,
-                }}
-              >
-                {fmtMoney(summary?.dynamicTotalProfit, true)}
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500 }}>
+                    持仓总市值
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 19,
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                      letterSpacing: -0.3,
+                      lineHeight: 1.25,
+                      marginTop: 3,
+                    }}
+                  >
+                    {fmtMoney(summary?.totalMarketValue)}
+                  </div>
+                  <div style={{ marginTop: 2, fontSize: 11.5, color: '#64748b' }}>
+                    本金 {fmtMoney(summary?.totalHoldingAmount)}
+                  </div>
+                </div>
               </div>
+
+              {/* 下层次级指标：嵌入浅灰柔和内嵌底栏，结构紧凑且与上方形成优雅分层 */}
               <div
                 style={{
-                  marginTop: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: '#f8fafc',
+                  borderRadius: 8,
+                  padding: '7px 10px',
+                  marginTop: 10,
                   fontSize: 12,
-                  color: (summary?.dynamicTotalProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
                 }}
               >
-                回报率 {fmtPct(summary?.dynamicTotalProfitRate)}
+                <div>
+                  <span style={{ color: '#64748b' }}>累计盈亏: </span>
+                  <span
+                    style={{
+                      fontWeight: 650,
+                      color: (summary?.dynamicTotalProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                    }}
+                  >
+                    {fmtMoney(summary?.dynamicTotalProfit, true)}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: (summary?.dynamicTotalProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
+                      marginLeft: 3,
+                    }}
+                  >
+                    ({fmtPct(summary?.dynamicTotalProfitRate)})
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ color: '#64748b' }}>持有收益: </span>
+                  <span
+                    style={{
+                      fontWeight: 650,
+                      color: (summary?.totalHoldingProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
+                      fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                    }}
+                  >
+                    {fmtMoney(summary?.totalHoldingProfit, true)}
+                  </span>
+                </div>
               </div>
             </div>
-
-            {/* 支付宝昨日实际确认收益 */}
+          ) : (
+            /* 桌面端：4大核心资产收益看板 (纯净白底 · 稳重大气) */
             <div
               style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: 12,
-                padding: isMobile ? '12px 14px' : '16px 18px',
-                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 12,
+                marginBottom: 14,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>昨日收益</Text>
-                <Tooltip title="支付宝昨日官方账面实际已结算收益总和">
-                  <QuestionCircleOutlined style={{ fontSize: 12, color: '#cbd5e1' }} />
-                </Tooltip>
-              </div>
+              {/* 今日预估收益 */}
               <div
                 style={{
-                  fontSize: isMobile ? 21 : 26,
-                  fontWeight: 700,
-                  color: (summary?.totalYesterdayIncome ?? 0) >= 0 ? '#dc2626' : '#16a34a',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
-                  lineHeight: 1.2,
-                  marginTop: 4,
-                  letterSpacing: -0.5,
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '16px 18px',
+                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
                 }}
               >
-                {fmtMoney(summary?.totalYesterdayIncome, true)}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>今日收益</Text>
+                  {isUp ? (
+                    <ArrowUpOutlined style={{ color: '#dc2626', fontSize: 12 }} />
+                  ) : isDown ? (
+                    <ArrowDownOutlined style={{ color: '#16a34a', fontSize: 12 }} />
+                  ) : null}
+                </div>
+                <div
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 750,
+                    color: todayColor,
+                    fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                    lineHeight: 1.2,
+                    marginTop: 4,
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  {fmtMoney(summary?.totalTodayIncome, true)}
+                </div>
+                <div style={{ marginTop: 3, fontSize: 12, color: todayColor }}>
+                  涨跌 {fmtPct(summary?.totalTodayIncomePct)}
+                </div>
               </div>
-              <div style={{ marginTop: 3, fontSize: 12, color: '#94a3b8' }}>
-                持有收益 {fmtMoney(summary?.totalHoldingProfit, true)}
+
+              {/* 持仓总资产 (最新市值) */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '16px 18px',
+                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                }}
+              >
+                <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>总市值</Text>
+                <div
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 700,
+                    color: '#0f172a',
+                    fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                    lineHeight: 1.2,
+                    marginTop: 4,
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  {fmtMoney(summary?.totalMarketValue)}
+                </div>
+                <div style={{ marginTop: 3, fontSize: 12, color: '#94a3b8' }}>
+                  持仓本金 {fmtMoney(summary?.totalHoldingAmount)}
+                </div>
+              </div>
+
+              {/* 最新累计总盈亏 */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '16px 18px',
+                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                }}
+              >
+                <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>累计盈亏</Text>
+                <div
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 750,
+                    color: (summary?.dynamicTotalProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
+                    fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                    lineHeight: 1.2,
+                    marginTop: 4,
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  {fmtMoney(summary?.dynamicTotalProfit, true)}
+                </div>
+                <div
+                  style={{
+                    marginTop: 3,
+                    fontSize: 12,
+                    color: (summary?.dynamicTotalProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
+                  }}
+                >
+                  回报率 {fmtPct(summary?.dynamicTotalProfitRate)}
+                </div>
+              </div>
+
+              {/* 累计持有收益 */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '16px 18px',
+                  boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>持有收益</Text>
+                  <Tooltip title="支付宝官方账面累计确认持有收益">
+                    <QuestionCircleOutlined style={{ fontSize: 12, color: '#cbd5e1' }} />
+                  </Tooltip>
+                </div>
+                <div
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 700,
+                    color: (summary?.totalHoldingProfit ?? 0) >= 0 ? '#dc2626' : '#16a34a',
+                    fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                    lineHeight: 1.2,
+                    marginTop: 4,
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  {fmtMoney(summary?.totalHoldingProfit, true)}
+                </div>
+                <div style={{ marginTop: 3, fontSize: 12, color: '#94a3b8' }}>
+                  账面累计已确认
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* 列表控制与过滤栏 */}
           <div
@@ -808,22 +958,26 @@ export default function PortfolioPage() {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => {
-                    setEditingItem(null)
-                    setEditModalOpen(true)
-                  }}
+                  onClick={() => setChoiceModalOpen(true)}
                   style={{
                     borderRadius: 8,
                     background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    fontWeight: 550,
                   }}
                 >
-                  立即录入持仓
+                  录入持仓基金
                 </Button>
               </Empty>
             </div>
           ) : viewMode === 'cards' || isMobile ? (
-            /* 移动端与卡片流视图 (对标 WatchlistPage 卡片质感) */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            /* 移动端与卡片流视图 (极简现代金融 · 瑞士极简风 · 高信息密度) */
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+                gap: 10,
+              }}
+            >
               {sortedItems.map((item) => {
                 const itemUp = item.todayIncome > 0
                 const itemDown = item.todayIncome < 0
@@ -833,143 +987,196 @@ export default function PortfolioPage() {
                 return (
                   <div
                     key={item.fundCode}
+                    className="portfolio-card"
                     style={{
-                      background: '#ffffff',
-                      borderRadius: 12,
-                      border: '1px solid #e2e8f0',
-                      padding: '13px 15px',
-                      boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+                      padding: '12px 14px',
+                      cursor: 'pointer',
                     }}
+                    onClick={() => navigate(`/fund/${item.fundCode}`)}
                   >
-                    {/* 卡片顶栏：基金名称 + Tag + 编辑删除 */}
+                    {/* 卡片顶行：基金名称、代码、类型与微互动操作 */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div
-                        style={{ flex: 1, minWidth: 0, marginRight: 8, cursor: 'pointer' }}
-                        onClick={() => navigate(`/fund/${item.fundCode}`)}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontWeight: 650, fontSize: 15, color: '#0f172a' }}>
-                            {item.fundName}
-                          </span>
-                          {item.fundType && (
-                            <Tag
-                              color={FUND_TYPE_COLOR[item.fundType] ?? 'default'}
-                              style={{ fontSize: 10, margin: 0, padding: '0 4px', borderRadius: 4, border: 'none' }}
-                            >
-                              {FUND_TYPE_LABEL[item.fundType] ?? item.fundType}
-                            </Tag>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                          <Text type="secondary" style={{ fontSize: 12, color: '#64748b' }}>
-                            {item.fundCode}
-                          </Text>
-                          {item.prevNav && (
-                            <Text type="secondary" style={{ fontSize: 11, color: '#94a3b8' }}>
-                              · 昨净 {fmtNav(item.prevNav)}
-                            </Text>
-                          )}
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, marginRight: 8 }}>
+                        <span
+                          style={{
+                            fontWeight: 650,
+                            fontSize: 14.5,
+                            color: '#0f172a',
+                            letterSpacing: -0.2,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {item.fundName}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                            color: '#64748b',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {item.fundCode}
+                        </span>
+                        {item.fundType && (
+                          <Tag
+                            color={FUND_TYPE_COLOR[item.fundType] ?? 'default'}
+                            style={{
+                              fontSize: 10,
+                              margin: 0,
+                              padding: '0 4px',
+                              borderRadius: 3,
+                              border: 'none',
+                              lineHeight: '16px',
+                              flexShrink: 0,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {FUND_TYPE_LABEL[item.fundType] ?? item.fundType}
+                          </Tag>
+                        )}
                       </div>
 
-                      <Space size={2}>
-                        <Button
-                          size="small"
-                          type="text"
-                          icon={<EditOutlined style={{ color: '#2563eb' }} />}
-                          onClick={() => {
-                            setEditingItem(item)
-                            setEditModalOpen(true)
-                          }}
-                        />
+                      <Space
+                        size={2}
+                        style={{ flexShrink: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Tooltip title="编辑持仓">
+                          <Button
+                            size="small"
+                            type="text"
+                            icon={<EditOutlined style={{ color: '#94a3b8', fontSize: 13 }} />}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingItem(item)
+                              setEditModalOpen(true)
+                            }}
+                            style={{ width: 24, height: 24, padding: 0 }}
+                          />
+                        </Tooltip>
                         <Popconfirm
                           title="确认移出持仓？"
-                          onConfirm={() => handleDelete(item.fundCode)}
-                          okText="删除"
+                          description="移出后不再测算该基金收益"
+                          onConfirm={(e) => {
+                            e?.stopPropagation()
+                            handleDelete(item.fundCode)
+                          }}
+                          okText="移出"
                           cancelText="取消"
-                          okButtonProps={{ danger: true }}
+                          okButtonProps={{ danger: true, size: 'small' }}
                         >
-                          <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                          <Tooltip title="移出持仓">
+                            <Button
+                              size="small"
+                              type="text"
+                              danger
+                              icon={<DeleteOutlined style={{ color: '#94a3b8', fontSize: 13 }} />}
+                              style={{ width: 24, height: 24, padding: 0 }}
+                            />
+                          </Tooltip>
                         </Popconfirm>
                       </Space>
                     </div>
 
-                    {/* 卡片中部：主要核心收益指标 (与自选页大数字风格完全呼应) */}
+                    {/* 卡片底行：左右 3 列对称金融排版 (无“￥”，简洁大气) */}
                     <div
                       style={{
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        background: '#f8fafc',
-                        borderRadius: 10,
-                        border: '1px solid #f1f5f9',
-                        marginBottom: 10,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        alignItems: 'flex-start',
+                        paddingTop: 8,
+                        borderTop: '1px solid #f1f5f9',
                       }}
                     >
+                      {/* 列1：市值 / 持仓本金 */}
                       <div>
-                        <div style={{ fontSize: 11, color: '#64748b' }}>今日收益</div>
+                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>市值</div>
                         <div
                           style={{
-                            fontSize: 20,
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                            letterSpacing: -0.3,
+                            lineHeight: 1.25,
+                            marginTop: 2,
+                          }}
+                        >
+                          {fmtMoney(item.dynamicMarketValue)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: '#94a3b8',
+                            fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                            marginTop: 2,
+                          }}
+                        >
+                          本金 {fmtMoney(item.holdingAmount)}
+                        </div>
+                      </div>
+
+                      {/* 列2：持有收益 / 收益率 */}
+                      <div>
+                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>持有收益</div>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: item.holdingProfit >= 0 ? '#dc2626' : '#16a34a',
+                            fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
+                            letterSpacing: -0.3,
+                            lineHeight: 1.25,
+                            marginTop: 2,
+                          }}
+                        >
+                          {fmtMoney(item.holdingProfit, true)}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 550,
+                            color: item.holdingProfit >= 0 ? '#dc2626' : '#16a34a',
+                            marginTop: 2,
+                          }}
+                        >
+                          {fmtPct(item.holdingProfitRate)}
+                        </div>
+                      </div>
+
+                      {/* 列3：今日预估 / 估算涨跌徽标 */}
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>今日预估</div>
+                        <div
+                          style={{
+                            fontSize: 15,
                             fontWeight: 750,
                             color,
-                            lineHeight: 1.2,
-                            marginTop: 2,
                             fontFamily: 'ui-monospace, SFMono-Regular, Roboto, "Helvetica Neue", sans-serif',
-                            letterSpacing: -0.4,
+                            letterSpacing: -0.3,
+                            lineHeight: 1.25,
+                            marginTop: 2,
                           }}
                         >
                           {fmtMoney(item.todayIncome, true)}
                         </div>
-                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                          持有 {fmtMoney(item.holdingAmount)}
+                        <div style={{ marginTop: 2 }}>
+                          <span
+                            className={badgeClass}
+                            style={{
+                              fontSize: 11,
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              fontWeight: 650,
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {fmtPct(item.estimatePct)}
+                          </span>
                         </div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                        <div
-                          className={badgeClass}
-                          style={{
-                            fontSize: 14,
-                            minWidth: 80,
-                            textAlign: 'center',
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                          }}
-                        >
-                          {fmtPct(item.estimatePct)}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                          市值: {fmtMoney(item.dynamicMarketValue)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 卡片底栏：支付宝4字段详细对照 */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        fontSize: 12,
-                        padding: '0 2px',
-                      }}
-                    >
-                      <div>
-                        <span style={{ color: '#64748b' }}>持有收益: </span>
-                        <b style={{ color: item.holdingProfit >= 0 ? '#dc2626' : '#16a34a' }}>
-                          {fmtMoney(item.holdingProfit, true)}
-                        </b>
-                        <span style={{ color: '#94a3b8', marginLeft: 4 }}>
-                          ({fmtPct(item.holdingProfitRate)})
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: '#64748b' }}>昨日收益: </span>
-                        <b style={{ color: (item.yesterdayIncome ?? 0) >= 0 ? '#dc2626' : '#16a34a' }}>
-                          {fmtMoney(item.yesterdayIncome, true)}
-                        </b>
                       </div>
                     </div>
                   </div>
@@ -1003,7 +1210,9 @@ export default function PortfolioPage() {
         open={editModalOpen}
         editingItem={editingItem}
         onClose={() => setEditModalOpen(false)}
-        onSuccess={() => loadPortfolio(false)}
+        onSuccess={async () => {
+          await loadPortfolio(true)
+        }}
       />
       <VipRechargeModal
         open={rechargeModalOpen}
@@ -1014,6 +1223,22 @@ export default function PortfolioPage() {
       <NotificationChannelModal
         open={notificationModalOpen}
         onClose={() => setNotificationModalOpen(false)}
+      />
+      <ScreenshotImportModal
+        open={screenshotModalOpen}
+        onClose={() => setScreenshotModalOpen(false)}
+        onSuccess={async () => {
+          await loadPortfolio(true)
+        }}
+      />
+      <ImportChoiceModal
+        open={choiceModalOpen}
+        onClose={() => setChoiceModalOpen(false)}
+        onChooseScreenshot={() => setScreenshotModalOpen(true)}
+        onChooseManual={() => {
+          setEditingItem(null)
+          setEditModalOpen(true)
+        }}
       />
     </div>
   )

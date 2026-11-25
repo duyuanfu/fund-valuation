@@ -10,7 +10,6 @@ import {
   message,
   Card,
   Tag,
-  Segmented,
   TimePicker,
 } from 'antd'
 import {
@@ -19,7 +18,6 @@ import {
   WechatOutlined,
   SendOutlined,
   SafetyOutlined,
-  AppleOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { api } from '../api'
@@ -43,8 +41,6 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
   const [saving, setSaving] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
   const [testingServerchan, setTestingServerchan] = useState(false)
-  const [testingBark, setTestingBark] = useState(false)
-  const [channelType, setChannelType] = useState<'serverchan' | 'bark'>('serverchan')
   const [selectedTime, setSelectedTime] = useState<string>('14:30')
 
   const loadChannel = async () => {
@@ -57,16 +53,14 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
         form.setFieldsValue({
           email: data.email || '',
           emailEnabled: data.emailEnabled ?? true,
-          wechatChannelType: data.wechatChannelType === 'bark' ? 'bark' : 'serverchan',
+          wechatChannelType: 'serverchan',
           serverchanKey: data.serverchanKey || '',
-          barkUrl: data.barkUrl || '',
           wechatEnabled: data.wechatEnabled ?? true,
           remindEnabled: data.remindEnabled ?? true,
           remindTime: timeVal,
           pushScope: data.pushScope || 'ALL_WATCHLIST',
           hideAmount: data.hideAmount ?? false,
         })
-        setChannelType(data.wechatChannelType === 'bark' ? 'bark' : 'serverchan')
       }
     } catch {
       // 容错静默
@@ -140,7 +134,7 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
   const handleTestEmail = async () => {
     const emailVal = form.getFieldValue('email')
     if (!emailVal || !emailVal.trim()) {
-      message.warning('请先输入接收测试的电子邮箱地址')
+      message.warning('当前尚未绑定邮箱，请先前往右上角个人中心绑定后再进行测试')
       return
     }
     const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$/
@@ -178,25 +172,6 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
       message.error(e?.message || 'Server酱推送失败，请检查 SendKey 是否正确')
     } finally {
       setTestingServerchan(false)
-    }
-  }
-
-  const handleTestBark = async () => {
-    const barkVal = form.getFieldValue('barkUrl')
-    if (!barkVal || !barkVal.trim()) {
-      message.warning('请先输入 Bark 设备 Key 或完整链接')
-      return
-    }
-    setTestingBark(true)
-    try {
-      const currentValues = form.getFieldsValue()
-      await api.updateNotificationChannel({ ...currentValues, remindTime: selectedTime }).catch(() => {})
-      const res = await api.testNotificationBark(barkVal.trim())
-      message.success(res.message || 'Bark 测试消息已发出，请在 iOS 设备中查收！')
-    } catch (e: any) {
-      message.error(e?.message || 'Bark 推送失败，请检查设备 Key 是否有效')
-    } finally {
-      setTestingBark(false)
     }
   }
 
@@ -335,16 +310,18 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
               <Form.Item
                 name="email"
-                rules={[
-                  { type: 'email', message: '请输入有效的电子邮箱格式' },
-                ]}
                 style={{ flex: 1, marginBottom: 0 }}
               >
                 <Input
-                  placeholder="请输入电子邮箱 (保存后将同步更新绑定邮箱)"
-                  allowClear
+                  disabled
+                  placeholder="未绑定邮箱，请前往个人中心绑定"
                   prefix={<MailOutlined style={{ color: '#94a3b8' }} />}
-                  style={{ borderRadius: 8 }}
+                  style={{
+                    borderRadius: 8,
+                    backgroundColor: '#f8fafc',
+                    color: '#334155',
+                    cursor: 'not-allowed',
+                  }}
                 />
               </Form.Item>
               <Button
@@ -357,15 +334,18 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
                 发送测试
               </Button>
             </div>
+            <div style={{ marginTop: 8, fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
+              * 电子邮箱不能在此修改，只能前往右上角<b>个人中心</b>邮箱处修改。
+            </div>
           </Card>
 
-          {/* 渠道 2 & 3: 移动端 (Server酱微信 或 iOS Bark) - 为空时不阻挡保存和关闭 */}
+          {/* 渠道 2: 微信推送 (Server酱) - 为空时不阻挡保存和关闭 */}
           <Card
             title={
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Space size={6}>
-                  <WechatOutlined style={{ color: '#16a34a', fontSize: 15 }} />
-                  <span style={{ fontWeight: 650, fontSize: 14 }}>移动端推送 (微信 / iOS 原生通知)</span>
+                  <WechatOutlined style={{ color: '#16a34a', fontSize: 14 }} />
+                  <span style={{ fontWeight: 650, fontSize: 13 }}>微信推送 (Server酱)</span>
                 </Space>
                 <Form.Item name="wechatEnabled" valuePropName="checked" noStyle>
                   <Switch size="small" checkedChildren="开启" unCheckedChildren="关闭" />
@@ -373,120 +353,50 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
               </div>
             }
             size="small"
-            style={{ borderRadius: 12, marginBottom: 14, border: '1px solid #f1f5f9' }}
+            style={{ borderRadius: 12, marginBottom: 12, border: '1px solid #f1f5f9' }}
           >
-            <Form.Item name="wechatChannelType" label={<span style={{ fontSize: 13, color: '#334155' }}>选择移动端推送方式</span>} style={{ marginBottom: 12 }}>
-              <Segmented
-                block
-                value={channelType}
-                onChange={(val) => {
-                  setChannelType(val as 'serverchan' | 'bark')
-                  form.setFieldValue('wechatChannelType', val)
-                }}
-                options={[
-                  {
-                    label: (
-                      <div style={{ padding: '3px 0' }}>
-                        <WechatOutlined style={{ color: '#16a34a', marginRight: 5 }} />
-                        <b>Server酱 (微信公众号接收)</b>
-                      </div>
-                    ),
-                    value: 'serverchan',
-                  },
-                  {
-                    label: (
-                      <div style={{ padding: '3px 0' }}>
-                        <AppleOutlined style={{ color: '#0f172a', marginRight: 5 }} />
-                        <b>Bark (iOS 设备原生弹窗)</b>
-                      </div>
-                    ),
-                    value: 'bark',
-                  },
-                ]}
-              />
-            </Form.Item>
+            <div style={{ background: '#f0fdf4', padding: '10px 12px', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 650, color: '#166534' }}>
+                  Server酱微信推送配置指引
+                </div>
+                <a
+                  href="https://sct.ftqq.com/login/"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: 12, fontWeight: 600, color: '#2563eb' }}
+                >
+                  前往登录获取 SendKey ↗
+                </a>
+              </div>
+              <div style={{ fontSize: 12, color: '#15803d', lineHeight: 1.6, marginBottom: 10 }}>
+                1. 手机微信打开并扫码登录{' '}
+                <a href="https://sct.ftqq.com/login/" target="_blank" rel="noreferrer" style={{ fontWeight: 600, color: '#166534', textDecoration: 'underline' }}>
+                  https://sct.ftqq.com/login/
+                </a>
+                ；<br />
+                2. 关注官方服务号，在「Key&API」页面复制您的 <b>SendKey</b>（以 <code>SCT</code> 开头）；<br />
+                3. 粘贴至下方输入框，点击测试即可在微信接收提醒。
+              </div>
 
-            {channelType === 'serverchan' ? (
-              <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: 10, border: '1px solid #bbf7d0', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>
-                    🟢 Server酱 微信推送配置指引：
-                  </div>
-                  <a
-                    href="https://sct.ftqq.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: 12, fontWeight: 600, color: '#2563eb' }}
-                  >
-                    前往 sct.ftqq.com ↗
-                  </a>
-                </div>
-                <div style={{ fontSize: 12, color: '#15803d', lineHeight: 1.6 }}>
-                  1. 手机微信打开并扫码登录 <a href="https://sct.ftqq.com" target="_blank" rel="noreferrer" style={{ fontWeight: 600, color: '#166534' }}>sct.ftqq.com</a>；<br />
-                  2. 关注官方服务号，在「Key&API」页面复制您的 <b>SendKey</b>（以 <code>SCT</code> 开头）；<br />
-                  3. 粘贴至下方输入框，点击测试，微信公众号将立即弹出提醒！
-                </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                 <Form.Item
                   name="serverchanKey"
-                  label={<span style={{ fontSize: 13, color: '#166534', fontWeight: 600 }}>您的 Server酱 SendKey (可选，留空不开启微信)</span>}
-                  style={{ marginTop: 10, marginBottom: 0 }}
+                  style={{ flex: 1, marginBottom: 0 }}
                 >
-                  <Input placeholder="例如: SCT123456Txxxxxxxxxxxxxxxx (选填，留空不阻挡保存)" allowClear style={{ borderRadius: 8 }} />
+                  <Input placeholder="输入 Server酱 SendKey (选填，留空不开启)" allowClear style={{ borderRadius: 8 }} />
                 </Form.Item>
-
-                <div style={{ textAlign: 'right', marginTop: 10 }}>
-                  <Button
-                    size="small"
-                    icon={<SendOutlined />}
-                    loading={testingServerchan}
-                    onClick={handleTestServerchan}
-                    style={{ borderRadius: 6 }}
-                  >
-                    发送微信测试消息
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b' }}>
-                    🍎 Bark iOS 原生通知指引（免费、开源、秒级触达）：
-                  </div>
-                  <a
-                    href="https://apps.apple.com/cn/app/bark-customed-notifications/id1403753865"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: 12, fontWeight: 600, color: '#2563eb' }}
-                  >
-                    App Store 下载 Bark ↗
-                  </a>
-                </div>
-                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
-                  1. 在 iPhone / iPad 上安装 <b>Bark</b> App 并打开；<br />
-                  2. 复制 Bark 首页顶部的<b>设备 Key</b> 或完整推送链接（如 <code>https://api.day.app/YOUR_KEY</code>）；<br />
-                  3. 粘贴至下方，点击测试，手机屏幕顶部将直接弹出系统原生通知！
-                </div>
-                <Form.Item
-                  name="barkUrl"
-                  label={<span style={{ fontSize: 13, color: '#1e293b', fontWeight: 600 }}>Bark 设备 Key 或完整推送 URL (可选，留空不开启Bark)</span>}
-                  style={{ marginTop: 10, marginBottom: 0 }}
+                <Button
+                  size="middle"
+                  icon={<SendOutlined />}
+                  loading={testingServerchan}
+                  onClick={handleTestServerchan}
+                  style={{ borderRadius: 8, flexShrink: 0 }}
                 >
-                  <Input placeholder="输入 Bark 设备 Key 或 https://api.day.app/YOUR_KEY (选填，留空不阻挡保存)" allowClear style={{ borderRadius: 8 }} />
-                </Form.Item>
-
-                <div style={{ textAlign: 'right', marginTop: 10 }}>
-                  <Button
-                    size="small"
-                    icon={<SendOutlined />}
-                    loading={testingBark}
-                    onClick={handleTestBark}
-                    style={{ borderRadius: 6 }}
-                  >
-                    发送 Bark 测试通知
-                  </Button>
-                </div>
+                  发送测试
+                </Button>
               </div>
-            )}
+            </div>
           </Card>
 
           {/* 个性化偏好 */}

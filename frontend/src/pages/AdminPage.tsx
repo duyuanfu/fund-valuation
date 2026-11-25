@@ -48,6 +48,7 @@ import {
   WechatOutlined,
   AlipayCircleOutlined,
   MailOutlined,
+  CameraOutlined,
 } from '@ant-design/icons'
 import { api, sseUrl } from '../api'
 import type {
@@ -513,6 +514,66 @@ export default function AdminPage() {
   const [testEmailModalOpen, setTestEmailModalOpen] = useState(false)
   const [testEmailTarget, setTestEmailTarget] = useState('')
 
+  /* ---------------- 7. AI 视觉识图大模型配置状态 ---------------- */
+  const [visionConfigForm] = Form.useForm()
+  const [savingVisionConfig, setSavingVisionConfig] = useState(false)
+  const [testingVision, setTestingVision] = useState(false)
+  const [visionTestResult, setVisionTestResult] = useState<string | null>(null)
+
+  const loadVisionConfig = async () => {
+    try {
+      const cfg = await api.getAdminVisionConfig()
+      if (cfg) {
+        visionConfigForm.setFieldsValue({
+          enabled: cfg.enabled ?? true,
+          apiBaseUrl: cfg.apiBaseUrl || 'https://open.bigmodel.cn/api/paas/v4',
+          apiKey: cfg.apiKey || '',
+          modelName: cfg.modelName || 'glm-4v-flash',
+          dailyUserLimit: cfg.dailyUserLimit ?? 20,
+        })
+      }
+    } catch {
+      // 容错静默
+    }
+  }
+
+  const handleSaveVisionConfig = async () => {
+    try {
+      const vals = await visionConfigForm.validateFields()
+      setSavingVisionConfig(true)
+      const res = await api.setAdminVisionConfig(vals)
+      message.success('AI 视觉识图配置已成功保存！')
+      if (res?.apiKey) {
+        visionConfigForm.setFieldValue('apiKey', res.apiKey)
+      }
+    } catch (e: any) {
+      message.error(e?.message || '保存失败，请检查输入项')
+    } finally {
+      setSavingVisionConfig(false)
+    }
+  }
+
+  const handleTestVisionConnection = async () => {
+    setTestingVision(true)
+    setVisionTestResult(null)
+    try {
+      const vals = await visionConfigForm.getFieldsValue()
+      const res = await api.testAdminVisionConfig(vals)
+      if (res.success) {
+        message.success('视觉模型连通性测试通过！')
+        setVisionTestResult(res.message)
+      } else {
+        message.error('连通性测试未通过: ' + res.message)
+        setVisionTestResult(res.message)
+      }
+    } catch (e: any) {
+      message.error(e?.message || '连通性测试失败')
+      setVisionTestResult(e?.message || '测试异常')
+    } finally {
+      setTestingVision(false)
+    }
+  }
+
   const loadEmailConfig = async () => {
     try {
       const cfg = await api.getAdminEmailConfig()
@@ -607,6 +668,7 @@ export default function AdminPage() {
         loadRegistrationApproval()
         loadVipOrders()
         loadEmailConfig()
+        loadVisionConfig()
       } catch (e) {
         message.error((e as Error).message)
       }
@@ -1948,6 +2010,138 @@ export default function AdminPage() {
                         style={{ height: 38, borderRadius: 8, padding: '0 16px' }}
                       >
                         发送测试邮件
+                      </Button>
+                    </Space>
+                  </Form>
+                </Card>
+              </div>
+            ),
+          },
+          {
+            key: 'visionConfig',
+            label: (
+              <span>
+                <CameraOutlined /> AI 视觉识图配置
+              </span>
+            ),
+            children: (
+              <div style={{ maxWidth: 760, margin: '0 auto', padding: '8px 0' }}>
+                <Card
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+                        }}
+                      >
+                        <CameraOutlined style={{ color: '#ffffff', fontSize: 16 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 15 }}>
+                          AI 视觉大模型配置 (持仓截图智能解析)
+                        </div>
+                        <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+                          支持兼容 OpenAI 视觉协议的云端多模态视觉大模型（推荐免费模型 glm-4v-flash 或 qwen-vl-plus）
+                        </div>
+                      </div>
+                    </div>
+                  }
+                  bordered={false}
+                  style={{ borderRadius: 14, boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.05)' }}
+                >
+                  <Form form={visionConfigForm} layout="vertical">
+                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 18 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>功能总开关</div>
+                          <div style={{ fontSize: 12, color: '#64748b' }}>关闭后用户前端将隐藏或禁用截图导入功能</div>
+                        </div>
+                        <Form.Item name="enabled" valuePropName="checked" noStyle>
+                          <Switch checkedChildren="已启用" unCheckedChildren="已关闭" />
+                        </Form.Item>
+                      </div>
+                    </div>
+
+                    <Row gutter={16}>
+                      <Col xs={24} sm={16}>
+                        <Form.Item
+                          name="apiBaseUrl"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>API Base URL (兼容 OpenAI 规范)</span>}
+                          rules={[{ required: true, message: '请输入 Base URL' }]}
+                          tooltip="智谱 AI: https://open.bigmodel.cn/api/paas/v4；阿里百炼: https://dashscope.aliyuncs.com/compatible-mode/v1"
+                        >
+                          <Input placeholder="https://open.bigmodel.cn/api/paas/v4" style={{ borderRadius: 8 }} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Form.Item
+                          name="modelName"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>视觉模型名称</span>}
+                          rules={[{ required: true, message: '请输入模型名称' }]}
+                        >
+                          <Input placeholder="glm-4v-flash" style={{ borderRadius: 8 }} />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                      <Col xs={24} sm={16}>
+                        <Form.Item
+                          name="apiKey"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>API 密钥 (API Key)</span>}
+                          tooltip="支持智谱 API Key、阿里百炼 API Key 或任意 OpenAI 兼容大模型 Key。留空或显示掩码时不修改已有 Key。"
+                        >
+                          <Input.Password placeholder="fe28... 或 sk-..." style={{ borderRadius: 8 }} autoComplete="new-password" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <Form.Item
+                          name="dailyUserLimit"
+                          label={<span style={{ fontWeight: 550, color: '#334155' }}>单用户每日限次</span>}
+                          rules={[{ required: true, message: '请输入每日上限次数' }]}
+                        >
+                          <InputNumber min={1} max={500} style={{ width: '100%', borderRadius: 8 }} placeholder="20" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+
+                    {visionTestResult && (
+                      <Alert
+                        type={visionTestResult.includes('成功') || visionTestResult.includes('200') ? 'success' : 'error'}
+                        showIcon
+                        message={visionTestResult}
+                        style={{ marginBottom: 16, borderRadius: 8 }}
+                      />
+                    )}
+
+                    <Space size={12}>
+                      <Button
+                        type="primary"
+                        loading={savingVisionConfig}
+                        onClick={handleSaveVisionConfig}
+                        style={{
+                          height: 38,
+                          borderRadius: 8,
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          fontWeight: 600,
+                          padding: '0 20px',
+                        }}
+                      >
+                        保存视觉配置
+                      </Button>
+                      <Button
+                        loading={testingVision}
+                        onClick={handleTestVisionConnection}
+                        style={{ height: 38, borderRadius: 8, padding: '0 16px' }}
+                      >
+                        一键测试连通性
                       </Button>
                     </Space>
                   </Form>

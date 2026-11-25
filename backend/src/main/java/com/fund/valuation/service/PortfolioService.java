@@ -84,8 +84,14 @@ public class PortfolioService {
                 }
             }
             if (f != null) {
-                fundHoldingService.ensureHoldings(f);
                 funds.add(f);
+                final Fund curFund = f;
+                runAsyncCrawler(() -> {
+                    try {
+                        fundHoldingService.ensureHoldings(curFund);
+                    } catch (Exception ignored) {
+                    }
+                });
             }
         }
 
@@ -294,6 +300,24 @@ public class PortfolioService {
         });
 
         return pos;
+    }
+
+    /**
+     * 批量保存或更新持仓记录（事务保证，复用 4 字段双向计算与更新覆盖）
+     */
+    @Transactional
+    public List<UserPosition> batchSavePositions(String userId, List<PositionSaveRequest> items) {
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+        List<UserPosition> results = new ArrayList<>();
+        for (PositionSaveRequest req : items) {
+            if (req.fundCode() != null && !req.fundCode().isBlank() && req.holdingAmount() != null) {
+                UserPosition pos = savePosition(userId, req);
+                results.add(pos);
+            }
+        }
+        return results;
     }
 
     /**

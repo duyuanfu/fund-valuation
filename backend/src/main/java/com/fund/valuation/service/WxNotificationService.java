@@ -12,7 +12,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -27,31 +26,17 @@ public class WxNotificationService {
             .build();
 
     /**
-     * 向用户的移动端通道 (Server酱微信 或 iOS Bark) 发送估值提醒
+     * 向用户的移动端通道 (Server酱微信) 发送估值提醒
      */
     public boolean sendWechatNotification(UserNotificationChannel channel, String title, String content, String jumpUrl) {
         if (channel == null || Boolean.FALSE.equals(channel.getWechatEnabled())) {
             return false;
         }
 
-        String type = channel.getWechatChannelType() != null ? channel.getWechatChannelType().trim().toLowerCase() : "serverchan";
-
-        // 1. Bark (iOS 极简原生通知)
-        if ("bark".equals(type)) {
-            String barkKeyOrUrl = channel.getBarkUrl() != null && !channel.getBarkUrl().isBlank()
-                    ? channel.getBarkUrl().trim()
-                    : (channel.getWechatWebhookUrl() != null ? channel.getWechatWebhookUrl().trim() : "");
-            return sendToBark(barkKeyOrUrl, title, content, jumpUrl);
-        }
-
-        // 2. 默认: Server酱 (个人微信公众号推送)
+        // Server酱 (个人微信公众号推送)
         String serverchanKey = channel.getServerchanKey() != null && !channel.getServerchanKey().isBlank()
                 ? channel.getServerchanKey().trim()
                 : (channel.getWechatWebhookUrl() != null ? channel.getWechatWebhookUrl().trim() : "");
-        // 自动容错：如果用户在 Server酱模式下粘贴了 Bark 链接，自动自适应
-        if (serverchanKey.contains("day.app")) {
-            return sendToBark(serverchanKey, title, content, jumpUrl);
-        }
         return sendToServerChan(serverchanKey, title, content, jumpUrl);
     }
 
@@ -59,8 +44,7 @@ public class WxNotificationService {
      * 发送测试消息验证通道连通性
      */
     public boolean sendTestWechat(UserNotificationChannel channel) {
-        String type = channel.getWechatChannelType() != null ? channel.getWechatChannelType().trim().toLowerCase() : "serverchan";
-        String channelName = "bark".equals(type) ? "Bark (iOS 原生通知)" : "Server酱 (微信公众号推送)";
+        String channelName = "Server酱 (微信公众号推送)";
         String timeStr = channel.getRemindTime() != null ? channel.getRemindTime() : "14:30";
 
         String title = "【基金盘中估值】推送测试成功";
@@ -126,60 +110,6 @@ public class WxNotificationService {
             throw e;
         } catch (Exception e) {
             log.warn("向 Server酱 [{}] 推送失败: {}", clean, e.getMessage());
-            throw new RuntimeException(e.getMessage());
-        }
-    }
-
-    /**
-     * 发送消息至 Bark (iOS 原生通知推送)
-     */
-    public boolean sendToBark(String keyOrUrl, String title, String content, String jumpUrl) {
-        if (keyOrUrl == null || keyOrUrl.isBlank()) {
-            throw new IllegalArgumentException("请填写 Bark 设备 Key 或完整推送链接");
-        }
-        String clean = keyOrUrl.trim();
-        String url;
-        if (clean.startsWith("http")) {
-            url = clean.endsWith("/") ? clean : clean + "/";
-        } else {
-            url = "https://api.day.app/" + clean + "/";
-        }
-
-        try {
-            String plainBody = content.replaceAll("[#*`>]", "").trim();
-            Map<String, Object> reqMap = new HashMap<>();
-            reqMap.put("title", title);
-            reqMap.put("body", plainBody);
-            reqMap.put("group", "基金盘中估值");
-            if (jumpUrl != null && !jumpUrl.isBlank()) {
-                reqMap.put("url", jumpUrl);
-            }
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("Content-Type", "application/json; charset=UTF-8")
-                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(reqMap)))
-                    .build();
-
-            HttpResponse<String> resp = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-            log.info("Bark 推送响应: code={}, body={}", resp.statusCode(), resp.body());
-
-            if (resp.statusCode() != 200) {
-                throw new RuntimeException("Bark 接口返回 HTTP " + resp.statusCode() + ": " + resp.body());
-            }
-
-            JsonNode root = objectMapper.readTree(resp.body());
-            int code = root.path("code").asInt(200);
-            if (code != 200) {
-                String msg = root.path("message").asText("推送失败");
-                throw new RuntimeException("Bark 推送失败: " + msg);
-            }
-            return true;
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("向 Bark [{}] 推送失败: {}", clean, e.getMessage());
             throw new RuntimeException(e.getMessage());
         }
     }

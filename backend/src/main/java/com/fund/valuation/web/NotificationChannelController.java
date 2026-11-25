@@ -84,21 +84,6 @@ public class NotificationChannelController {
         }
     }
 
-    @PostMapping("/test-bark")
-    public ResponseEntity<?> testBark(HttpServletRequest request,
-                                      @RequestBody(required = false) Map<String, String> body) {
-        String username = currentUser(request);
-        String barkUrl = body != null ? body.get("barkUrl") : null;
-        try {
-            channelService.testBark(username, barkUrl);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Bark 测试消息已成功发出，请在 iOS 设备中查收！"));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Bark 推送异常"));
-        }
-    }
-
     @PostMapping("/test-wechat")
     public ResponseEntity<?> testWechat(HttpServletRequest request,
                                         @RequestBody(required = false) Map<String, String> body) {
@@ -107,11 +92,11 @@ public class NotificationChannelController {
         String channelType = body != null ? body.get("wechatChannelType") : null;
         try {
             channelService.testWechat(username, tokenOrUrl, channelType);
-            return ResponseEntity.ok(Map.of("success", true, "message", "移动端推送测试已成功发出，请查收！"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "微信推送测试已成功发出，请查收！"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", e.getMessage() != null ? e.getMessage() : "移动端推送异常"));
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage() != null ? e.getMessage() : "微信推送异常"));
         }
     }
 

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Modal, Input, Button, message } from 'antd'
 import { MailOutlined, SettingOutlined } from '@ant-design/icons'
 import { api } from '../api'
 
 interface EmailBindPromptModalProps {
   open: boolean
+  initialEmail?: string
   onClose: () => void
   onOpenFullSettings: () => void
   onSuccess?: (email: string) => void
@@ -12,12 +13,21 @@ interface EmailBindPromptModalProps {
 
 export function EmailBindPromptModal({
   open,
+  initialEmail,
   onClose,
   onOpenFullSettings,
   onSuccess,
 }: EmailBindPromptModalProps) {
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  const isModify = Boolean(initialEmail && initialEmail.trim())
+
+  useEffect(() => {
+    if (open) {
+      setEmail(initialEmail || '')
+    }
+  }, [open, initialEmail])
 
   const handleBind = async () => {
     if (!email || !email.trim()) {
@@ -34,12 +44,12 @@ export function EmailBindPromptModal({
     setSubmitting(true)
     try {
       await api.bindNotificationEmail(clean)
-      message.success('🎉 邮箱绑定成功！已自动开启交易日盘中估值提醒。')
+      message.success(isModify ? '🎉 邮箱修改成功！' : '🎉 邮箱绑定成功！已自动开启交易日盘中估值提醒。')
       sessionStorage.setItem('dismiss_email_bind_prompt', '1')
       if (onSuccess) onSuccess(clean)
       onClose()
     } catch (e: any) {
-      message.error(e?.message || '邮箱绑定失败，请稍后重试')
+      message.error(e?.message || '邮箱保存失败，请稍后重试')
     } finally {
       setSubmitting(false)
     }
@@ -61,7 +71,9 @@ export function EmailBindPromptModal({
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
           <MailOutlined style={{ color: '#2563eb', fontSize: 18 }} />
-          <span style={{ fontWeight: 650, color: '#0f172a' }}>绑定电子邮箱</span>
+          <span style={{ fontWeight: 650, color: '#0f172a' }}>
+            {isModify ? '修改电子邮箱' : '绑定电子邮箱'}
+          </span>
         </div>
       }
       open={open}
@@ -73,7 +85,9 @@ export function EmailBindPromptModal({
     >
       <div style={{ padding: '4px 0' }}>
         <p style={{ margin: '0 0 14px 0', fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-          绑定后支持邮箱登录，并可在交易日盘中自动接收持仓估值与异动提醒。
+          {isModify
+            ? '修改后将作为新的登录与通知邮箱，并在交易日盘中自动接收持仓估值与异动提醒。'
+            : '绑定后支持邮箱登录，并可在交易日盘中自动接收持仓估值与异动提醒。'}
         </p>
 
         <div style={{ marginBottom: 14 }}>
@@ -105,7 +119,7 @@ export function EmailBindPromptModal({
             marginBottom: 10,
           }}
         >
-          立即绑定
+          {isModify ? '确认修改' : '立即绑定'}
         </Button>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -116,7 +130,7 @@ export function EmailBindPromptModal({
             onClick={handleGoFullSettings}
             style={{ color: '#2563eb', padding: 0, fontSize: 12 }}
           >
-            使用微信/Bark推送 ↗
+            使用微信(Server酱)推送 ↗
           </Button>
 
           <Button
