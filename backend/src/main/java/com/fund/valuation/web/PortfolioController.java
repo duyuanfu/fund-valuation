@@ -9,6 +9,8 @@ import com.fund.valuation.dto.ScreenshotImportResult;
 import com.fund.valuation.dto.VipConfigView;
 import com.fund.valuation.dto.VipOrderNotifyRequest;
 import com.fund.valuation.service.AuthService;
+import com.fund.valuation.service.PortfolioDiagnosisService;
+import com.fund.valuation.service.PortfolioLookThroughService;
 import com.fund.valuation.service.PortfolioScreenshotService;
 import com.fund.valuation.service.PortfolioService;
 import com.fund.valuation.service.SysVipConfigService;
@@ -39,6 +41,8 @@ public class PortfolioController {
 
     private final PortfolioService portfolioService;
     private final PortfolioScreenshotService portfolioScreenshotService;
+    private final PortfolioLookThroughService portfolioLookThroughService;
+    private final PortfolioDiagnosisService portfolioDiagnosisService;
     private final AuthService authService;
     private final SysVipConfigService sysVipConfigService;
     private final VipOrderService vipOrderService;
@@ -72,6 +76,29 @@ public class PortfolioController {
         String username = currentUser(request);
         assertVip(username);
         return ResponseEntity.ok(portfolioService.getPortfolio(username));
+    }
+
+    /**
+     * 获取用户持仓组合底层穿透与重仓股透视分析 (VIP 专享)
+     */
+    @GetMapping("/look-through")
+    public ResponseEntity<?> getLookThrough(HttpServletRequest request) {
+        String username = currentUser(request);
+        assertVip(username);
+        return ResponseEntity.ok(portfolioLookThroughService.calculateLookThrough(username));
+    }
+
+    /**
+     * 获取用户持仓智能健康体检与AI投顾诊断报告 (VIP 专享)
+     */
+    @GetMapping("/diagnosis")
+    public ResponseEntity<?> getDiagnosis(
+            HttpServletRequest request,
+            @RequestParam(value = "forceRefresh", required = false, defaultValue = "false") boolean forceRefresh
+    ) {
+        String username = currentUser(request);
+        assertVip(username);
+        return ResponseEntity.ok(portfolioDiagnosisService.getDiagnosis(username, forceRefresh));
     }
 
     /**

@@ -140,7 +140,9 @@ public class UserNotificationChannelService {
             entity.setWechatChannelType("serverchan");
             entity.setWechatEnabled(true);
             entity.setRemindEnabled(true);
-            entity.setRemindTime("21:30");
+            entity.setRemindTime("14:30");
+            entity.setEveningRemindEnabled(true);
+            entity.setEveningRemindTime("21:30");
             entity.setPushScope("ALL_WATCHLIST");
             entity.setHideAmount(false);
             entity.setUpdatedAt(LocalDateTime.now());

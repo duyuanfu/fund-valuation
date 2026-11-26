@@ -309,4 +309,72 @@ export interface VisionConfigView {
   hasApiKey?: boolean
 }
 
+export interface StockContributor {
+  fundCode: string
+  fundName: string
+  fundHoldingAmount: number
+  weightInFund: number
+  effectiveAmount: number
+}
+
+export interface StockExposureItem {
+  stockCode: string
+  stockName: string
+  holdingAmount: number
+  portfolioRatio: number
+  contributors: StockContributor[]
+}
+
+export interface AssetAllocationItem {
+  assetType: string
+  assetTypeLabel: string
+  holdingAmount: number
+  ratio: number
+}
+
+export interface CrossFundOverlapItem {
+  fundCodeA: string
+  fundNameA: string
+  fundCodeB: string
+  fundNameB: string
+  overlapRatio: number
+  commonStockNames: string[]
+}
+
+export interface PortfolioLookThroughView {
+  totalPortfolioAmount: number
+  totalFundCount: number
+  topStockExposures: StockExposureItem[]
+  assetAllocations: AssetAllocationItem[]
+  majorOverlaps: CrossFundOverlapItem[]
+  latestReportQuarter: string
+  top10StockRatioSum: number
+}
+
+export interface DiagnosisRiskTag {
+  type: 'DANGER' | 'WARNING' | 'SUCCESS' | 'INFO'
+  title: string
+  description: string
+}
+
+export interface AiDiagnosisReport {
+  summary: string
+  strengths: string[]
+  weaknesses: string[]
+  suggestions: string[]
+  generatedAt: string
+}
+
+export interface PortfolioDiagnosisView {
+  healthScore: number
+  scoreLevel: string
+  concentrationScore: number
+  assetBalanceScore: number
+  stockOverlapScore: number
+  riskTags: DiagnosisRiskTag[]
+  lookThrough: PortfolioLookThroughView
+  aiReport?: AiDiagnosisReport | null
+}
+
+
 

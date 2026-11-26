@@ -25,6 +25,7 @@ import {
   LockOutlined,
   CheckCircleFilled,
   BellOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
@@ -37,6 +38,7 @@ import { ContactModal } from '../components/ContactModal'
 import { NotificationChannelModal } from '../components/NotificationChannelModal'
 import { ScreenshotImportModal } from '../components/ScreenshotImportModal'
 import { ImportChoiceModal } from '../components/ImportChoiceModal'
+import { PortfolioDiagnosisModal } from '../components/PortfolioDiagnosisModal'
 import { fmtPct } from '../utils/format'
 
 const { Title, Text, Paragraph } = Typography
@@ -65,6 +67,7 @@ export default function PortfolioPage() {
   const [notificationModalOpen, setNotificationModalOpen] = useState(false)
   const [screenshotModalOpen, setScreenshotModalOpen] = useState(false)
   const [choiceModalOpen, setChoiceModalOpen] = useState(false)
+  const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false)
 
   // 响应式与排序控制
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
@@ -378,6 +381,15 @@ export default function PortfolioPage() {
         </div>
 
         <Space size={8} style={{ marginLeft: 'auto' }}>
+          <Button
+            size={isMobile ? 'small' : 'middle'}
+            icon={<SafetyCertificateOutlined style={{ color: '#1677ff' }} />}
+            onClick={() => setDiagnosisModalOpen(true)}
+            style={{ borderRadius: 8 }}
+          >
+            {isMobile ? '诊断' : '透视与诊断'}
+          </Button>
+
           <Button
             size={isMobile ? 'small' : 'middle'}
             icon={<BellOutlined style={{ color: '#d97706' }} />}
@@ -1052,6 +1064,10 @@ export default function PortfolioPage() {
           setEditingItem(null)
           setEditModalOpen(true)
         }}
+      />
+      <PortfolioDiagnosisModal
+        open={diagnosisModalOpen}
+        onClose={() => setDiagnosisModalOpen(false)}
       />
     </div>
   )

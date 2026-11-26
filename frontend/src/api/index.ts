@@ -9,6 +9,8 @@ import type {
   FundView,
   AddFundResult,
   PortfolioView,
+  PortfolioLookThroughView,
+  PortfolioDiagnosisView,
   PositionSaveRequest,
   VipConfigView,
   RegisterResponse,
@@ -120,6 +122,13 @@ export const api = {
 
   // 持仓估值与收益预估 (VIP专享)
   getPortfolio: () => request<PortfolioView>('/api/portfolio'),
+
+  // 持仓穿透与组合透视
+  getPortfolioLookThrough: () => request<PortfolioLookThroughView>('/api/portfolio/look-through'),
+
+  // 智能持仓健康诊断
+  getPortfolioDiagnosis: (forceRefresh = false) =>
+    request<PortfolioDiagnosisView>(`/api/portfolio/diagnosis?forceRefresh=${forceRefresh}`),
 
   savePosition: (data: PositionSaveRequest) =>
     request<{ success: boolean; id: number; fundCode: string }>('/api/portfolio', {
