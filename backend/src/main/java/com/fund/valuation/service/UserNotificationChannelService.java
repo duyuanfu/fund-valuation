@@ -135,7 +135,7 @@ public class UserNotificationChannelService {
             entity.setWechatChannelType("serverchan");
             entity.setWechatEnabled(true);
             entity.setRemindEnabled(true);
-            entity.setRemindTime("14:30");
+            entity.setRemindTime("21:30");
             entity.setPushScope("ALL_WATCHLIST");
             entity.setHideAmount(false);
             entity.setUpdatedAt(LocalDateTime.now());
@@ -170,7 +170,7 @@ public class UserNotificationChannelService {
                 entity.setEmail(emailToSend);
                 entity.setEmailEnabled(true);
                 entity.setRemindEnabled(true);
-                entity.setRemindTime("14:30");
+                entity.setRemindTime("21:30");
                 entity.setUpdatedAt(LocalDateTime.now());
                 channelMapper.insert(entity);
             } else {
@@ -199,7 +199,7 @@ public class UserNotificationChannelService {
                 entity = new UserNotificationChannel();
                 entity.setUserId(userId);
                 entity.setRemindEnabled(true);
-                entity.setRemindTime("14:30");
+                entity.setRemindTime("21:30");
                 entity.setPushScope("ALL_WATCHLIST");
                 entity.setHideAmount(false);
             }

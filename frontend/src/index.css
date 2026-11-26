@@ -108,6 +108,21 @@ html, body {
   transform: scale(0.994);
 }
 
+/* Alipay Holding Table Row Styles */
+.alipay-fund-row {
+  background-color: #ffffff;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.alipay-fund-row:hover {
+  background-color: #f8fafc;
+}
+
+.alipay-fund-row:active {
+  background-color: #f1f5f9;
+}
+
 /* Prevent horizontal body overflow at all breakpoints */
 .no-horiz-overflow {
   max-width: 100vw;

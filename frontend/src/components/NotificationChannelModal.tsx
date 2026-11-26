@@ -30,7 +30,8 @@ interface NotificationChannelModalProps {
 }
 
 const PRESET_TIMES = [
-  { label: '14:30 (推荐)', value: '14:30' },
+  { label: '21:30 (推荐·官方收益)', value: '21:30' },
+  { label: '14:30 (盘中预估)', value: '14:30' },
   { label: '14:15', value: '14:15' },
   { label: '14:45', value: '14:45' },
 ]
@@ -41,14 +42,14 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
   const [saving, setSaving] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
   const [testingServerchan, setTestingServerchan] = useState(false)
-  const [selectedTime, setSelectedTime] = useState<string>('14:30')
+  const [selectedTime, setSelectedTime] = useState<string>('21:30')
 
   const loadChannel = async () => {
     setLoading(true)
     try {
       const data = await api.getNotificationChannel()
       if (data) {
-        const timeVal = data.remindTime || '14:30'
+        const timeVal = data.remindTime || '21:30'
         setSelectedTime(timeVal)
         form.setFieldsValue({
           email: data.email || '',
@@ -75,10 +76,10 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
     }
   }, [open])
 
-  // A股交易时段限制: 09:30-11:30, 13:00-15:00
+  // 支持盘中决策时段 (09:30-11:30, 13:00-15:00) 及晚间净值出炉时段 (20:00-22:00)
   const disabledTradingTime = () => ({
     disabledHours: () => {
-      const allowed = [9, 10, 11, 13, 14, 15]
+      const allowed = [9, 10, 11, 13, 14, 15, 20, 21, 22]
       const disabled: number[] = []
       for (let i = 0; i < 24; i++) {
         if (!allowed.includes(i)) disabled.push(i)
@@ -240,7 +241,7 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>选择提醒送达时间</span>
                 <span style={{ fontSize: 11, color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: 6 }}>
-                  开市时段 09:30-11:30, 13:00-15:00
+                  推荐 21:30 官方净值出炉 / 14:30 盘中快报
                 </span>
               </div>
 

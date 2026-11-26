@@ -42,9 +42,10 @@ public class DailyReminderScheduler {
     private final WxNotificationService wxNotificationService;
 
     /**
-     * 交易日 14:00 - 14:59 每分钟轮询，匹配用户设定的提醒时间
+     * 交易日盘中与晚间定时轮询，匹配用户设定的提醒时间
+     * 支持 14:00-14:59 盘中及 21:00-21:59 晚间官方净值确认后收益提醒
      */
-    @Scheduled(cron = "0 * 14 * * 1-5", zone = "Asia/Shanghai")
+    @Scheduled(cron = "0 * 14,21 * * 1-5", zone = "Asia/Shanghai")
     public void runScheduledReminder() {
         LocalTime now = LocalTime.now();
         String currentMinute = String.format("%02d:%02d", now.getHour(), now.getMinute());
@@ -136,14 +137,16 @@ public class DailyReminderScheduler {
         }
 
         boolean hideAmount = Boolean.TRUE.equals(ch.getHideAmount());
-        String remindTime = ch.getRemindTime() != null && !ch.getRemindTime().isBlank() ? ch.getRemindTime() : "14:30";
+        String remindTime = ch.getRemindTime() != null && !ch.getRemindTime().isBlank() ? ch.getRemindTime() : "21:30";
+        boolean isEvening = remindTime.startsWith("2") || remindTime.startsWith("19");
 
         // 1. 发送邮件 (富文本 HTML)
         if (Boolean.TRUE.equals(ch.getEmailEnabled()) && ch.getEmail() != null && !ch.getEmail().isBlank()) {
             try {
-                String subject = "【盘中快报】" + remindTime + " 基金估值与持仓日报 - " + username;
+                String subject = (isEvening ? "【收益日报】" : "【盘中快报】") + remindTime + (isEvening ? " 今日基金收益与持仓日报 - " : " 基金估值与持仓日报 - ") + username;
                 String html = templateService.renderHtmlEmail(
                         username,
+                        remindTime,
                         portfolioView != null ? portfolioView.summary() : null,
                         portfolioView != null ? portfolioView.items() : Collections.emptyList(),
                         watchlist,
@@ -159,9 +162,10 @@ public class DailyReminderScheduler {
         // 2. 发送微信推送 (Server酱)
         if (Boolean.TRUE.equals(ch.getWechatEnabled())) {
             try {
-                String title = "【" + remindTime + " 盘中估值快报】" + username;
+                String title = "【" + remindTime + (isEvening ? " 基金收益快报】" : " 盘中估值快报】") + username;
                 String markdown = templateService.renderMarkdown(
                         username,
+                        remindTime,
                         portfolioView != null ? portfolioView.summary() : null,
                         portfolioView != null ? portfolioView.items() : Collections.emptyList(),
                         watchlist,

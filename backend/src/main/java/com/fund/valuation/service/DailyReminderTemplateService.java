@@ -15,7 +15,7 @@ public class DailyReminderTemplateService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy年MM月dd日");
 
     /**
-     * 渲染高信息密度且适配移动端的 HTML 富文本邮件
+     * 兼容老接口
      */
     public String renderHtmlEmail(String username,
                                   PortfolioSummaryView portfolioSummary,
@@ -23,7 +23,29 @@ public class DailyReminderTemplateService {
                                   List<EstimateResult> watchlist,
                                   boolean hideAmount,
                                   String websiteUrl) {
+        return renderHtmlEmail(username, "21:30", portfolioSummary, positions, watchlist, hideAmount, websiteUrl);
+    }
+
+    /**
+     * 渲染高信息密度且适配移动端的 HTML 富文本邮件
+     */
+    public String renderHtmlEmail(String username,
+                                  String remindTime,
+                                  PortfolioSummaryView portfolioSummary,
+                                  List<PositionItemView> positions,
+                                  List<EstimateResult> watchlist,
+                                  boolean hideAmount,
+                                  String websiteUrl) {
         String todayStr = LocalDate.now().format(DATE_FMT);
+        boolean isEvening = remindTime != null && (remindTime.startsWith("2") || remindTime.startsWith("19"));
+        String timeDisplay = (remindTime != null && !remindTime.isBlank()) ? remindTime : "21:30";
+        String subtitle = isEvening ? "今日收盘净值确认 · 官方收益出炉" : "收盘前30分钟 · 调仓黄金决策窗口";
+        String mainTitle = isEvening ? ("📈 " + timeDisplay + " 今日基金收益与持仓日报") : ("📈 " + timeDisplay + " 盘中估值与持仓日报");
+        String statTitle = isEvening ? "今日持仓收益 (已确认)" : "今日持仓预估盈亏";
+        String tipText = isEvening
+                ? "📌 提示：以上收益基于基金公司公布的最新官方确认净值核算。"
+                : "📌 风险提示：盘中估算基于重仓股与成分走势模拟测算，仅供盘中决策参考，不作为最终确认净值。若需调仓或止盈，请留意场外基金 15:00 申赎截止时点。";
+
         StringBuilder sb = new StringBuilder();
 
         sb.append("<!DOCTYPE html><html><head><meta charset='utf-8'/><meta name='viewport' content='width=device-width, initial-scale=1.0'/></head>");
@@ -32,8 +54,8 @@ public class DailyReminderTemplateService {
 
         // 头部 Banner
         sb.append("<div style='background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);padding:22px 24px;color:#ffffff;'>");
-        sb.append("<div style='font-size:12px;color:#94a3b8;font-weight:600;letter-spacing:1px;text-transform:uppercase;'>收盘前30分钟 · 调仓黄金决策窗口</div>");
-        sb.append("<div style='font-size:20px;font-weight:700;margin-top:6px;display:flex;align-items:center;'>📈 14:30 盘中估值与持仓日报</div>");
+        sb.append("<div style='font-size:12px;color:#94a3b8;font-weight:600;letter-spacing:1px;text-transform:uppercase;'>").append(subtitle).append("</div>");
+        sb.append("<div style='font-size:20px;font-weight:700;margin-top:6px;display:flex;align-items:center;'>").append(mainTitle).append("</div>");
         sb.append("<div style='font-size:13px;color:#cbd5e1;margin-top:4px;'>").append(todayStr).append(" · 用户: ").append(username).append("</div>");
         sb.append("</div>");
 
@@ -48,7 +70,7 @@ public class DailyReminderTemplateService {
             String sign = isPositive ? "+" : "";
 
             sb.append("<div style='background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:20px;border:1px solid #e2e8f0;'>");
-            sb.append("<div style='font-size:13px;color:#64748b;font-weight:600;'>今日持仓预估盈亏</div>");
+            sb.append("<div style='font-size:13px;color:#64748b;font-weight:600;'>").append(statTitle).append("</div>");
             sb.append("<div style='display:flex;align-items:baseline;gap:8px;margin-top:6px;'>");
 
             if (!hideAmount) {
@@ -69,12 +91,14 @@ public class DailyReminderTemplateService {
 
         // 2. 自选基金估值列表
         if (watchlist != null && !watchlist.isEmpty()) {
-            sb.append("<div style='font-size:15px;font-weight:700;color:#0f172a;margin-bottom:10px;'>自选基金盘中估算</div>");
+            sb.append("<div style='font-size:15px;font-weight:700;color:#0f172a;margin-bottom:10px;'>")
+                    .append(isEvening ? "自选基金今日收益走势" : "自选基金盘中估算")
+                    .append("</div>");
             sb.append("<table style='width:100%;border-collapse:collapse;font-size:13px;text-align:left;'>");
             sb.append("<tr style='background:#f1f5f9;color:#475569;'>");
             sb.append("<th style='padding:8px 10px;border-radius:6px 0 0 6px;'>基金名称/代码</th>");
-            sb.append("<th style='padding:8px 10px;text-align:right;'>估算净值</th>");
-            sb.append("<th style='padding:8px 10px;text-align:right;border-radius:0 6px 6px 0;'>盘中涨跌幅</th>");
+            sb.append("<th style='padding:8px 10px;text-align:right;'>").append(isEvening ? "最新净值" : "估算净值").append("</th>");
+            sb.append("<th style='padding:8px 10px;text-align:right;border-radius:0 6px 6px 0;'>").append(isEvening ? "今日涨跌幅" : "盘中涨跌幅").append("</th>");
             sb.append("</tr>");
 
             for (EstimateResult item : watchlist) {
@@ -109,7 +133,7 @@ public class DailyReminderTemplateService {
         sb.append("</div>");
 
         sb.append("<div style='margin-top:20px;font-size:11px;color:#94a3b8;line-height:1.6;border-top:1px solid #f1f5f9;padding-top:12px;'>");
-        sb.append("📌 风险提示：盘中估算基于重仓股与成分走势模拟测算，仅供盘中决策参考，不作为最终确认净值。若需调仓或止盈，请留意场外基金 15:00 申赎截止时点。");
+        sb.append(tipText);
         sb.append("</div>");
 
         sb.append("</div></div></body></html>");
@@ -117,36 +141,57 @@ public class DailyReminderTemplateService {
     }
 
     /**
-     * 渲染微信与 Webhook 推送的 Markdown 消息
+     * 兼容老接口
      */
     public String renderMarkdown(String username,
                                  PortfolioSummaryView portfolioSummary,
                                  List<PositionItemView> positions,
                                  List<EstimateResult> watchlist,
                                  boolean hideAmount) {
+        return renderMarkdown(username, "21:30", portfolioSummary, positions, watchlist, hideAmount);
+    }
+
+    /**
+     * 渲染微信与 Webhook 推送的 Markdown 消息
+     */
+    public String renderMarkdown(String username,
+                                 String remindTime,
+                                 PortfolioSummaryView portfolioSummary,
+                                 List<PositionItemView> positions,
+                                 List<EstimateResult> watchlist,
+                                 boolean hideAmount) {
         String todayStr = LocalDate.now().format(DATE_FMT);
+        boolean isEvening = remindTime != null && (remindTime.startsWith("2") || remindTime.startsWith("19"));
+        String timeDisplay = (remindTime != null && !remindTime.isBlank()) ? remindTime : "21:30";
+        String mainTitle = isEvening ? ("### 📈 " + timeDisplay + " 今日基金收益与持仓日报\n\n") : ("### 📈 " + timeDisplay + " 盘中估值与持仓日报\n\n");
+        String subHeader = isEvening ? " (今日官方净值已更新)\n\n" : " (收盘前半小时决策窗口)\n\n";
+        String statTitle = isEvening ? "#### 💰 今日持仓收益 (已确认)\n" : "#### 💰 今日持仓预估\n";
+        String tipText = isEvening
+                ? "> 📌 提示：以上持仓与自选数据基于基金公司今日公布的最新官方净值核算。"
+                : "> ⚠️ 提示：盘中模拟估算仅供参考，15:00 前申赎可按今日收盘净值确认。";
+
         StringBuilder sb = new StringBuilder();
 
-        sb.append("### 📈 14:30 盘中估值与持仓日报\n\n");
-        sb.append("> **日期**: ").append(todayStr).append(" (收盘前半小时决策窗口)\n\n");
+        sb.append(mainTitle);
+        sb.append("> **日期**: ").append(todayStr).append(subHeader);
 
         if (portfolioSummary != null && portfolioSummary.totalMarketValue() != null) {
             BigDecimal todayIncome = portfolioSummary.totalTodayIncome() != null ? portfolioSummary.totalTodayIncome() : BigDecimal.ZERO;
             BigDecimal incomePct = portfolioSummary.totalTodayIncomePct() != null ? portfolioSummary.totalTodayIncomePct() : BigDecimal.ZERO;
             String sign = todayIncome.compareTo(BigDecimal.ZERO) >= 0 ? "+" : "";
 
-            sb.append("#### 💰 今日持仓预估\n");
+            sb.append(statTitle);
             if (!hideAmount) {
-                sb.append("- **今日预估盈亏**: `").append(sign).append(String.format("%.2f元", todayIncome.doubleValue())).append("` (")
+                sb.append("- **").append(isEvening ? "今日确认收益" : "今日预估盈亏").append("**: `").append(sign).append(String.format("%.2f元", todayIncome.doubleValue())).append("` (")
                         .append(sign).append(String.format("%.2f%%", incomePct.doubleValue())).append(")\n");
                 sb.append("- **持仓资产总值**: ¥").append(String.format("%.2f", portfolioSummary.totalMarketValue().doubleValue())).append("\n\n");
             } else {
-                sb.append("- **今日预估涨跌**: `").append(sign).append(String.format("%.2f%%", incomePct.doubleValue())).append("`\n\n");
+                sb.append("- **").append(isEvening ? "今日涨跌幅度" : "今日预估涨跌").append("**: `").append(sign).append(String.format("%.2f%%", incomePct.doubleValue())).append("`\n\n");
             }
         }
 
         if (watchlist != null && !watchlist.isEmpty()) {
-            sb.append("#### 📋 重点自选盘中走势\n");
+            sb.append("#### 📋 ").append(isEvening ? "重点自选今日走势" : "重点自选盘中走势").append("\n");
             int count = 0;
             for (EstimateResult item : watchlist) {
                 BigDecimal pct = item.estimatePct() != null ? item.estimatePct() : BigDecimal.ZERO;
@@ -163,7 +208,7 @@ public class DailyReminderTemplateService {
             sb.append("\n");
         }
 
-        sb.append("> ⚠️ 提示：盘中模拟估算仅供参考，15:00 前申赎可按今日收盘净值确认。");
+        sb.append(tipText);
         return sb.toString();
     }
 }

@@ -84,6 +84,7 @@ class DailyReminderSchedulerTest {
         ch.setRemindEnabled(true);
         ch.setPushScope("ALL_WATCHLIST");
         ch.setHideAmount(false);
+        ch.setRemindTime("21:30");
 
         when(channelService.listActiveRemindUsers()).thenReturn(List.of(ch));
 
@@ -123,17 +124,17 @@ class DailyReminderSchedulerTest {
         );
         when(watchlistService.estimates("vip_user")).thenReturn(List.of(est));
 
-        when(templateService.renderHtmlEmail(anyString(), any(), anyList(), anyList(), anyBoolean(), anyString()))
+        when(templateService.renderHtmlEmail(anyString(), anyString(), any(), anyList(), anyList(), anyBoolean(), anyString()))
                 .thenReturn("<html>mock</html>");
-        when(templateService.renderMarkdown(anyString(), any(), anyList(), anyList(), anyBoolean()))
+        when(templateService.renderMarkdown(anyString(), anyString(), any(), anyList(), anyList(), anyBoolean()))
                 .thenReturn("## mock markdown");
 
         int sent = scheduler.executeDailyReminder(true);
 
         assertEquals(1, sent);
         verify(runner).run();
-        verify(emailSenderService).sendHtmlEmail(eq("vip@example.com"), contains("14:30"), eq("<html>mock</html>"));
-        verify(wxNotificationService).sendWechatNotification(eq(ch), contains("14:30"), eq("## mock markdown"), anyString());
+        verify(emailSenderService).sendHtmlEmail(eq("vip@example.com"), contains("21:30"), eq("<html>mock</html>"));
+        verify(wxNotificationService).sendWechatNotification(eq(ch), contains("21:30"), eq("## mock markdown"), anyString());
     }
 
     @Test

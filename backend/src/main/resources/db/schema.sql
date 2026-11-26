@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS user_notification_channel (
     wechat_webhook_url  VARCHAR(500) NULL     COMMENT '历史兼容Webhook',
     wechat_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用微信/移动端推送: 1启用/0关闭',
     remind_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '盘中提醒总开关: 1开启/0关闭',
-    remind_time         VARCHAR(8)   NOT NULL DEFAULT '14:30' COMMENT '盘中提醒时间点: 14:00/14:15/14:30/14:45/14:50',
+    remind_time         VARCHAR(8)   NOT NULL DEFAULT '21:30' COMMENT '盘中或晚间提醒时间点: 21:30/14:30/14:15/14:45',
     push_scope          VARCHAR(32)  NOT NULL DEFAULT 'ALL_WATCHLIST' COMMENT '推送范围: ALL_WATCHLIST/PORTFOLIO_ONLY',
     hide_amount         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否隐藏具体资产金额: 1隐藏/0显示',
     updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

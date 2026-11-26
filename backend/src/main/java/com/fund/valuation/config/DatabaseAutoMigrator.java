@@ -166,7 +166,7 @@ public class DatabaseAutoMigrator {
             """);
 
             // 8. 字段增量热升级容错
-            addColumnIfNotExists(conn, "user_notification_channel", "remind_time", "VARCHAR(8) DEFAULT '14:30'");
+            addColumnIfNotExists(conn, "user_notification_channel", "remind_time", "VARCHAR(8) DEFAULT '21:30'");
             addColumnIfNotExists(conn, "user_notification_channel", "serverchan_key", "VARCHAR(128) NULL");
             addColumnIfNotExists(conn, "user_notification_channel", "bark_url", "VARCHAR(255) NULL");
             executeSqlQuietly(conn, "ALTER TABLE `user` MODIFY COLUMN username VARCHAR(64) NOT NULL");
