@@ -9,7 +9,6 @@ import {
   Space,
   message,
   Card,
-  Tag,
   TimePicker,
 } from 'antd'
 import {
@@ -31,17 +30,6 @@ interface NotificationChannelModalProps {
   onSuccess?: (email: string) => void
 }
 
-const INTRADAY_PRESET_TIMES = [
-  { label: '14:30 (推荐·尾盘决策)', value: '14:30' },
-  { label: '14:15', value: '14:15' },
-  { label: '14:45', value: '14:45' },
-]
-
-const EVENING_PRESET_TIMES = [
-  { label: '21:30 (推荐·官方收益)', value: '21:30' },
-  { label: '21:00', value: '21:00' },
-  { label: '22:00', value: '22:00' },
-]
 
 export function NotificationChannelModal({ open, onClose, onSuccess }: NotificationChannelModalProps) {
   const [form] = Form.useForm<NotificationChannelView>()
@@ -204,16 +192,13 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
     <Modal
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16 }}>
-          <BellOutlined style={{ color: '#2563eb', fontSize: 18 }} />
-          <span style={{ fontWeight: 650, color: '#0f172a' }}>消息与收益提醒设置</span>
-          <Tag color="blue" style={{ marginLeft: 4, fontSize: 11, borderRadius: 4, fontWeight: 500 }}>
-            盘中 / 盘后独立推送
-          </Tag>
+          <BellOutlined style={{ color: '#2563eb', fontSize: 17 }} />
+          <span style={{ fontWeight: 650, color: '#0f172a' }}>提醒设置</span>
         </div>
       }
       open={open}
       onCancel={onClose}
-      width={560}
+      width={500}
       centered
       destroyOnClose
       footer={[
@@ -237,7 +222,7 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
     >
       <div style={{ padding: '4px 0', maxHeight: '72vh', overflowY: 'auto' }}>
         <Form form={form} layout="vertical" disabled={loading}>
-          {/* 1. 交易日盘中提醒 (14:30 尾盘决策快报) */}
+          {/* 提醒时间设置 */}
           <Card
             size="small"
             style={{
@@ -247,30 +232,11 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
               border: '1px solid #e2e8f0',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div>
-                <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <LineChartOutlined style={{ color: '#2563eb' }} />
-                  <span>交易日盘中提醒 (实时估值)</span>
-                </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                  15:00 闭市前半小时发送盘中预估快报，辅助申赎调仓决策
-                </div>
-              </div>
-              <Form.Item name="remindEnabled" valuePropName="checked" noStyle>
-                <Switch checkedChildren="已开启" unCheckedChildren="已关闭" />
-              </Form.Item>
-            </div>
-
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>盘中提醒送达时间</span>
-                <span style={{ fontSize: 11, color: '#2563eb', background: '#eff6ff', padding: '1px 6px', borderRadius: 4 }}>
-                  限交易时段 (推荐 14:30)
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* 盘中估值提醒 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <LineChartOutlined style={{ color: '#2563eb', fontSize: 14 }} />
+                <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>盘中估值提醒</span>
                 <TimePicker
                   value={selectedIntradayTime ? dayjs(selectedIntradayTime, 'HH:mm') : dayjs('14:30', 'HH:mm')}
                   format="HH:mm"
@@ -285,78 +251,25 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
                     }
                   }}
                   style={{
-                    width: 105,
-                    borderRadius: 8,
-                    fontWeight: 650,
+                    width: 90,
+                    borderRadius: 6,
+                    fontWeight: 600,
                     fontSize: 13,
-                    borderColor: '#2563eb',
                   }}
                 />
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {INTRADAY_PRESET_TIMES.map((opt) => {
-                    const isSelected = selectedIntradayTime === opt.value
-                    return (
-                      <Button
-                        key={opt.value}
-                        size="small"
-                        type={isSelected ? 'primary' : 'default'}
-                        onClick={() => {
-                          setSelectedIntradayTime(opt.value)
-                          form.setFieldValue('remindTime', opt.value)
-                        }}
-                        style={{
-                          borderRadius: 6,
-                          fontSize: 12,
-                          height: 28,
-                          fontWeight: isSelected ? 600 : 400,
-                          ...(isSelected
-                            ? { background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }
-                            : { borderColor: '#cbd5e1' }),
-                        }}
-                      >
-                        {opt.label}
-                      </Button>
-                    )
-                  })}
-                </div>
               </div>
-            </div>
-          </Card>
-
-          {/* 2. 交易日盘后收益提醒 (21:30 官方净值确认) */}
-          <Card
-            size="small"
-            style={{
-              borderRadius: 12,
-              background: '#f8fafc',
-              marginBottom: 12,
-              border: '1px solid #e2e8f0',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div>
-                <div style={{ fontWeight: 650, color: '#0f172a', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <CheckCircleOutlined style={{ color: '#059669' }} />
-                  <span>交易日盘后收益提醒 (官方确认)</span>
-                </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                  官方收盘净值确认出炉后发送，汇总当日实际收益与持仓累计盈亏
-                </div>
-              </div>
-              <Form.Item name="eveningRemindEnabled" valuePropName="checked" noStyle>
-                <Switch checkedChildren="已开启" unCheckedChildren="已关闭" />
+              <Form.Item name="remindEnabled" valuePropName="checked" noStyle>
+                <Switch size="small" checkedChildren="开启" unCheckedChildren="关闭" />
               </Form.Item>
             </div>
 
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>盘后收益提醒送达时间</span>
-                <span style={{ fontSize: 11, color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: 4 }}>
-                  限晚间时段 (推荐 21:30)
-                </span>
-              </div>
+            <div style={{ borderTop: '1px solid #e2e8f0', margin: '8px 0' }} />
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* 盘后收益提醒 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircleOutlined style={{ color: '#059669', fontSize: 14 }} />
+                <span style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>盘后收益提醒</span>
                 <TimePicker
                   value={selectedEveningTime ? dayjs(selectedEveningTime, 'HH:mm') : dayjs('21:30', 'HH:mm')}
                   format="HH:mm"
@@ -371,41 +284,16 @@ export function NotificationChannelModal({ open, onClose, onSuccess }: Notificat
                     }
                   }}
                   style={{
-                    width: 105,
-                    borderRadius: 8,
-                    fontWeight: 650,
+                    width: 90,
+                    borderRadius: 6,
+                    fontWeight: 600,
                     fontSize: 13,
-                    borderColor: '#059669',
                   }}
                 />
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {EVENING_PRESET_TIMES.map((opt) => {
-                    const isSelected = selectedEveningTime === opt.value
-                    return (
-                      <Button
-                        key={opt.value}
-                        size="small"
-                        type={isSelected ? 'primary' : 'default'}
-                        onClick={() => {
-                          setSelectedEveningTime(opt.value)
-                          form.setFieldValue('eveningRemindTime', opt.value)
-                        }}
-                        style={{
-                          borderRadius: 6,
-                          fontSize: 12,
-                          height: 28,
-                          fontWeight: isSelected ? 600 : 400,
-                          ...(isSelected
-                            ? { background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }
-                            : { borderColor: '#cbd5e1' }),
-                        }}
-                      >
-                        {opt.label}
-                      </Button>
-                    )
-                  })}
-                </div>
               </div>
+              <Form.Item name="eveningRemindEnabled" valuePropName="checked" noStyle>
+                <Switch size="small" checkedChildren="开启" unCheckedChildren="关闭" />
+              </Form.Item>
             </div>
           </Card>
 
