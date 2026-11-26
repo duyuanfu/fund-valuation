@@ -258,6 +258,8 @@ export interface NotificationChannelView {
   wechatEnabled?: boolean
   remindEnabled?: boolean
   remindTime?: string
+  eveningRemindEnabled?: boolean
+  eveningRemindTime?: string
   pushScope?: 'ALL_WATCHLIST' | 'PORTFOLIO_ONLY' | string
   hideAmount?: boolean
 }

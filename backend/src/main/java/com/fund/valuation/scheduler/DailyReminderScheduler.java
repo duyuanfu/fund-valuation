@@ -24,8 +24,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 交易日盘中关键决策半小时估值与持仓日报定时提醒调度器。
- * 支持用户自定义提醒时间 (14:00, 14:15, 14:30, 14:45, 14:50 等)。
+ * 交易日定时提醒调度器：
+ * 1. 交易日盘中决策提醒 (14:00-14:59，默认 14:30): 发送盘中实时估值与预估涨跌，辅助尾盘申赎调仓决策。
+ * 2. 交易日盘后收益提醒 (21:00-21:59，默认 21:30): 发送官方收盘净值确认后的当日实际收益与持仓累计盈亏日报。
  */
 @Slf4j
 @Component
@@ -42,14 +43,23 @@ public class DailyReminderScheduler {
     private final WxNotificationService wxNotificationService;
 
     /**
-     * 交易日盘中与晚间定时轮询，匹配用户设定的提醒时间
-     * 支持 14:00-14:59 盘中及 21:00-21:59 晚间官方净值确认后收益提醒
+     * 1. 交易日盘中提醒调度 (14:00-14:59 每分钟轮询，默认 14:30 触发)
      */
-    @Scheduled(cron = "0 * 14,21 * * 1-5", zone = "Asia/Shanghai")
-    public void runScheduledReminder() {
+    @Scheduled(cron = "0 * 14 * * 1-5", zone = "Asia/Shanghai")
+    public void runIntradayScheduledReminder() {
         LocalTime now = LocalTime.now();
         String currentMinute = String.format("%02d:%02d", now.getHour(), now.getMinute());
-        executeDailyReminder(false, currentMinute);
+        executeIntradayReminder(false, currentMinute);
+    }
+
+    /**
+     * 2. 交易日盘后官方收益提醒调度 (21:00-21:59 每分钟轮询，默认 21:30 触发)
+     */
+    @Scheduled(cron = "0 * 21 * * 1-5", zone = "Asia/Shanghai")
+    public void runEveningScheduledReminder() {
+        LocalTime now = LocalTime.now();
+        String currentMinute = String.format("%02d:%02d", now.getHour(), now.getMinute());
+        executeEveningReminder(false, currentMinute);
     }
 
     public int executeDailyReminder(boolean force) {
@@ -57,58 +67,87 @@ public class DailyReminderScheduler {
     }
 
     /**
-     * 执行盘中推送逻辑
-     * @param force 是否忽略交易日判定 (支持管理后台手动强制触发)
-     * @param targetTimeMinute 指定提醒时间分秒 (如 "14:30")，若为 null 则分发给所有活跃订阅用户
+     * 兼容/统一执行入口 (支持管理后台手动强制分发或测试)
      */
     public int executeDailyReminder(boolean force, String targetTimeMinute) {
-        LocalDate today = LocalDate.now();
+        if (targetTimeMinute != null && (targetTimeMinute.startsWith("2") || targetTimeMinute.startsWith("19"))) {
+            return executeEveningReminder(force, targetTimeMinute);
+        }
+        return executeIntradayReminder(force, targetTimeMinute);
+    }
 
-        if (!force) {
-            if (!TradingCalendar.isTradingDay(today)) {
-                return 0;
-            }
+    /**
+     * 执行盘中估值提醒推送 (14:30 等时段)
+     */
+    public int executeIntradayReminder(boolean force, String targetTimeMinute) {
+        LocalDate today = LocalDate.now();
+        if (!force && !TradingCalendar.isTradingDay(today)) {
+            return 0;
         }
 
-        // 1. 预热刷新盘中最新估值快照
+        // 预热刷新盘中最新估值快照
         try {
             runner.run();
         } catch (Exception e) {
             log.warn("预热估值运行异常，继续使用缓存估值: {}", e.getMessage());
         }
 
-        // 2. 查询目标分发用户
-        List<UserNotificationChannel> channels;
-        if (targetTimeMinute != null && !targetTimeMinute.isBlank()) {
-            channels = channelService.listActiveRemindUsers(targetTimeMinute);
-        } else {
-            channels = channelService.listActiveRemindUsers();
-        }
-
+        List<UserNotificationChannel> channels = channelService.listActiveIntradayRemindUsers(targetTimeMinute);
         if (channels.isEmpty()) {
             return 0;
         }
 
-        log.info(">>> 开始执行交易日盘中估值与持仓提醒派发任务 (force={}, targetTime={}, 命中用户数={})",
+        log.info(">>> 开始执行交易日【盘中估值提醒】任务 (force={}, targetTime={}, 命中用户数={})",
                 force, targetTimeMinute != null ? targetTimeMinute : "ALL", channels.size());
 
         int sentCount = 0;
         for (UserNotificationChannel ch : channels) {
             try {
-                processSingleUserReminder(ch);
+                processSingleUserReminder(ch, false, targetTimeMinute != null ? targetTimeMinute : ch.getRemindTime());
                 sentCount++;
-                // 发送微延时，防高频拥堵
                 Thread.sleep(100);
             } catch (Exception e) {
                 log.warn("向用户 [{}] 派发盘中提醒失败: {}", ch.getUserId(), e.getMessage());
             }
         }
 
-        log.info("<<< 交易日盘中估值提醒派发完毕，成功分发用户数: {}", sentCount);
+        log.info("<<< 交易日【盘中估值提醒】派发完毕，成功分发用户数: {}", sentCount);
         return sentCount;
     }
 
-    private void processSingleUserReminder(UserNotificationChannel ch) {
+    /**
+     * 执行盘后官方确认收益提醒推送 (21:30 等时段)
+     */
+    public int executeEveningReminder(boolean force, String targetTimeMinute) {
+        LocalDate today = LocalDate.now();
+        if (!force && !TradingCalendar.isTradingDay(today)) {
+            return 0;
+        }
+
+        List<UserNotificationChannel> channels = channelService.listActiveEveningRemindUsers(targetTimeMinute);
+        if (channels.isEmpty()) {
+            return 0;
+        }
+
+        log.info(">>> 开始执行交易日【盘后收益提醒】任务 (force={}, targetTime={}, 命中用户数={})",
+                force, targetTimeMinute != null ? targetTimeMinute : "ALL", channels.size());
+
+        int sentCount = 0;
+        for (UserNotificationChannel ch : channels) {
+            try {
+                processSingleUserReminder(ch, true, targetTimeMinute != null ? targetTimeMinute : ch.getEveningRemindTime());
+                sentCount++;
+                Thread.sleep(100);
+            } catch (Exception e) {
+                log.warn("向用户 [{}] 派发盘后收益提醒失败: {}", ch.getUserId(), e.getMessage());
+            }
+        }
+
+        log.info("<<< 交易日【盘后收益提醒】派发完毕，成功分发用户数: {}", sentCount);
+        return sentCount;
+    }
+
+    private void processSingleUserReminder(UserNotificationChannel ch, boolean isEvening, String remindTime) {
         String username = ch.getUserId();
         User user = authService.getUser(username);
         if (user == null || User.STATUS_DISABLED.equalsIgnoreCase(user.getStatus())) {
@@ -137,16 +176,18 @@ public class DailyReminderScheduler {
         }
 
         boolean hideAmount = Boolean.TRUE.equals(ch.getHideAmount());
-        String remindTime = ch.getRemindTime() != null && !ch.getRemindTime().isBlank() ? ch.getRemindTime() : "21:30";
-        boolean isEvening = remindTime.startsWith("2") || remindTime.startsWith("19");
+        String displayTime = (remindTime != null && !remindTime.isBlank())
+                ? remindTime
+                : (isEvening ? "21:30" : "14:30");
 
         // 1. 发送邮件 (富文本 HTML)
         if (Boolean.TRUE.equals(ch.getEmailEnabled()) && ch.getEmail() != null && !ch.getEmail().isBlank()) {
             try {
-                String subject = (isEvening ? "【收益日报】" : "【盘中快报】") + remindTime + (isEvening ? " 今日基金收益与持仓日报 - " : " 基金估值与持仓日报 - ") + username;
+                String subject = (isEvening ? "【收益日报】" : "【盘中快报】") + displayTime
+                        + (isEvening ? " 今日基金收益与持仓日报 - " : " 基金估值与持仓日报 - ") + username;
                 String html = templateService.renderHtmlEmail(
                         username,
-                        remindTime,
+                        displayTime,
                         portfolioView != null ? portfolioView.summary() : null,
                         portfolioView != null ? portfolioView.items() : Collections.emptyList(),
                         watchlist,
@@ -162,10 +203,10 @@ public class DailyReminderScheduler {
         // 2. 发送微信推送 (Server酱)
         if (Boolean.TRUE.equals(ch.getWechatEnabled())) {
             try {
-                String title = "【" + remindTime + (isEvening ? " 基金收益快报】" : " 盘中估值快报】") + username;
+                String title = "【" + displayTime + (isEvening ? " 基金收益快报】" : " 盘中估值快报】") + username;
                 String markdown = templateService.renderMarkdown(
                         username,
-                        remindTime,
+                        displayTime,
                         portfolioView != null ? portfolioView.summary() : null,
                         portfolioView != null ? portfolioView.items() : Collections.emptyList(),
                         watchlist,

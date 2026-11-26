@@ -384,7 +384,7 @@ export default function PortfolioPage() {
             onClick={() => setNotificationModalOpen(true)}
             style={{ borderRadius: 8 }}
           >
-            {isMobile ? '提醒' : '盘中提醒'}
+            {isMobile ? '提醒' : '收益提醒'}
           </Button>
 
           <Button

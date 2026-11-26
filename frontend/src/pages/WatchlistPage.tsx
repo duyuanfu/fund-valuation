@@ -674,7 +674,7 @@ export default function WatchlistPage() {
             onClick={() => setNotificationModalOpen(true)}
             style={{ borderRadius: 8 }}
           >
-            {isMobile ? '提醒' : '盘中提醒'}
+            {isMobile ? '提醒' : '消息提醒'}
           </Button>
 
           {estimates.length > 1 && (

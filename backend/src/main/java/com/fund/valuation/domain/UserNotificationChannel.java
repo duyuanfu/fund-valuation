@@ -43,11 +43,17 @@ public class UserNotificationChannel {
     /** 是否启用微信/移动端推送 */
     private Boolean wechatEnabled;
 
-    /** 盘中提醒总开关 */
+    /** 交易日盘中提醒开关 */
     private Boolean remindEnabled;
 
-    /** 每日提醒时间点，默认 '14:30'，可选 '14:00', '14:15', '14:30', '14:45', '14:50' */
+    /** 交易日盘中提醒时间点，默认 '14:30'，可选 '14:00', '14:15', '14:30', '14:45' 等 */
     private String remindTime;
+
+    /** 交易日盘后收益提醒开关 (21:30 官方净值更新后汇总) */
+    private Boolean eveningRemindEnabled;
+
+    /** 交易日盘后收益提醒时间点，默认 '21:30'，可选 '21:00', '21:30', '22:00' 等 */
+    private String eveningRemindTime;
 
     /** 推送内容范围: ALL_WATCHLIST(全部自选) / PORTFOLIO_ONLY(仅持仓) */
     private String pushScope;

@@ -173,14 +173,16 @@ CREATE TABLE IF NOT EXISTS user_notification_channel (
     wechat_app_token    VARCHAR(255) NULL     COMMENT '历史兼容Token',
     wechat_webhook_url  VARCHAR(500) NULL     COMMENT '历史兼容Webhook',
     wechat_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '是否启用微信/移动端推送: 1启用/0关闭',
-    remind_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '盘中提醒总开关: 1开启/0关闭',
-    remind_time         VARCHAR(8)   NOT NULL DEFAULT '21:30' COMMENT '盘中或晚间提醒时间点: 21:30/14:30/14:15/14:45',
+    remind_enabled      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '交易日盘中提醒开关: 1开启/0关闭',
+    remind_time         VARCHAR(8)   NOT NULL DEFAULT '14:30' COMMENT '盘中提醒时间点: 14:30/14:15/14:45',
+    evening_remind_enabled TINYINT(1) NOT NULL DEFAULT 1 COMMENT '交易日盘后收益提醒开关: 1开启/0关闭',
+    evening_remind_time    VARCHAR(8) NOT NULL DEFAULT '21:30' COMMENT '盘后收益提醒时间点: 21:30/21:00/22:00',
     push_scope          VARCHAR(32)  NOT NULL DEFAULT 'ALL_WATCHLIST' COMMENT '推送范围: ALL_WATCHLIST/PORTFOLIO_ONLY',
     hide_amount         TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否隐藏具体资产金额: 1隐藏/0显示',
     updated_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uk_user_channel (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户通知渠道与盘中提醒配置';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户通知渠道与盘中/盘后收益提醒配置';
 
 CREATE TABLE IF NOT EXISTS sys_email_config (
     id             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',

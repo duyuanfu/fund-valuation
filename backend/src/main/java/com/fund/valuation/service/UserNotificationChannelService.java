@@ -34,7 +34,9 @@ public class UserNotificationChannelService {
             true,
             "14:30",
             "ALL_WATCHLIST",
-            false
+            false,
+            true,
+            "21:30"
     );
 
     /**
@@ -98,6 +100,8 @@ public class UserNotificationChannelService {
         entity.setWechatEnabled(req.wechatEnabled() != null ? req.wechatEnabled() : true);
         entity.setRemindEnabled(req.remindEnabled() != null ? req.remindEnabled() : true);
         entity.setRemindTime(req.remindTime() != null && !req.remindTime().isBlank() ? req.remindTime().trim() : "14:30");
+        entity.setEveningRemindEnabled(req.eveningRemindEnabled() != null ? req.eveningRemindEnabled() : true);
+        entity.setEveningRemindTime(req.eveningRemindTime() != null && !req.eveningRemindTime().isBlank() ? req.eveningRemindTime().trim() : "21:30");
         entity.setPushScope(req.pushScope() != null && !req.pushScope().isBlank() ? req.pushScope() : "ALL_WATCHLIST");
         entity.setHideAmount(req.hideAmount() != null ? req.hideAmount() : false);
         entity.setUpdatedAt(LocalDateTime.now());
@@ -108,7 +112,8 @@ public class UserNotificationChannelService {
             channelMapper.updateById(entity);
         }
 
-        log.info("用户 [{}] 成功更新通知渠道设置: 提醒时间={}, 总开关={}", userId, entity.getRemindTime(), entity.getRemindEnabled());
+        log.info("用户 [{}] 成功更新通知渠道设置: 盘中时间={}, 盘中开={}, 盘后时间={}, 盘后开={}",
+                userId, entity.getRemindTime(), entity.getRemindEnabled(), entity.getEveningRemindTime(), entity.getEveningRemindEnabled());
         return toView(entity);
     }
 
@@ -230,15 +235,19 @@ public class UserNotificationChannelService {
     }
 
     public List<UserNotificationChannel> listActiveRemindUsers() {
-        return channelMapper.selectList(new LambdaQueryWrapper<UserNotificationChannel>()
-                .eq(UserNotificationChannel::getRemindEnabled, true)
-                .and(w -> w.eq(UserNotificationChannel::getEmailEnabled, true)
-                        .or().eq(UserNotificationChannel::getWechatEnabled, true)));
+        return listActiveIntradayRemindUsers(null);
     }
 
     public List<UserNotificationChannel> listActiveRemindUsers(String remindTime) {
+        return listActiveIntradayRemindUsers(remindTime);
+    }
+
+    public List<UserNotificationChannel> listActiveIntradayRemindUsers(String remindTime) {
         if (remindTime == null || remindTime.isBlank()) {
-            return listActiveRemindUsers();
+            return channelMapper.selectList(new LambdaQueryWrapper<UserNotificationChannel>()
+                    .eq(UserNotificationChannel::getRemindEnabled, true)
+                    .and(w -> w.eq(UserNotificationChannel::getEmailEnabled, true)
+                            .or().eq(UserNotificationChannel::getWechatEnabled, true)));
         }
         return channelMapper.selectList(new LambdaQueryWrapper<UserNotificationChannel>()
                 .eq(UserNotificationChannel::getRemindEnabled, true)
@@ -248,6 +257,24 @@ public class UserNotificationChannelService {
                         .or(remindTime.equals("14:30"), o -> o.isNull(UserNotificationChannel::getRemindTime).or().eq(UserNotificationChannel::getRemindTime, ""))));
     }
 
+    public List<UserNotificationChannel> listActiveEveningRemindUsers(String eveningRemindTime) {
+        if (eveningRemindTime == null || eveningRemindTime.isBlank()) {
+            return channelMapper.selectList(new LambdaQueryWrapper<UserNotificationChannel>()
+                    .and(w -> w.eq(UserNotificationChannel::getEveningRemindEnabled, true)
+                            .or().isNull(UserNotificationChannel::getEveningRemindEnabled))
+                    .and(w -> w.eq(UserNotificationChannel::getEmailEnabled, true)
+                            .or().eq(UserNotificationChannel::getWechatEnabled, true)));
+        }
+        final String targetTime = eveningRemindTime;
+        return channelMapper.selectList(new LambdaQueryWrapper<UserNotificationChannel>()
+                .and(w -> w.eq(UserNotificationChannel::getEveningRemindEnabled, true)
+                        .or().isNull(UserNotificationChannel::getEveningRemindEnabled))
+                .and(w -> w.eq(UserNotificationChannel::getEmailEnabled, true)
+                        .or().eq(UserNotificationChannel::getWechatEnabled, true))
+                .and(w -> w.eq(UserNotificationChannel::getEveningRemindTime, targetTime)
+                        .or(targetTime.equals("21:30"), o -> o.isNull(UserNotificationChannel::getEveningRemindTime).or().eq(UserNotificationChannel::getEveningRemindTime, ""))));
+    }
+
     private NotificationChannelView toView(UserNotificationChannel e) {
         return new NotificationChannelView(
                 e.getEmail(),
@@ -255,10 +282,12 @@ public class UserNotificationChannelService {
                 "serverchan",
                 e.getServerchanKey(),
                 e.getWechatEnabled(),
-                e.getRemindEnabled(),
+                e.getRemindEnabled() != null ? e.getRemindEnabled() : true,
                 e.getRemindTime() != null && !e.getRemindTime().isBlank() ? e.getRemindTime() : "14:30",
                 e.getPushScope() != null ? e.getPushScope() : "ALL_WATCHLIST",
-                e.getHideAmount() != null ? e.getHideAmount() : false
+                e.getHideAmount() != null ? e.getHideAmount() : false,
+                e.getEveningRemindEnabled() != null ? e.getEveningRemindEnabled() : true,
+                e.getEveningRemindTime() != null && !e.getEveningRemindTime().isBlank() ? e.getEveningRemindTime() : "21:30"
         );
     }
 }
