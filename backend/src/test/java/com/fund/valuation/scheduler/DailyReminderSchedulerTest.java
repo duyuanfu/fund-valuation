@@ -126,7 +126,7 @@ class DailyReminderSchedulerTest {
 
         when(templateService.renderHtmlEmail(anyString(), anyString(), any(), anyList(), anyList(), anyBoolean(), anyString()))
                 .thenReturn("<html>mock</html>");
-        when(templateService.renderMarkdown(anyString(), anyString(), any(), anyList(), anyList(), anyBoolean()))
+        when(templateService.renderMarkdown(anyString(), anyString(), any(), anyList(), anyList(), anyBoolean(), anyString()))
                 .thenReturn("## mock markdown");
 
         int sent = scheduler.executeIntradayReminder(true, "14:30");

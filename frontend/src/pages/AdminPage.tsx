@@ -23,6 +23,7 @@ import {
   Alert,
   Upload,
   notification,
+  Tooltip,
 } from 'antd'
 import {
   UserOutlined,
@@ -107,10 +108,12 @@ export default function AdminPage() {
       if (userKeyword.trim()) {
         const kw = userKeyword.trim().toLowerCase()
         const matchName = u.username.toLowerCase().includes(kw)
+        const matchEmail = u.email && u.email.toLowerCase().includes(kw)
+        const matchSendKey = u.serverchanKey && u.serverchanKey.toLowerCase().includes(kw)
         const matchSource = u.referralSource && u.referralSource.toLowerCase().includes(kw)
         const matchRole = u.role.toLowerCase().includes(kw)
         const matchStatus = u.status.toLowerCase().includes(kw)
-        if (!matchName && !matchSource && !matchRole && !matchStatus) {
+        if (!matchName && !matchEmail && !matchSendKey && !matchSource && !matchRole && !matchStatus) {
           return false
         }
       }
@@ -824,7 +827,7 @@ export default function AdminPage() {
                   <Space wrap size={10}>
                     <Input
                       prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                      placeholder="按用户名 / 获客渠道 / 角色搜索..."
+                      placeholder="按用户名 / 邮箱 / SendKey / 获客渠道搜索..."
                       allowClear
                       value={userKeyword}
                       onChange={(e) => setUserKeyword(e.target.value)}
@@ -907,6 +910,56 @@ export default function AdminPage() {
                       key: 'username',
                       width: 120,
                       render: (name: string) => <Text strong style={{ color: '#0f172a' }}>{name}</Text>,
+                    },
+                    {
+                      title: '绑定邮箱',
+                      dataIndex: 'email',
+                      key: 'email',
+                      width: 175,
+                      render: (email: string | null | undefined) =>
+                        email ? (
+                          <Text style={{ fontSize: 12, color: '#1e293b', whiteSpace: 'nowrap' }}>
+                            <MailOutlined style={{ color: '#2563eb', marginRight: 4 }} />
+                            {email}
+                          </Text>
+                        ) : (
+                          <Text type="secondary" style={{ fontSize: 12 }}>未绑定</Text>
+                        ),
+                    },
+                    {
+                      title: 'Server酱 SendKey',
+                      dataIndex: 'serverchanKey',
+                      key: 'serverchanKey',
+                      width: 170,
+                      render: (key: string | null | undefined) =>
+                        key ? (
+                          <Tooltip title="点击复制 SendKey">
+                            <Tag
+                              color="blue"
+                              style={{
+                                fontFamily: 'monospace',
+                                fontSize: 11,
+                                cursor: 'pointer',
+                                margin: 0,
+                                borderRadius: 4,
+                                maxWidth: 150,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                display: 'inline-block',
+                                verticalAlign: 'middle',
+                              }}
+                              onClick={() => {
+                                navigator.clipboard.writeText(key)
+                                message.success('SendKey 已复制')
+                              }}
+                            >
+                              {key}
+                            </Tag>
+                          </Tooltip>
+                        ) : (
+                          <Text type="secondary" style={{ fontSize: 12 }}>未配置</Text>
+                        ),
                     },
                     {
                       title: '角色',
@@ -2516,6 +2569,55 @@ export default function AdminPage() {
               key: 'username',
               width: 120,
               render: (name: string) => <Text strong style={{ color: '#0f172a' }}>{name}</Text>,
+            },
+            {
+              title: '绑定邮箱',
+              dataIndex: 'email',
+              key: 'email',
+              width: 160,
+              render: (email: string | null | undefined) =>
+                email ? (
+                  <Text style={{ fontSize: 12, color: '#1e293b' }}>
+                    <MailOutlined style={{ color: '#2563eb', marginRight: 4 }} />
+                    {email}
+                  </Text>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>未绑定</Text>
+                ),
+            },
+            {
+              title: 'Server酱 SendKey',
+              dataIndex: 'serverchanKey',
+              key: 'serverchanKey',
+              width: 160,
+              render: (key: string | null | undefined) =>
+                key ? (
+                  <Tooltip title="点击复制 SendKey">
+                    <Tag
+                      color="blue"
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        cursor: 'pointer',
+                        margin: 0,
+                        borderRadius: 4,
+                        maxWidth: 140,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        display: 'inline-block',
+                      }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(key)
+                        message.success('SendKey 已复制')
+                      }}
+                    >
+                      {key}
+                    </Tag>
+                  </Tooltip>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>未配置</Text>
+                ),
             },
             {
               title: '角色',

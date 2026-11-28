@@ -3,8 +3,10 @@ package com.fund.valuation.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fund.valuation.domain.User;
 import com.fund.valuation.domain.UserFund;
+import com.fund.valuation.domain.UserNotificationChannel;
 import com.fund.valuation.mapper.UserFundMapper;
 import com.fund.valuation.mapper.UserMapper;
+import com.fund.valuation.mapper.UserNotificationChannelMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,7 @@ public class UserManagementService {
 
     private final UserMapper userMapper;
     private final UserFundMapper userFundMapper;
+    private final UserNotificationChannelMapper channelMapper;
 
     public record UserView(
             Long id,
@@ -33,7 +36,9 @@ public class UserManagementService {
             int loginCount,
             String referralSource,
             LocalDateTime createdAt,
-            int watchlistCount
+            int watchlistCount,
+            String email,
+            String serverchanKey
     ) {}
 
     public List<UserView> listUsers() {
@@ -45,10 +50,21 @@ public class UserManagementService {
                 .orderByDesc(User::getCreatedAt);
         if (keyword != null && !keyword.isBlank()) {
             String kw = keyword.trim();
-            wrapper.and(w -> w.like(User::getUsername, kw)
-                    .or().like(User::getReferralSource, kw)
-                    .or().like(User::getStatus, kw)
-                    .or().like(User::getRole, kw));
+            List<String> matchedChannelUserIds = channelMapper.selectList(
+                    new LambdaQueryWrapper<UserNotificationChannel>()
+                            .like(UserNotificationChannel::getEmail, kw)
+                            .or().like(UserNotificationChannel::getServerchanKey, kw)
+            ).stream().map(UserNotificationChannel::getUserId).toList();
+
+            wrapper.and(w -> {
+                w.like(User::getUsername, kw)
+                        .or().like(User::getReferralSource, kw)
+                        .or().like(User::getStatus, kw)
+                        .or().like(User::getRole, kw);
+                if (!matchedChannelUserIds.isEmpty()) {
+                    w.or().in(User::getUsername, matchedChannelUserIds);
+                }
+            });
         }
         List<User> users = userMapper.selectList(wrapper);
         return toUserViews(users);
@@ -89,19 +105,36 @@ public class UserManagementService {
         Map<String, Long> countMap = allFunds.stream()
                 .collect(Collectors.groupingBy(UserFund::getUserId, Collectors.counting()));
 
-        return users.stream().map(u -> new UserView(
-                u.getId(),
-                u.getUsername(),
-                u.getRole() == null ? User.ROLE_USER : u.getRole(),
-                u.getStatus() == null ? User.STATUS_NORMAL : u.getStatus(),
-                u.isVipEffective(),
-                u.getVipExpireAt(),
-                u.getLastLoginAt(),
-                u.getLoginCount() == null ? 0 : u.getLoginCount(),
-                u.getReferralSource() != null && !u.getReferralSource().isBlank() ? u.getReferralSource() : "自己搜索",
-                u.getCreatedAt(),
-                countMap.getOrDefault(u.getUsername(), 0L).intValue()
-        )).toList();
+        List<String> usernames = users.stream()
+                .map(User::getUsername)
+                .filter(u -> u != null && !u.isBlank())
+                .distinct()
+                .toList();
+        Map<String, UserNotificationChannel> channelMap = usernames.isEmpty() ? Map.of() :
+                channelMapper.selectList(new LambdaQueryWrapper<UserNotificationChannel>().in(UserNotificationChannel::getUserId, usernames))
+                        .stream().collect(Collectors.toMap(UserNotificationChannel::getUserId, c -> c, (a, b) -> a));
+
+        return users.stream().map(u -> {
+            UserNotificationChannel ch = channelMap.get(u.getUsername());
+            String email = (ch != null && ch.getEmail() != null && !ch.getEmail().isBlank()) ? ch.getEmail().trim() : null;
+            String serverchanKey = (ch != null && ch.getServerchanKey() != null && !ch.getServerchanKey().isBlank()) ? ch.getServerchanKey().trim() : null;
+
+            return new UserView(
+                    u.getId(),
+                    u.getUsername(),
+                    u.getRole() == null ? User.ROLE_USER : u.getRole(),
+                    u.getStatus() == null ? User.STATUS_NORMAL : u.getStatus(),
+                    u.isVipEffective(),
+                    u.getVipExpireAt(),
+                    u.getLastLoginAt(),
+                    u.getLoginCount() == null ? 0 : u.getLoginCount(),
+                    u.getReferralSource() != null && !u.getReferralSource().isBlank() ? u.getReferralSource() : "自己搜索",
+                    u.getCreatedAt(),
+                    countMap.getOrDefault(u.getUsername(), 0L).intValue(),
+                    email,
+                    serverchanKey
+            );
+        }).toList();
     }
 
     public void updateStatus(String username, String status) {
@@ -160,7 +193,8 @@ public class UserManagementService {
             throw new IllegalArgumentException("用户不存在: " + username);
         }
         userFundMapper.delete(new LambdaQueryWrapper<UserFund>().eq(UserFund::getUserId, username));
+        channelMapper.delete(new LambdaQueryWrapper<UserNotificationChannel>().eq(UserNotificationChannel::getUserId, username));
         userMapper.deleteById(u.getId());
-        log.info("user {} and its watchlists deleted successfully", username);
+        log.info("user {} and its watchlists and notification channel deleted successfully", username);
     }
 }

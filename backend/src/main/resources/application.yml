@@ -38,6 +38,7 @@ server:
       - application/json
 
 fund:
+  website-url: ${FUND_WEBSITE_URL:https://fund.trythis.pw/}
   schedule:
     nav-cron: "0 30 20 * * *"
     holding-cron: "0 0 21 * * *"

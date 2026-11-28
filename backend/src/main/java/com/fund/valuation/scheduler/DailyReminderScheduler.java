@@ -42,6 +42,9 @@ public class DailyReminderScheduler {
     private final EmailSenderService emailSenderService;
     private final WxNotificationService wxNotificationService;
 
+    @org.springframework.beans.factory.annotation.Value("${fund.website-url:https://fund.trythis.pw/}")
+    private String websiteUrl = "https://fund.trythis.pw/";
+
     /**
      * 1. 交易日盘中提醒调度 (14:00-14:59 每分钟轮询，默认 14:30 触发)
      */
@@ -192,7 +195,7 @@ public class DailyReminderScheduler {
                         portfolioView != null ? portfolioView.items() : Collections.emptyList(),
                         watchlist,
                         hideAmount,
-                        "http://localhost:8080"
+                        websiteUrl
                 );
                 emailSenderService.sendHtmlEmail(ch.getEmail().trim(), subject, html);
             } catch (Exception e) {
@@ -210,9 +213,10 @@ public class DailyReminderScheduler {
                         portfolioView != null ? portfolioView.summary() : null,
                         portfolioView != null ? portfolioView.items() : Collections.emptyList(),
                         watchlist,
-                        hideAmount
+                        hideAmount,
+                        websiteUrl
                 );
-                wxNotificationService.sendWechatNotification(ch, title, markdown, "http://localhost:8080");
+                wxNotificationService.sendWechatNotification(ch, title, markdown, websiteUrl);
             } catch (Exception e) {
                 log.warn("用户 [{}] 移动端通知分发异常: {}", username, e.getMessage());
             }

@@ -1,8 +1,10 @@
 package com.fund.valuation.service;
 
 import com.fund.valuation.domain.User;
+import com.fund.valuation.domain.UserNotificationChannel;
 import com.fund.valuation.mapper.UserFundMapper;
 import com.fund.valuation.mapper.UserMapper;
+import com.fund.valuation.mapper.UserNotificationChannelMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,13 +25,20 @@ class UserManagementServiceTest {
     private AuthService authService;
 
     @Autowired
+    private UserNotificationChannelService channelService;
+
+    @Autowired
     private UserMapper userMapper;
 
     @Autowired
     private UserFundMapper userFundMapper;
 
+    @Autowired
+    private UserNotificationChannelMapper channelMapper;
+
     @BeforeEach
     void clean() {
+        channelMapper.delete(null);
         userFundMapper.delete(null);
         userMapper.delete(null);
     }
@@ -94,5 +103,35 @@ class UserManagementServiceTest {
 
         List<UserManagementService.UserView> emptyWatchers = userManagementService.listFundWatchers("999999");
         assertTrue(emptyWatchers.isEmpty());
+    }
+
+    @Test
+    void testUserEmailAndServerchanKeyInView() {
+        authService.register("charlie", "password123", "闲鱼");
+        channelService.bindEmail("charlie", "charlie@example.com");
+
+        UserNotificationChannel channel = channelMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<UserNotificationChannel>()
+                        .eq(UserNotificationChannel::getUserId, "charlie")
+        );
+        assertNotNull(channel);
+        channel.setServerchanKey("SCT998877TEST");
+        channelMapper.updateById(channel);
+
+        List<UserManagementService.UserView> users = userManagementService.listUsers("charlie");
+        assertEquals(1, users.size());
+        UserManagementService.UserView view = users.get(0);
+        assertEquals("charlie@example.com", view.email());
+        assertEquals("SCT998877TEST", view.serverchanKey());
+
+        // 验证按邮箱搜索
+        List<UserManagementService.UserView> searchByEmail = userManagementService.listUsers("charlie@example.com");
+        assertEquals(1, searchByEmail.size());
+        assertEquals("charlie", searchByEmail.get(0).username());
+
+        // 验证按SendKey搜索
+        List<UserManagementService.UserView> searchByKey = userManagementService.listUsers("998877");
+        assertEquals(1, searchByKey.size());
+        assertEquals("charlie", searchByKey.get(0).username());
     }
 }

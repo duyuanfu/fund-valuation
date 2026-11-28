@@ -120,6 +120,8 @@ export interface UserView {
   referralSource?: string
   createdAt: string
   watchlistCount: number
+  email?: string | null
+  serverchanKey?: string | null
 }
 
 export interface CalendarHolidayView {

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fund.valuation.domain.UserNotificationChannel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -20,6 +21,9 @@ import java.util.Map;
 public class WxNotificationService {
 
     private final ObjectMapper objectMapper;
+
+    @Value("${fund.website-url:https://fund.trythis.pw/}")
+    private String defaultWebsiteUrl = "https://fund.trythis.pw/";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6))
@@ -61,7 +65,7 @@ public class WxNotificationService {
             > 提示：系统将在交易日指定时间为您准时推送最新估值播报，祝您投资顺利！
         """, channelName, timeStr);
 
-        return sendWechatNotification(channel, title, content, "http://localhost:8080");
+        return sendWechatNotification(channel, title, content, defaultWebsiteUrl);
     }
 
     /**
@@ -79,10 +83,12 @@ public class WxNotificationService {
             url = "https://sctapi.ftqq.com/" + clean + ".send";
         }
 
+        String targetUrl = (jumpUrl != null && !jumpUrl.isBlank()) ? jumpUrl.trim() : defaultWebsiteUrl;
+
         try {
             Map<String, Object> reqBody = Map.of(
                     "title", title,
-                    "desp", content + (jumpUrl != null && !jumpUrl.isBlank() ? "\n\n[点击前往查看估值详情](" + jumpUrl + ")" : "")
+                    "desp", content + (targetUrl != null && !targetUrl.isBlank() ? "\n\n[点击前往查看估值详情](" + targetUrl + ")" : "")
             );
 
             HttpRequest request = HttpRequest.newBuilder()
